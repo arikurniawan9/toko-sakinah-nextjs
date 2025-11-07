@@ -1,0 +1,52 @@
+// app/admin/member/page.js - hanya fungsi handleExport yang diperbaiki
+// Saya hanya akan menyertakan fungsi handleExport yang sudah diperbaiki
+
+  // Export to Excel
+  const handleExport = async () => {
+    setExportLoading(true);
+    try {
+      const response = await fetch('/api/member');
+      
+      if (!response.ok) {
+        throw new Error('Gagal mengambil data untuk export');
+      }
+      
+      const data = await response.json();
+      
+      // Create CSV content
+      let csvContent = 'Nama,Telepon,Alamat,Tipe Keanggotaan,Diskon,Tanggal Dibuat,Tanggal Diubah\n';
+      
+      data.members.forEach(member => {
+        const row = [
+          `"${member.name.replace(/"/g, '""')}"`,
+          `"${member.phone ? member.phone.replace(/"/g, '""') : ''}"`,
+          `"${member.address ? member.address.replace(/"/g, '""') : ''}"`,
+          `"${member.membershipType}"`,
+          `"${member.discount}"`,
+          `"${new Date(member.createdAt).toLocaleDateString('id-ID')}"`,
+          `"${new Date(member.updatedAt).toLocaleDateString('id-ID')}"`
+        ].join(',');
+        
+        csvContent += row + '\n';
+      });
+      
+      // Create and download file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `member-${new Date().toISOString().slice(0, 10)}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      setSuccess('Data member berhasil diekspor');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError('Terjadi kesalahan saat export: ' + err.message);
+      setTimeout(() => setError(''), 5000);
+    } finally {
+      setExportLoading(false);
+    }
+  };

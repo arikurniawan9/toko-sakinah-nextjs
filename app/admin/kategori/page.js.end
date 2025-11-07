@@ -1,0 +1,6 @@
+// Menyalin bagian akhir yang benar dari file halaman kategori
+        )}
+      </Sidebar>
+    </ProtectedRoute>
+  );
+}
