@@ -20,48 +20,47 @@ export default function ReportDashboard() {
     endDate: new Date().toISOString().split('T')[0]
   });
 
-  // Mock data for demonstration
-  const dailySalesData = [
-    { name: 'Sen', sales: 1200000, transactions: 12 },
-    { name: 'Sel', sales: 1900000, transactions: 18 },
-    { name: 'Rab', sales: 1500000, transactions: 15 },
-    { name: 'Kam', sales: 2100000, transactions: 22 },
-    { name: 'Jum', sales: 2800000, transactions: 24 },
-    { name: 'Sab', sales: 3200000, transactions: 28 },
-    { name: 'Min', sales: 2600000, transactions: 21 },
-  ];
+  const [totalSalesAmount, setTotalSalesAmount] = useState(0);
+  const [totalTransactionsCount, setTotalTransactionsCount] = useState(0);
+  const [averageTransactionValue, setAverageTransactionValue] = useState(0);
+  const [chartSalesData, setChartSalesData] = useState([]);
+  const [chartProductSalesData, setChartProductSalesData] = useState([]);
+  const [recentTransactionsData, setRecentTransactionsData] = useState([]);
 
-  const productSalesData = [
-    { name: 'Kemeja', value: 400 },
-    { name: 'Celana', value: 300 },
-    { name: 'Jaket', value: 200 },
-    { name: 'Aksesoris', value: 100 },
-  ];
+  const COLORS = ['#C084FC', '#A78BFA', '#8B5CF6', '#7C3AED', '#6D28D9']; // Added one more color for consistency
 
-  const COLORS = ['#C084FC', '#A78BFA', '#8B5CF6', '#7C3AED'];
-
-  // Fetch sales data
-  useEffect(() => {
-    const fetchSales = async () => {
-      try {
-        setLoading(true);
-        // In real implementation, fetch from API
-        // const response = await fetch(`/api/laporan?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}&type=${reportType}`);
-        // const data = await response.json();
-        // setSales(data.sales || []);
-      } catch (error) {
-        console.error('Error fetching sales:', error);
-      } finally {
-        setLoading(false);
+  const fetchSales = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/laporan?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}&type=${reportType}`);
+      
+      if (!response.ok) {
+        throw new Error('Gagal mengambil data laporan');
       }
-    };
+      
+      const data = await response.json();
+      setTotalSalesAmount(data.totalSales);
+      setTotalTransactionsCount(data.totalTransactions);
+      setAverageTransactionValue(data.averageTransaction);
+      setChartSalesData(data.dailySalesData);
+      setChartProductSalesData(data.productSalesData);
+      setRecentTransactionsData(data.recentTransactions);
 
+    } catch (error) {
+      console.error('Error fetching sales:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch sales data when dependencies change
+  useEffect(() => {
     fetchSales();
   }, [reportType, dateRange]);
 
-  const totalSales = dailySalesData.reduce((sum, day) => sum + day.sales, 0);
-  const totalTransactions = dailySalesData.reduce((sum, day) => sum + day.transactions, 0);
-  const averageTransaction = totalTransactions > 0 ? Math.round(totalSales / totalTransactions) : 0;
+  const handleFilter = () => {
+    fetchSales();
+  };
 
   return (
     <ProtectedRoute requiredRole="ADMIN">
@@ -137,6 +136,7 @@ export default function ReportDashboard() {
               </div>
               <div className="flex items-end">
                 <button
+                  onClick={handleFilter}
                   className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium ${
                     darkMode 
                       ? 'bg-pastel-purple-600 text-white hover:bg-pastel-purple-700' 
@@ -167,7 +167,7 @@ export default function ReportDashboard() {
                   }`}>Total Penjualan</h3>
                   <p className={`text-2xl font-bold ${
                     darkMode ? 'text-white' : 'text-gray-900'
-                  }`}>Rp {totalSales.toLocaleString('id-ID')}</p>
+                  }`}>Rp {totalSalesAmount.toLocaleString('id-ID')}</p>
                 </div>
               </div>
             </div>
@@ -187,7 +187,7 @@ export default function ReportDashboard() {
                   }`}>Total Transaksi</h3>
                   <p className={`text-2xl font-bold ${
                     darkMode ? 'text-white' : 'text-gray-900'
-                  }`}>{totalTransactions}</p>
+                  }`}>{totalTransactionsCount}</p>
                 </div>
               </div>
             </div>
@@ -207,7 +207,7 @@ export default function ReportDashboard() {
                   }`}>Rata-rata/Transaksi</h3>
                   <p className={`text-2xl font-bold ${
                     darkMode ? 'text-white' : 'text-gray-900'
-                  }`}>Rp {averageTransaction.toLocaleString('id-ID')}</p>
+                  }`}>Rp {averageTransactionValue.toLocaleString('id-ID')}</p>
                 </div>
               </div>
             </div>
@@ -221,7 +221,7 @@ export default function ReportDashboard() {
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    data={dailySalesData}
+                    data={chartSalesData}
                     margin={{
                       top: 5,
                       right: 30,
@@ -236,11 +236,16 @@ export default function ReportDashboard() {
                     />
                     <YAxis 
                       stroke={darkMode ? '#D1D5DB' : '#6B7280'} 
-                      tickFormatter={(value) => `Rp${value/1000000}Jt`} 
+                      tickFormatter={(value) => `Rp${(value / 1000000).toFixed(1)}Jt`} 
                     />
                     <Tooltip 
                       formatter={(value) => [`Rp${value.toLocaleString('id-ID')}`, 'Penjualan']}
-                      labelFormatter={(label) => `Hari: ${label}`}
+                      labelFormatter={(label, payload) => {
+                        if (payload && payload.length > 0 && payload[0].payload.fullDate) {
+                          return `Tanggal: ${new Date(payload[0].payload.fullDate).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}`;
+                        }
+                        return `Hari: ${label}`;
+                      }}
                       contentStyle={darkMode ? { 
                         backgroundColor: '#1F2937', 
                         borderColor: '#374151', 
@@ -263,7 +268,7 @@ export default function ReportDashboard() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={productSalesData}
+                      data={chartProductSalesData}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
@@ -273,7 +278,7 @@ export default function ReportDashboard() {
                       dataKey="value"
                       labelStyle={darkMode ? { fill: 'white' } : {}}
                     >
-                      {productSalesData.map((entry, index) => (
+                      {chartProductSalesData.map((entry, index) => (
                         <Cell 
                           key={`cell-${index}`} 
                           fill={darkMode ? COLORS[index % COLORS.length] : COLORS[index % COLORS.length]} 
@@ -336,32 +341,32 @@ export default function ReportDashboard() {
                   </tr>
                 </thead>
                 <tbody className={darkMode ? 'divide-gray-700 bg-gray-800' : 'divide-gray-200 bg-white'}>
-                  {dailySalesData.slice(0, 5).map((day, index) => (
-                    <tr key={index} className={darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}>
+                  {recentTransactionsData.map((transaction, index) => (
+                    <tr key={transaction.id} className={darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}>
                       <td className={`px-6 py-4 whitespace-nowrap text-sm ${
                         darkMode ? 'text-gray-300' : 'text-gray-500'
                       }`}>
-                        #{1000 + index}
+                        #{transaction.id.substring(0, 8)}
                       </td>
                       <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
                         darkMode ? 'text-white' : 'text-gray-900'
                       }`}>
-                        Admin
+                        {transaction.cashierName}
                       </td>
                       <td className={`px-6 py-4 whitespace-nowrap text-sm ${
                         darkMode ? 'text-gray-400' : 'text-gray-500'
                       }`}>
-                        {day.name}, 07 Nov 2025
+                        {new Date(transaction.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </td>
                       <td className={`px-6 py-4 whitespace-nowrap text-sm ${
                         darkMode ? 'text-white' : 'text-gray-900'
                       }`}>
-                        Rp {day.sales.toLocaleString('id-ID')}
+                        Rp {transaction.totalAmount.toLocaleString('id-ID')}
                       </td>
                       <td className={`px-6 py-4 whitespace-nowrap text-sm ${
                         darkMode ? 'text-gray-400' : 'text-gray-500'
                       }`}>
-                        Tunai
+                        {transaction.paymentMethod}
                       </td>
                     </tr>
                   ))}

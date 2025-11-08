@@ -16,31 +16,42 @@ export async function GET(request) {
     // Calculate offset for pagination
     const offset = (page - 1) * limit;
     
-    // Build where clause for search
-    let whereClause = {
-      role: 'CASHIER' // Only get users with CASHIER role
-    };
-    
+    let users;
+    let totalCount;
+
+    // Only get users with CASHIER role
+    const baseWhere = `WHERE role = 'CASHIER'`;
+    let searchQuery = '';
+
     if (search) {
-      whereClause = {
-        ...whereClause,
-        OR: [
-          { name: { contains: search } },
-          { username: { contains: search } }
-        ]
-      };
+      const searchLower = `%${search.toLowerCase()}%`;
+      searchQuery = `AND (LOWER(name) LIKE ${searchLower} OR LOWER(username) LIKE ${searchLower})`;
+
+      // Fetch users with raw query for case-insensitive search
+      users = await prisma.$queryRaw`
+        SELECT * FROM User
+        ${baseWhere} ${searchQuery}
+        ORDER BY createdAt DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `;
+
+      // Count total users matching the search with raw query
+      const countResult = await prisma.$queryRaw`
+        SELECT COUNT(*) as count FROM User
+        ${baseWhere} ${searchQuery}
+      `;
+      totalCount = Number(countResult[0].count);
+
+    } else {
+      // Standard Prisma findMany when no search term
+      users = await prisma.user.findMany({
+        where: { role: 'CASHIER' },
+        skip: offset,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      });
+      totalCount = await prisma.user.count({ where: { role: 'CASHIER' } });
     }
-    
-    // Get cashiers with pagination and search
-    const users = await prisma.user.findMany({
-      where: whereClause,
-      skip: offset,
-      take: limit,
-      orderBy: { createdAt: 'desc' }
-    });
-    
-    // Get total count for pagination
-    const totalCount = await prisma.user.count({ where: whereClause });
     
     return NextResponse.json({
       users,
@@ -58,7 +69,7 @@ export async function GET(request) {
       { status: 500 }
     );
   } finally {
-    await prisma.$disconnect();
+    // Removed explicit disconnect
   }
 }
 
@@ -110,7 +121,7 @@ export async function POST(request) {
       { status: 500 }
     );
   } finally {
-    await prisma.$disconnect();
+    // Removed explicit disconnect
   }
 }
 
@@ -180,12 +191,8 @@ export async function PUT(request) {
       );
     }
     
-    return NextResponse.json(
-      { error: 'Failed to update cashier' }, 
-      { status: 500 }
-    );
   } finally {
-    await prisma.$disconnect();
+    // Removed explicit disconnect
   }
 }
 
@@ -242,6 +249,6 @@ export async function DELETE(request) {
       { status: 500 }
     );
   } finally {
-    await prisma.$disconnect();
+    // Removed explicit disconnect
   }
 }
