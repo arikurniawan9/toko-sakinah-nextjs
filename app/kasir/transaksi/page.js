@@ -51,7 +51,7 @@ export default function CashierTransaction() {
   // Filter products based on search term
   const filteredProducts = products.filter(product => 
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.code.toLowerCase().includes(searchTerm.toLowerCase())
+    (product.code || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Add product to cart
@@ -183,6 +183,21 @@ export default function CashierTransaction() {
     }
   }, [cart, selectedMember]);
 
+  // Handle barcode scan
+  const handleScan = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault(); // Prevent form submission or other default behavior
+      const scannedProduct = products.find(product => (product.code || '').toLowerCase() === searchTerm.toLowerCase());
+      if (scannedProduct) {
+        addToCart(scannedProduct);
+        setSearchTerm(''); // Clear search term after successful scan
+      } else {
+        // Optionally, provide feedback to the user that the product was not found
+        console.log('Product not found with code:', searchTerm);
+      }
+    }
+  };
+
   return (
     <ProtectedRoute requiredRole="CASHIER">
       <div className="min-h-screen bg-gray-50">
@@ -206,6 +221,7 @@ export default function CashierTransaction() {
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pastel-purple-500 focus:border-pastel-purple-500"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyDown={handleScan} // Add onKeyDown event listener
                   />
                   <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                 </div>
@@ -222,7 +238,7 @@ export default function CashierTransaction() {
                     >
                       <div className="font-medium text-gray-900">{product.name}</div>
                       <div className="text-sm text-gray-600">Kode: {product.productCode}</div>
-                      <div className="text-sm font-semibold text-pastel-purple-600">Rp {product.sellingPrice.toLocaleString('id-ID')}</div>
+                      <div className="text-sm font-semibold text-pastel-purple-600">Rp {(product.sellingPrice || 0).toLocaleString('id-ID')}</div>
                       <div className="text-xs text-gray-500 mt-1">Stok: {product.stock}</div>
                     </div>
                   ))}
@@ -278,7 +294,7 @@ export default function CashierTransaction() {
                             <div>
                               <div className="text-sm font-medium text-gray-900">{item.name}</div>
                               <div className="text-xs text-gray-500">
-                                {item.quantity} x Rp {item.price.toLocaleString('id-ID')}
+                                {item.quantity} x Rp {(item.price || 0).toLocaleString('id-ID')}
                               </div>
                             </div>
                             <div className="flex items-center space-x-2">
@@ -320,23 +336,23 @@ export default function CashierTransaction() {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span>Subtotal:</span>
-                      <span>Rp {calculation.subTotal.toLocaleString('id-ID')}</span>
+                      <span>Rp {(calculation.subTotal || 0).toLocaleString('id-ID')}</span>
                     </div>
                     {calculation.itemDiscount > 0 && (
                       <div className="flex justify-between text-green-600">
                         <span>Diskon Item:</span>
-                        <span>-Rp {calculation.itemDiscount.toLocaleString('id-ID')}</span>
+                        <span>-Rp {(calculation.itemDiscount || 0).toLocaleString('id-ID')}</span>
                       </div>
                     )}
                     {calculation.memberDiscount > 0 && (
                       <div className="flex justify-between text-green-600">
                         <span>Diskon Member:</span>
-                        <span>-Rp {calculation.memberDiscount.toLocaleString('id-ID')}</span>
+                        <span>-Rp {(calculation.memberDiscount || 0).toLocaleString('id-ID')}</span>
                       </div>
                     )}
                     <div className="flex justify-between font-medium">
                       <span>Total:</span>
-                      <span>Rp {calculation.grandTotal.toLocaleString('id-ID')}</span>
+                      <span>Rp {(calculation.grandTotal || 0).toLocaleString('id-ID')}</span>
                     </div>
                   </div>
                 </div>
