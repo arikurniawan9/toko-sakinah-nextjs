@@ -23,18 +23,14 @@ export async function GET(request) {
     let users;
     let totalCount;
 
-    // Only get users with ATTENDANT role
-    const baseWhere = `WHERE role = 'ATTENDANT'`;
-    let searchQuery = '';
+    const role = 'ATTENDANT';
+    const searchLower = `%${search.toLowerCase()}%`;
 
     if (search) {
-      const searchLower = `%${search.toLowerCase()}%`;
-      searchQuery = `AND (LOWER(name) LIKE ${searchLower} OR LOWER(username) LIKE ${searchLower})`;
-
       // Fetch users with raw query for case-insensitive search
       users = await prisma.$queryRaw`
-        SELECT * FROM User
-        ${baseWhere} ${searchQuery}
+        SELECT id, name, username, role, createdAt, updatedAt FROM User
+        WHERE role = ${role} AND (LOWER(name) LIKE ${searchLower} OR LOWER(username) LIKE ${searchLower})
         ORDER BY createdAt DESC
         LIMIT ${limit} OFFSET ${offset}
       `;
@@ -42,19 +38,19 @@ export async function GET(request) {
       // Count total users matching the search with raw query
       const countResult = await prisma.$queryRaw`
         SELECT COUNT(*) as count FROM User
-        ${baseWhere} ${searchQuery}
+        WHERE role = ${role} AND (LOWER(name) LIKE ${searchLower} OR LOWER(username) LIKE ${searchLower})
       `;
       totalCount = Number(countResult[0].count);
 
     } else {
       // Standard Prisma findMany when no search term
       users = await prisma.user.findMany({
-        where: { role: 'ATTENDANT' },
+        where: { role: role },
         skip: offset,
         take: limit,
         orderBy: { createdAt: 'desc' },
       });
-      totalCount = await prisma.user.count({ where: { role: 'ATTENDANT' } });
+      totalCount = await prisma.user.count({ where: { role: role } });
     }
     
     return NextResponse.json({

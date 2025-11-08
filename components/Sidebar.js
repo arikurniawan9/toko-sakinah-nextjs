@@ -19,39 +19,44 @@ import {
   LogOut,
   Expand,
   Minimize,
-  UserCog
+  UserCog,
+  ChevronLeft,
+  ChevronRight,
+  Sun,
+  Moon,
+  ShoppingCart, // Added for Transaksi Pembelian
+  Receipt,       // Added for Transaksi Penjualan
+  DollarSign,    // Added for Pengeluaran
+  History,       // Added for Riwayat Penjualan
+  Settings       // Added for Pengaturan Toko
 } from 'lucide-react';
 import { useDarkMode } from './DarkModeContext';
+import { useSidebar } from './SidebarContext';
+import Tooltip from './Tooltip';
 
 const Sidebar = ({ children }) => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const userMenuRef = useRef(null);
   const pathname = usePathname();
   const { darkMode, toggleDarkMode } = useDarkMode();
-  
-  // For mobile responsiveness
-  const [isMobile, setIsMobile] = useState(false);
-  
+  const { isCollapsed, toggleSidebar } = useSidebar();
+
   useEffect(() => {
     const checkIfMobile = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
       if (mobile) {
-        setIsSidebarOpen(false);
-      } else {
-        setIsSidebarOpen(true);
+        setIsMobileMenuOpen(false);
       }
     };
-    
     checkIfMobile();
     window.addEventListener('resize', checkIfMobile);
-    
     return () => window.removeEventListener('resize', checkIfMobile);
   }, []);
 
-  // Close user menu on click outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
@@ -62,7 +67,6 @@ const Sidebar = ({ children }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Fullscreen handler
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
@@ -86,155 +90,230 @@ const Sidebar = ({ children }) => {
   };
 
   const menuItems = [
-    { title: "Dashboard", href: "/admin", icon: Home },
-    { title: "Produk", href: "/admin/produk", icon: ShoppingBag },
-    { title: "Kategori", href: "/admin/kategori", icon: Tag },
-    { title: "Supplier", href: "/admin/supplier", icon: Truck },
-    { title: "Member", href: "/admin/member", icon: UserRound },
-    { title: "Kasir", href: "/admin/kasir", icon: CreditCard },
-    { title: "Pelayan", href: "/admin/pelayan", icon: Users },
-    { title: "Laporan", href: "/admin/laporan", icon: BarChart3 },
+    { title: "Dashboard", href: "/admin", icon: Home, type: 'item' },
+    { title: "Master", type: 'heading' },
+    { title: "Produk", href: "/admin/produk", icon: ShoppingBag, type: 'item' },
+    { title: "Kategori", href: "/admin/kategori", icon: Tag, type: 'item' },
+    { title: "Supplier", href: "/admin/supplier", icon: Truck, type: 'item' },
+    { title: "Member", href: "/admin/member", icon: UserRound, type: 'item' },
+    { title: "Kasir", href: "/admin/kasir", icon: CreditCard, type: 'item' },
+    { title: "Pelayan", href: "/admin/pelayan", icon: Users, type: 'item' },
+    { title: "Laporan", type: 'heading' },
+    { title: "Laporan", href: "/admin/laporan", icon: BarChart3, type: 'item' },
+    { title: "Transaksi", type: 'heading' },
+    { title: "Transaksi Pembelian", href: "/admin/transaksi/pembelian", icon: ShoppingCart, type: 'item' },
+    { title: "Transaksi Penjualan", href: "/admin/transaksi/penjualan", icon: Receipt, type: 'item' },
+    { title: "Riwayat Penjualan", href: "/admin/transaksi/riwayat-penjualan", icon: History, type: 'item' },
+    { title: "Keuangan", type: 'heading' },
+    { title: "Pengeluaran", href: "/admin/pengeluaran", icon: DollarSign, type: 'item' },
+    { title: "Pengaturan", type: 'heading' },
+    { title: "Pengaturan Toko", href: "/admin/pengaturan/toko", icon: Settings, type: 'item' },
   ];
 
-  return (
-    <div className={`flex h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
-      {/* Mobile menu button */}
-      {isMobile && (
-        <div className="fixed top-4 left-4 z-50">
-          <button
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className={`p-2 rounded-md ${darkMode ? 'text-white bg-gray-800' : 'text-gray-700 bg-white'} shadow-md`}
-          >
-            {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
-        </div>
-      )}
+  const sidebarWidth = isCollapsed ? 'w-20' : 'w-56';
+  const mainContentMargin = 'ml-0'; // Main content will not have a left margin from a non-fixed sidebar
 
+  return (
+    <div className={`flex ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}> {/* Removed h-screen here */}
       {/* Sidebar */}
       <div 
-        className={`${
+        className={`inset-y-0 left-0 z-40 flex flex-col ${darkMode ? 'bg-gray-800' : 'bg-white'} shadow-lg transition-all duration-300 ease-in-out ${
           isMobile 
-            ? `fixed inset-y-0 left-0 z-40 w-48 ${
-                darkMode ? 'bg-gray-800' : 'bg-white'
-              } shadow-lg transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out`
-            : `fixed inset-y-0 left-0 z-10 w-48 ${
-                darkMode ? 'bg-gray-800' : 'bg-white'
-              } shadow-lg ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}` 
-        } md:translate-x-0 md:static flex flex-col`}
+            ? `w-56 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`
+            : `${sidebarWidth}`
+        }`}
       >
         {/* Logo */}
-        <div className={`flex items-center justify-center h-16 px-4 border-b ${
-          darkMode ? 'border-gray-700' : 'border-pastel-purple-200'
-        }`}>
-          <h1 className={`text-xl font-bold ${darkMode ? 'text-pastel-purple-400' : 'text-pastel-purple-700'}`}>Toko Sakinah</h1>
+        <div className={`flex items-center justify-center h-16 px-4 border-b ${darkMode ? 'border-gray-700' : 'border-pastel-purple-200'}`}>
+          <h1 className={`text-xl font-bold ${darkMode ? 'text-pastel-purple-400' : 'text-pastel-purple-700'} ${isCollapsed && !isMobile ? 'hidden' : ''}`}>Toko Sakinah</h1>
+          <ShoppingBag className={`${darkMode ? 'text-pastel-purple-400' : 'text-pastel-purple-700'} ${!isCollapsed || isMobile ? 'hidden' : ''}`} />
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 px-2 py-4 overflow-y-auto">
           <ul className="space-y-1">
-            {menuItems.map((item) => {
+            {menuItems.map((item, index) => {
+              if (item.type === 'heading') {
+                return (
+                  <li key={index} className="mt-4 mb-2">
+                    {!isCollapsed || isMobile ? (
+                      <h3 className={`text-xs font-semibold uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        {item.title}
+                      </h3>
+                    ) : (
+                      <Tooltip content={item.title} position="right">
+                        <div className={`h-6 w-6 mx-auto flex items-center justify-center rounded-full ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600'}`}>
+                          {item.title.charAt(0)}
+                        </div>
+                      </Tooltip>
+                    )}
+                  </li>
+                );
+              }
+
               const IconComponent = item.icon;
               const isActive = pathname === item.href;
-              
+              const linkContent = (
+                <>
+                  <IconComponent className={`h-5 w-5 ${isCollapsed && !isMobile ? 'mx-auto' : 'mr-3'}`} />
+                  {!isCollapsed || isMobile ? <span>{item.title}</span> : null}
+                </>
+              );
+
               return (
                 <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    onClick={() => isMobile && setIsSidebarOpen(false)}
-                    className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-                      isActive
-                        ? `${darkMode ? 'bg-pastel-purple-900 text-pastel-purple-100' : 'bg-pastel-purple-100 text-pastel-purple-800'} border-r-4 ${
-                            darkMode ? 'border-pastel-purple-500' : 'border-pastel-purple-500'
-                          }`
-                        : `${darkMode ? 'text-gray-300 hover:bg-gray-700 hover:text-white' : 'text-gray-700 hover:bg-pastel-purple-50 hover:text-pastel-purple-600'}`
-                    }`}
-                  >
-                    <IconComponent className="h-5 w-5 mr-3" />
-                    <span>{item.title}</span>
-                  </Link>
+                  {isCollapsed && !isMobile ? (
+                    <Tooltip content={item.title} position="bottom">
+                      <Link
+                        href={item.href}
+                        className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                          isActive
+                            ? `${darkMode ? 'bg-pastel-purple-900 text-pastel-purple-100' : 'bg-pastel-purple-100 text-pastel-purple-800'}`
+                            : `${darkMode ? 'text-gray-300 hover:bg-gray-700 hover:text-white' : 'text-gray-700 hover:bg-pastel-purple-50 hover:text-pastel-purple-600'}`
+                        }`}
+                      >
+                        {linkContent}
+                      </Link>
+                    </Tooltip>
+                  ) : (
+                    <Link
+                      href={item.href}
+                      onClick={() => isMobile && setIsMobileMenuOpen(false)}
+                      className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                        isActive
+                          ? `${darkMode ? 'bg-pastel-purple-900 text-pastel-purple-100' : 'bg-pastel-purple-100 text-pastel-purple-800'} border-r-4 ${darkMode ? 'border-pastel-purple-500' : 'border-pastel-purple-500'}`
+                          : `${darkMode ? 'text-gray-300 hover:bg-gray-700 hover:text-white' : 'text-gray-700 hover:bg-pastel-purple-50 hover:text-pastel-purple-600'}`
+                      }`}
+                    >
+                      {linkContent}
+                    </Link>
+                  )}
                 </li>
               );
             })}
           </ul>
         </nav>
 
-        {/* Controls and User Info */}
-        <div className={`p-4 border-t ${darkMode ? 'border-gray-700' : 'border-pastel-purple-200'}`}>
-          <div className="mb-4 flex items-center justify-center space-x-4">
-            {/* Dark Mode Toggle */}
-            <label className="switch">
-              <input 
-                type="checkbox" 
-                checked={darkMode}
-                onChange={toggleDarkMode}
-              />
-              <span className="slider"></span>
-            </label>
-            {/* Fullscreen Toggle */}
-            <button 
-              onClick={toggleFullscreen} 
-              className={`p-2 rounded-full ${darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-200'}`}
-              title={isFullscreen ? 'Keluar dari layar penuh' : 'Layar penuh'}
-            >
-              {isFullscreen ? <Minimize size={18} /> : <Expand size={18} />}
-            </button>
-          </div>
-          
-          {/* User Menu */}
-          <div className="relative" ref={userMenuRef}>
-            <div 
-              className="flex items-center p-2 rounded-lg cursor-pointer hover:bg-gray-700"
-              onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-            >
-              <div className="w-10 h-10 rounded-full bg-pastel-purple-400 flex items-center justify-center text-white font-bold">
-                A
-              </div>
-              <div className="ml-3">
-                <p className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Admin</p>
-                <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Administrator</p>
-              </div>
+        {/* Sidebar Toggle for Desktop */}
+        {!isMobile && (
+            <div className={`px-4 py-3 border-t ${darkMode ? 'border-gray-700' : 'border-pastel-purple-200'}`}>
+                <Tooltip content={isCollapsed ? "Buka Sidebar" : "Tutup Sidebar"} position="bottom">
+                    <button onClick={toggleSidebar} className={`w-full flex items-center justify-center p-2 rounded-lg ${darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-200'}`}>
+                        {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+                    </button>
+                </Tooltip>
             </div>
-            
-            {/* Dropdown Menu */}
-            {isUserMenuOpen && (
-              <div className={`absolute bottom-full left-0 mb-2 w-52 ${darkMode ? 'bg-gray-700' : 'bg-white'} rounded-md shadow-lg ring-1 ring-black ring-opacity-5`}>
-                <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
-                  <Link
-                    href="/admin/profile"
-                    onClick={() => setIsUserMenuOpen(false)}
-                    className={`w-full text-left flex items-center px-4 py-2 text-sm ${darkMode ? 'text-gray-300 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-100'}`}
-                    role="menuitem"
-                  >
-                    <UserCog className="mr-3 h-5 w-5" />
-                    <span>Setting Profile</span>
-                  </Link>
-                  <div className={`border-t my-1 ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}></div>
-                  <button
-                    onClick={handleLogout}
-                    className={`w-full text-left flex items-center px-4 py-2 text-sm ${darkMode ? 'text-gray-300 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-100'}`}
-                    role="menuitem"
-                  >
-                    <LogOut className="mr-3 h-5 w-5" />
-                    <span>Logout</span>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Overlay for mobile */}
-      {isMobile && isSidebarOpen && (
+      {isMobile && isMobileMenuOpen && (
         <div 
           className={`fixed inset-0 z-30 ${darkMode ? 'bg-black bg-opacity-70' : 'bg-black bg-opacity-50'} md:hidden`}
-          onClick={() => setIsSidebarOpen(false)}
+          onClick={() => setIsMobileMenuOpen(false)}
         ></div>
       )}
 
       {/* Main content */}
-      <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarOpen && !isMobile ? 'md:ml-48' : 'ml-0'}`}>
-        {children}
+      <div className={`flex-1 flex flex-col transition-all duration-300 ${mainContentMargin}`}> {/* Removed !isMobile ? mainContentMargin : 'ml-0' */}
+        {/* Top Header */}
+        <header className={`flex items-center justify-between h-16 px-4 border-b ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} z-30`}>
+          {/* Left side: Mobile Menu Toggle & Desktop Sidebar Toggle */}
+          <div className="flex items-center space-x-2">
+            {/* Mobile Menu Toggle */}
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className={`p-2 rounded-md ${darkMode ? 'text-white' : 'text-gray-700'} md:hidden`}
+            >
+              <Menu size={24} />
+            </button>
+
+            {/* Desktop Sidebar Toggle */}
+            <button
+              onClick={toggleSidebar}
+              className={`p-2 rounded-md ${darkMode ? 'text-white' : 'text-gray-700'} hidden md:block`}
+            >
+              <Menu size={24} />
+            </button>
+          </div>
+
+          {/* Right side: Dark Mode, Fullscreen, User Menu */}
+          <div className="flex items-center space-x-2 sm:space-x-4">
+            {/* Dark Mode Toggle */}
+            <Tooltip content={darkMode ? "Light Mode" : "Dark Mode"} position="bottom">
+              <button
+                onClick={toggleDarkMode}
+                className={`p-2 rounded-full ${darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-100'}`}
+              >
+                {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+              </button>
+            </Tooltip>
+
+            {/* Fullscreen Toggle */}
+            <Tooltip content={isFullscreen ? "Exit Fullscreen" : "Fullscreen"} position="bottom">
+              <button
+                onClick={toggleFullscreen}
+                className={`p-2 rounded-full ${darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-100'}`}
+              >
+                {isFullscreen ? <Minimize size={20} /> : <Expand size={20} />}
+              </button>
+            </Tooltip>
+
+            {/* User Menu (moved from sidebar) */}
+            <div className="relative" ref={userMenuRef}>
+              <div 
+                className={`flex items-center p-2 rounded-lg cursor-pointer ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+              >
+                <div className="w-10 h-10 rounded-full bg-pastel-purple-400 flex items-center justify-center text-white font-bold">
+                  A
+                </div>
+                {/* Only show text if not collapsed and not mobile */}
+                {!isCollapsed && !isMobile && (
+                  <div className="ml-3">
+                    <p className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Admin</p>
+                    <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Administrator</p>
+                  </div>
+                )}
+              </div>
+              
+              {/* Dropdown Menu */}
+              {isUserMenuOpen && (
+                <div className={`absolute top-full right-0 mt-2 w-52 ${darkMode ? 'bg-gray-700' : 'bg-white'} rounded-md shadow-lg ring-1 ring-black ring-opacity-5`}>
+                  <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
+                    <Link
+                      href="/admin/profile"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className={`w-full text-left flex items-center px-4 py-2 text-sm ${darkMode ? 'text-gray-300 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-100'}`}
+                      role="menuitem"
+                    >
+                      <UserCog className="mr-3 h-5 w-5" />
+                      <span>Setting Profile</span>
+                    </Link>
+                    <div className={`border-t my-1 ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}></div>
+                    <button
+                      onClick={handleLogout}
+                      className={`w-full text-left flex items-center px-4 py-2 text-sm ${darkMode ? 'text-gray-300 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-100'}`}
+                      role="menuitem"
+                    >
+                      <LogOut className="mr-3 h-5 w-5" />
+                      <span>Logout</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <div className="flex-1 overflow-y-auto">
+          {children}
+          {/* Footer */}
+          <footer className={`py-4 text-right text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'} mt-8`}>
+            Copyright @2025 by Ari Kurniawan.
+          </footer>
+        </div>
       </div>
     </div>
   );
