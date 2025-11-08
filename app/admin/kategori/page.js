@@ -1,10 +1,10 @@
-// app/admin/kategori/page.js
 'use client';
 
 import { useState, useEffect } from 'react';
 import ProtectedRoute from '../../../components/ProtectedRoute';
 import Sidebar from '../../../components/Sidebar';
 import { useDarkMode } from '../../../components/DarkModeContext';
+import { useSession } from 'next-auth/react'; // Import useSession
 
 import { useCategoryTable } from '../../../lib/hooks/useCategoryTable';
 import { useCategoryForm } from '../../../lib/hooks/useCategoryForm';
@@ -14,10 +14,12 @@ import CategoryTable from '../../../components/kategori/CategoryTable';
 import CategoryModal from '../../../components/kategori/CategoryModal';
 import CategoryToolbar from '../../../components/kategori/CategoryToolbar';
 import Pagination from '../../../components/produk/Pagination';
-import ConfirmationModal from '../../../components/ConfirmationModal'; // Import ConfirmationModal
+import ConfirmationModal from '../../../components/ConfirmationModal';
 
 export default function CategoryManagement() {
   const { darkMode } = useDarkMode();
+  const { data: session } = useSession(); // Get session data
+  const isAdmin = session?.user?.role === 'ADMIN'; // Determine if user is admin
 
   const {
     categories,
@@ -55,24 +57,24 @@ export default function CategoryManagement() {
   const [importLoading, setImportLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
 
-  // State for delete confirmation modal
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState(null); // Can be a single ID (string) or multiple IDs (array)
+  const [itemToDelete, setItemToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = (id) => {
+    if (!isAdmin) return; // Prevent delete if not admin
     setItemToDelete(id);
     setShowDeleteModal(true);
   };
 
   const handleDeleteMultiple = () => {
-    if (selectedRows.length === 0) return;
+    if (!isAdmin || selectedRows.length === 0) return; // Prevent delete if not admin or no rows selected
     setItemToDelete(selectedRows);
     setShowDeleteModal(true);
   };
 
   const handleConfirmDelete = async () => {
-    if (!itemToDelete) return;
+    if (!itemToDelete || !isAdmin) return; // Ensure admin role before confirming delete
     setIsDeleting(true);
 
     const isMultiple = Array.isArray(itemToDelete);
@@ -94,7 +96,7 @@ export default function CategoryManagement() {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Gagal menghapus kategori');
       }
-      
+
       fetchCategories();
       if (isMultiple) {
         clearSelection();
@@ -103,7 +105,7 @@ export default function CategoryManagement() {
         setSelectedRows(prev => prev.filter(rowId => rowId !== itemToDelete));
         setSuccess('Kategori berhasil dihapus');
       }
-      
+
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setTableError('Terjadi kesalahan saat menghapus: ' + err.message);
@@ -153,7 +155,7 @@ export default function CategoryManagement() {
   };
 
   return (
-    <ProtectedRoute requiredRole="ADMIN">
+    <ProtectedRoute requiredRole="ADMIN"> {/* This ProtectedRoute will ensure only ADMIN can access this page directly, but CASHIER can access via sidebar */}
       <Sidebar>
         <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
           <h1 className={`text-3xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
@@ -162,16 +164,40 @@ export default function CategoryManagement() {
 
           <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
             <div className="p-4 sm:p-6">
-              <CategoryToolbar
-                searchTerm={searchTerm}
-                setSearchTerm={setSearchTerm}
-                onAddNew={openModalForCreate} // Corrected prop name
-                onDeleteMultiple={handleDeleteMultiple}
-                handleExport={handleExport}
-                selectedRowsCount={selectedRows.length} // Pass selectedRows.length
-                clearSelection={clearSelection}
-                darkMode={darkMode} // Pass darkMode prop
-              />
+              {isAdmin && ( // Only show toolbar for admin
+                <CategoryToolbar
+                  searchTerm={searchTerm}
+                  setSearchTerm={setSearchTerm}
+                  onAddNew={openModalForCreate}
+                  onDeleteMultiple={handleDeleteMultiple}
+                  handleExport={handleExport}
+                  selectedRowsCount={selectedRows.length}
+                  clearSelection={clearSelection}
+                  darkMode={darkMode}
+                />
+              )}
+              {!isAdmin && ( // Show search/filter for cashier
+                <div className="mb-4 flex justify-between items-center">
+                  <input
+                    type="text"
+                    placeholder="Cari kategori..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className={`w-full md:w-1/3 px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-pastel-purple-500 focus:border-pastel-purple-500 sm:text-sm ${
+                      darkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-300 bg-white text-gray-900'
+                    }`}
+                  />
+                  <button
+                    onClick={handleExport}
+                    disabled={exportLoading}
+                    className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${
+                      darkMode ? 'bg-pastel-purple-600 hover:bg-pastel-purple-700' : 'bg-pastel-purple-600 hover:bg-pastel-purple-700'
+                    } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pastel-purple-500`}
+                  >
+                    {exportLoading ? 'Mengekspor...' : 'Export'}
+                  </button>
+                </div>
+              )}
 
               {tableError && (
                 <div className={`my-4 p-4 ${darkMode ? 'bg-red-900/30 border-red-700 text-red-200' : 'bg-red-50 border border-red-200 text-red-700'} rounded-md`}>
@@ -185,15 +211,16 @@ export default function CategoryManagement() {
               )}
 
               <CategoryTable
-                key={categories.length} // Add key prop
+                key={categories.length}
                 categories={categories}
-                loading={loading} // Pass loading prop
-                darkMode={darkMode} // Pass darkMode prop
+                loading={loading}
+                darkMode={darkMode}
                 selectedRows={selectedRows}
-                handleSelectAll={handleSelectAll}
-                handleSelectRow={handleSelectRow}
-                handleEdit={openModalForEdit}
-                handleDelete={handleDelete}
+                handleSelectAll={isAdmin ? handleSelectAll : undefined} // Disable selection for cashier
+                handleSelectRow={isAdmin ? handleSelectRow : undefined} // Disable selection for cashier
+                handleEdit={isAdmin ? openModalForEdit : undefined} // Disable edit for cashier
+                handleDelete={isAdmin ? handleDelete : undefined} // Disable delete for cashier
+                showActions={isAdmin} // Hide action column for cashier
               />
             </div>
             <Pagination
@@ -201,34 +228,38 @@ export default function CategoryManagement() {
               totalPages={totalPages}
               setCurrentPage={setCurrentPage}
               itemsPerPage={itemsPerPage}
-              totalProducts={totalCategories} // Use totalCategories
-              darkMode={darkMode} // Pass darkMode prop
+              totalProducts={totalCategories}
+              darkMode={darkMode}
             />
           </div>
 
-          <CategoryModal
-            showModal={showModal}
-            closeModal={closeModal}
-            handleSave={handleSave}
-            formData={formData}
-            handleInputChange={handleInputChange}
-            editingCategory={editingCategory}
-            error={formError}
-            setFormError={setFormError}
-            darkMode={darkMode} // Pass darkMode prop
-          />
+          {isAdmin && ( // Only show modal for admin
+            <CategoryModal
+              showModal={showModal}
+              closeModal={closeModal}
+              handleSave={handleSave}
+              formData={formData}
+              handleInputChange={handleInputChange}
+              editingCategory={editingCategory}
+              error={formError}
+              setFormError={setFormError}
+              darkMode={darkMode}
+            />
+          )}
 
-          <ConfirmationModal
-            isOpen={showDeleteModal}
-            onClose={() => setShowDeleteModal(false)}
-            onConfirm={handleConfirmDelete}
-            title="Konfirmasi Hapus"
-            message={`Apakah Anda yakin ingin menghapus ${
-              Array.isArray(itemToDelete) ? itemToDelete.length + ' kategori' : 'kategori ini'
-            }?`}
-            darkMode={darkMode}
-            isLoading={isDeleting}
-          />
+          {isAdmin && ( // Only show confirmation modal for admin
+            <ConfirmationModal
+              isOpen={showDeleteModal}
+              onClose={() => setShowDeleteModal(false)}
+              onConfirm={handleConfirmDelete}
+              title="Konfirmasi Hapus"
+              message={`Apakah Anda yakin ingin menghapus ${
+                Array.isArray(itemToDelete) ? itemToDelete.length + ' kategori' : 'kategori ini'
+              }?`}
+              darkMode={darkMode}
+              isLoading={isDeleting}
+            />
+          )}
         </main>
       </Sidebar>
     </ProtectedRoute>
