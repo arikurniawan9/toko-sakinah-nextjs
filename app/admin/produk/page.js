@@ -13,6 +13,7 @@ import { useTableSelection } from '../../../lib/hooks/useTableSelection';
 import ProductTable from '../../../components/produk/ProductTable';
 import ProductModal from '../../../components/produk/ProductModal';
 import Toolbar from '../../../components/produk/Toolbar';
+import ConfirmationModal from '../../../components/ConfirmationModal';
 import Pagination from '../../../components/produk/Pagination';
 
 export default function ProductManagement() {
@@ -41,6 +42,9 @@ export default function ProductManagement() {
     error: formError,
     success,
     handleInputChange,
+    handleTierChange,
+    addTier,
+    removeTier,
     openModalForEdit,
     openModalForCreate,
     closeModal,
@@ -55,6 +59,11 @@ export default function ProductManagement() {
   const [suppliers, setSuppliers] = useState([]);
   const [importLoading, setImportLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+
+  // State for delete confirmation modal
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null); // Can be a single ID (string) or multiple IDs (array)
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch categories and suppliers once
   useEffect(() => {
@@ -76,46 +85,58 @@ export default function ProductManagement() {
     fetchInitialData();
   }, [setTableError]);
 
-  const handleDelete = async (id) => {
-    if (confirm('Apakah Anda yakin ingin menghapus produk ini?')) {
-      try {
-        const response = await fetch(`/api/produk?id=${id}`, { method: 'DELETE' });
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Gagal menghapus produk');
-        }
-        fetchProducts();
-        setSelectedRows(prev => prev.filter(rowId => rowId !== id));
-        setSuccess('Produk berhasil dihapus');
-        setTimeout(() => setSuccess(''), 3000);
-      } catch (err) {
-        setTableError('Terjadi kesalahan saat menghapus produk: ' + err.message);
-        setTimeout(() => setTableError(''), 5000);
-      }
-    }
+  const handleDelete = (id) => {
+    setItemToDelete(id);
+    setShowDeleteModal(true);
   };
 
-  const handleDeleteMultiple = async () => {
+  const handleDeleteMultiple = () => {
     if (selectedRows.length === 0) return;
-    if (confirm(`Apakah Anda yakin ingin menghapus ${selectedRows.length} produk?`)) {
-      try {
-        const response = await fetch('/api/produk', {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ids: selectedRows })
-        });
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Gagal menghapus produk');
-        }
-        fetchProducts();
-        clearSelection();
-        setSuccess(`Berhasil menghapus ${selectedRows.length} produk`);
-        setTimeout(() => setSuccess(''), 3000);
-      } catch (err) {
-        setTableError('Terjadi kesalahan saat menghapus produk: ' + err.message);
-        setTimeout(() => setTableError(''), 5000);
+    setItemToDelete(selectedRows);
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return;
+    setIsDeleting(true);
+
+    const isMultiple = Array.isArray(itemToDelete);
+    let url = '/api/produk';
+    let options = {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+    };
+
+    if (isMultiple) {
+      options.body = JSON.stringify({ ids: itemToDelete });
+    } else {
+      url += `?id=${itemToDelete}`;
+    }
+
+    try {
+      const response = await fetch(url, options);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Gagal menghapus produk');
       }
+      
+      fetchProducts();
+      if (isMultiple) {
+        clearSelection();
+        setSuccess(`Berhasil menghapus ${itemToDelete.length} produk`);
+      } else {
+        setSelectedRows(prev => prev.filter(rowId => rowId !== itemToDelete));
+        setSuccess('Produk berhasil dihapus');
+      }
+      
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setTableError('Terjadi kesalahan saat menghapus: ' + err.message);
+      setTimeout(() => setTableError(''), 5000);
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+      setItemToDelete(null);
     }
   };
 
@@ -128,12 +149,13 @@ export default function ProductManagement() {
 
       let csvContent = 'Nama,Kode,Harga,Stok,Kategori,Supplier,Deskripsi,Tanggal Dibuat,Tanggal Diubah\n';
       data.products.forEach(product => {
+        const basePrice = product.priceTiers?.sort((a, b) => a.minQty - b.minQty)[0]?.price || 0;
         const category = categories.find(cat => cat.id === product.categoryId);
         const supplier = suppliers.find(supp => supp.id === product.supplierId);
         const row = [
           `"${product.name.replace(/"/g, '""')}"`,
-          `"${product.code.replace(/"/g, '""')}"`,
-          product.price,
+          `"${product.productCode.replace(/"/g, '""')}"`,
+          basePrice,
           product.stock,
           `"${category?.name || ''}"`,
           `"${supplier?.name || ''}"`,
@@ -263,10 +285,25 @@ export default function ProductManagement() {
             editingProduct={editingProduct}
             formData={formData}
             handleInputChange={handleInputChange}
+            handleTierChange={handleTierChange}
+            addTier={addTier}
+            removeTier={removeTier}
             handleSave={handleSave}
             darkMode={darkMode}
             categories={categories}
             suppliers={suppliers}
+          />
+
+          <ConfirmationModal
+            isOpen={showDeleteModal}
+            onClose={() => setShowDeleteModal(false)}
+            onConfirm={handleConfirmDelete}
+            title="Konfirmasi Hapus"
+            message={`Apakah Anda yakin ingin menghapus ${
+              Array.isArray(itemToDelete) ? itemToDelete.length + ' produk' : 'produk ini'
+            }?`}
+            darkMode={darkMode}
+            isLoading={isDeleting}
           />
         </main>
       </Sidebar>

@@ -72,17 +72,10 @@ export default function Toolbar({
             </button>
           </Tooltip>
         )}
-        <Tooltip content="Import data dari file">
-          <label className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${darkMode ? 'text-gray-300 bg-gray-700 hover:bg-gray-600' : 'text-gray-700 bg-gray-100 hover:bg-gray-200'} cursor-pointer`}>
-            {importLoading ? (
-              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            ) : (
-              <Upload className="h-4 w-4" />
-            )}
-            <input type="file" accept=".xlsx,.xls,.csv" onChange={onImport} className="hidden" disabled={importLoading} />
+        <Tooltip content="Import dinonaktifkan">
+          <label className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${darkMode ? 'text-gray-300 bg-gray-700' : 'text-gray-700 bg-gray-100'} opacity-50 cursor-not-allowed`}>
+            <Upload className="h-4 w-4" />
+            <input type="file" className="hidden" disabled />
           </label>
         </Tooltip>
         <Tooltip content="Export data ke file">
@@ -100,6 +93,15 @@ export default function Toolbar({
               <Download className="h-4 w-4" />
             )}
           </button>
+        </Tooltip>
+        <Tooltip content="Template Produk">
+          <a
+            href="/templates/template-produk.xlsx"
+            download="template-produk.xlsx"
+            className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${darkMode ? 'text-gray-300 bg-gray-700 hover:bg-gray-600' : 'text-gray-700 bg-gray-100 hover:bg-gray-200'}`}
+          >
+            <Folder className="h-4 w-4" />
+          </a>
         </Tooltip>
         <Tooltip content="Tambah produk baru">
           <button
