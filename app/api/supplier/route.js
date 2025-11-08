@@ -1,8 +1,7 @@
 // app/api/supplier/route.js
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '@/lib/prisma';
+import { getSession } from '@/lib/auth';
 
 // GET /api/supplier - Get all suppliers with pagination, search, and filtering
 export async function GET(request) {
@@ -18,27 +17,36 @@ export async function GET(request) {
     let totalCount;
 
     if (search) {
-      const allSuppliers = await prisma.supplier.findMany({
-        orderBy: { createdAt: 'desc' }
-      });
+      const searchLower = `%${search.toLowerCase()}%`;
       
-      const filteredSuppliers = allSuppliers.filter(supplier => 
-        supplier.name.toLowerCase().includes(search.toLowerCase()) ||
-        (supplier.address && supplier.address.toLowerCase().includes(search.toLowerCase())) ||
-        (supplier.phone && supplier.phone.toLowerCase().includes(search.toLowerCase())) ||
-        (supplier.email && supplier.email.toLowerCase().includes(search.toLowerCase()))
-      );
-      
-      suppliers = filteredSuppliers.slice(offset, offset + limit);
-      totalCount = filteredSuppliers.length;
-      
+      // Fetch suppliers with raw query for case-insensitive search
+      suppliers = await prisma.$queryRaw`
+        SELECT * FROM Supplier
+        WHERE LOWER(name) LIKE ${searchLower} 
+           OR LOWER(address) LIKE ${searchLower}
+           OR LOWER(phone) LIKE ${searchLower}
+           OR LOWER(email) LIKE ${searchLower}
+        ORDER BY createdAt DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `;
+
+      // Count total suppliers matching the search with raw query
+      const countResult = await prisma.$queryRaw`
+        SELECT COUNT(*) as count FROM Supplier
+        WHERE LOWER(name) LIKE ${searchLower} 
+           OR LOWER(address) LIKE ${searchLower}
+           OR LOWER(phone) LIKE ${searchLower}
+           OR LOWER(email) LIKE ${searchLower}
+      `;
+      totalCount = Number(countResult[0].count);
+
     } else {
+      // Standard Prisma findMany when no search term
       suppliers = await prisma.supplier.findMany({
         skip: offset,
         take: limit,
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: 'desc' },
       });
-      
       totalCount = await prisma.supplier.count();
     }
     
@@ -48,8 +56,8 @@ export async function GET(request) {
         page,
         limit,
         total: totalCount,
-        totalPages: Math.ceil(totalCount / limit)
-      }
+        totalPages: Math.ceil(totalCount / limit),
+      },
     });
   } catch (error) {
     console.error('Error fetching suppliers:', error);
@@ -57,28 +65,31 @@ export async function GET(request) {
       { error: 'Failed to fetch suppliers' }, 
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
 // POST /api/supplier - Create a new supplier
 export async function POST(request) {
+  const session = await getSession();
+  if (!session || session.user.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
-    const { name, address, phone, email } = await request.json();
+    const data = await request.json();
     
-    if (!name || name.trim() === '') {
+    if (!data.name || data.name.trim() === '') {
       return NextResponse.json(
         { error: 'Nama supplier wajib diisi' }, 
         { status: 400 }
       );
     }
     
-    const existingSupplier = await prisma.supplier.findFirst({
-      where: { name: { equals: name.trim(), mode: 'insensitive' } }
-    });
+    const existingSupplier = await prisma.$queryRaw`
+      SELECT * FROM Supplier WHERE LOWER(name) = LOWER(${data.name.trim()})
+    `;
     
-    if (existingSupplier) {
+    if (existingSupplier && existingSupplier.length > 0) {
       return NextResponse.json(
         { error: 'Nama supplier sudah digunakan' }, 
         { status: 400 }
@@ -87,11 +98,12 @@ export async function POST(request) {
     
     const supplier = await prisma.supplier.create({
       data: {
-        name: name.trim(),
-        address: address?.trim() || null,
-        phone: phone?.trim() || null,
-        email: email?.trim() || null,
-      }
+        ...data,
+        name: data.name.trim(),
+        address: data.address?.trim() || null,
+        phone: data.phone?.trim() || null,
+        email: data.email?.trim() || null,
+      },
     });
     
     return NextResponse.json(supplier);
@@ -101,38 +113,38 @@ export async function POST(request) {
       { error: 'Failed to create supplier' }, 
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
 // PUT /api/supplier - Update a supplier
 export async function PUT(request) {
+  const session = await getSession();
+  if (!session || session.user.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
-    const { id, name, address, phone, email } = await request.json();
+    const data = await request.json();
     
-    if (!id) {
+    if (!data.id) {
       return NextResponse.json(
         { error: 'ID supplier wajib disediakan' }, 
         { status: 400 }
       );
     }
     
-    if (!name || name.trim() === '') {
+    if (!data.name || data.name.trim() === '') {
       return NextResponse.json(
         { error: 'Nama supplier wajib diisi' }, 
         { status: 400 }
       );
     }
     
-    const existingSupplier = await prisma.supplier.findFirst({
-      where: { 
-        id: { not: id },
-        name: { equals: name.trim(), mode: 'insensitive' }
-      }
-    });
+    const existingSupplier = await prisma.$queryRaw`
+      SELECT * FROM Supplier WHERE LOWER(name) = LOWER(${data.name.trim()}) AND id != ${data.id}
+    `;
     
-    if (existingSupplier) {
+    if (existingSupplier && existingSupplier.length > 0) {
       return NextResponse.json(
         { error: 'Nama supplier sudah digunakan' }, 
         { status: 400 }
@@ -140,13 +152,14 @@ export async function PUT(request) {
     }
     
     const updatedSupplier = await prisma.supplier.update({
-      where: { id },
+      where: { id: data.id },
       data: {
-        name: name.trim(),
-        address: address?.trim() || null,
-        phone: phone?.trim() || null,
-        email: email?.trim() || null,
-      }
+        ...data,
+        name: data.name.trim(),
+        address: data.address?.trim() || null,
+        phone: data.phone?.trim() || null,
+        email: data.email?.trim() || null,
+      },
     });
     
     return NextResponse.json(updatedSupplier);
@@ -164,60 +177,54 @@ export async function PUT(request) {
       { error: 'Failed to update supplier' }, 
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
 // DELETE /api/supplier - Delete single or multiple suppliers
 export async function DELETE(request) {
+  const session = await getSession();
+  if (!session || session.user.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
-    const { ids } = await request.json();
-    
-    if (!ids || !Array.isArray(ids) || ids.length === 0) {
-      const { searchParams } = new URL(request.url);
-      const id = searchParams.get('id');
-      
-      if (!id) {
-        return NextResponse.json(
-          { error: 'ID supplier atau array ID harus disediakan' }, 
-          { status: 400 }
-        );
+    const { searchParams } = new URL(request.url);
+    let idsToDelete = [];
+
+    // Try to get IDs from request body (for multiple deletions)
+    const requestBody = await request.json().catch(() => ({})); // Handle case where body is empty or not JSON
+    if (requestBody.ids && Array.isArray(requestBody.ids) && requestBody.ids.length > 0) {
+      idsToDelete = requestBody.ids;
+    } else {
+      // If not in body, try to get a single ID from query params (for single deletion)
+      const singleId = searchParams.get('id');
+      if (singleId) {
+        idsToDelete = [singleId];
       }
-      
-      const productsCount = await prisma.product.count({
-        where: { supplierId: id }
-      });
-      
-      if (productsCount > 0) {
-        return NextResponse.json(
-          { error: 'Tidak dapat menghapus supplier karena masih memiliki produk terkait' }, 
-          { status: 400 }
-        );
-      }
-      
-      await prisma.supplier.delete({
-        where: { id }
-      });
-      
-      return NextResponse.json({ message: 'Supplier berhasil dihapus' });
     }
-    
+
+    if (idsToDelete.length === 0) {
+      return NextResponse.json(
+        { error: 'ID supplier atau array ID harus disediakan' }, 
+        { status: 400 }
+      );
+    }
+
     const suppliersWithProducts = await prisma.product.findMany({
       where: {
-        supplierId: { in: ids }
+        supplierId: { in: idsToDelete },
       },
       select: {
-        supplierId: true
-      }
+        supplierId: true,
+      },
     });
-    
+
     if (suppliersWithProducts.length > 0) {
-      const supplierIds = suppliersWithProducts.map(p => p.supplierId);
+      const supplierIds = [...new Set(suppliersWithProducts.map((p) => p.supplierId))];
       return NextResponse.json(
         { 
           error: 'Tidak dapat menghapus supplier karena beberapa supplier masih memiliki produk terkait', 
-          problematicIds: supplierIds 
+          problematicIds: supplierIds,
         }, 
         { status: 400 }
       );
@@ -225,13 +232,13 @@ export async function DELETE(request) {
     
     const deletedSuppliers = await prisma.supplier.deleteMany({
       where: {
-        id: { in: ids }
-      }
+        id: { in: idsToDelete },
+      },
     });
     
     return NextResponse.json({ 
       message: `Berhasil menghapus ${deletedSuppliers.count} supplier`,
-      deletedCount: deletedSuppliers.count
+      deletedCount: deletedSuppliers.count,
     });
   } catch (error) {
     console.error('Error deleting suppliers:', error);
@@ -247,7 +254,5 @@ export async function DELETE(request) {
       { error: 'Failed to delete suppliers' }, 
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }

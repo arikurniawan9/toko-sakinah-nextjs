@@ -1,46 +1,61 @@
+
 // app/api/pelayan/route.js
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import prisma from '@/lib/prisma';
+import { getSession } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
-
-const prisma = new PrismaClient();
 
 // GET /api/pelayan - Get all attendants with pagination and search
 export async function GET(request) {
+  const session = await getSession();
+  if (!session || session.user.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page')) || 1;
     const limit = parseInt(searchParams.get('limit')) || 10;
     const search = searchParams.get('search') || '';
     
-    // Calculate offset for pagination
     const offset = (page - 1) * limit;
     
-    // Build where clause for search
-    let whereClause = {
-      role: 'ATTENDANT' // Only get users with ATTENDANT role
-    };
-    
+    let users;
+    let totalCount;
+
+    // Only get users with ATTENDANT role
+    const baseWhere = `WHERE role = 'ATTENDANT'`;
+    let searchQuery = '';
+
     if (search) {
-      whereClause = {
-        ...whereClause,
-        OR: [
-          { name: { contains: search } },
-          { username: { contains: search } }
-        ]
-      };
+      const searchLower = `%${search.toLowerCase()}%`;
+      searchQuery = `AND (LOWER(name) LIKE ${searchLower} OR LOWER(username) LIKE ${searchLower})`;
+
+      // Fetch users with raw query for case-insensitive search
+      users = await prisma.$queryRaw`
+        SELECT * FROM User
+        ${baseWhere} ${searchQuery}
+        ORDER BY createdAt DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `;
+
+      // Count total users matching the search with raw query
+      const countResult = await prisma.$queryRaw`
+        SELECT COUNT(*) as count FROM User
+        ${baseWhere} ${searchQuery}
+      `;
+      totalCount = Number(countResult[0].count);
+
+    } else {
+      // Standard Prisma findMany when no search term
+      users = await prisma.user.findMany({
+        where: { role: 'ATTENDANT' },
+        skip: offset,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      });
+      totalCount = await prisma.user.count({ where: { role: 'ATTENDANT' } });
     }
-    
-    // Get attendants with pagination and search
-    const users = await prisma.user.findMany({
-      where: whereClause,
-      skip: offset,
-      take: limit,
-      orderBy: { createdAt: 'desc' }
-    });
-    
-    // Get total count for pagination
-    const totalCount = await prisma.user.count({ where: whereClause });
     
     return NextResponse.json({
       users,
@@ -48,8 +63,8 @@ export async function GET(request) {
         page,
         limit,
         total: totalCount,
-        totalPages: Math.ceil(totalCount / limit)
-      }
+        totalPages: Math.ceil(totalCount / limit),
+      },
     });
   } catch (error) {
     console.error('Error fetching attendants:', error);
@@ -57,17 +72,19 @@ export async function GET(request) {
       { error: 'Failed to fetch attendants' }, 
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
 // POST /api/pelayan - Create a new attendant
 export async function POST(request) {
+  const session = await getSession();
+  if (!session || session.user.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
-    const { name, username, password, role } = await request.json();
+    const { name, username, password } = await request.json();
     
-    // Validation
     if (!name || !username || !password) {
       return NextResponse.json(
         { error: 'Nama, username, dan password wajib diisi' }, 
@@ -75,9 +92,8 @@ export async function POST(request) {
       );
     }
     
-    // Check if username already exists
     const existingUser = await prisma.user.findUnique({
-      where: { username: username.trim() }
+      where: { username: username.trim() },
     });
     
     if (existingUser) {
@@ -87,20 +103,17 @@ export async function POST(request) {
       );
     }
     
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
     
-    // Create the attendant
     const user = await prisma.user.create({
       data: {
         name: name.trim(),
         username: username.trim(),
         password: hashedPassword,
-        role: 'ATTENDANT', // Fixed role for attendant
-      }
+        role: 'ATTENDANT',
+      },
     });
     
-    // Don't return the password hash
     const { password: _, ...userWithoutPassword } = user;
     return NextResponse.json(userWithoutPassword);
   } catch (error) {
@@ -109,17 +122,19 @@ export async function POST(request) {
       { error: 'Failed to create attendant' }, 
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
 // PUT /api/pelayan - Update an attendant
 export async function PUT(request) {
+  const session = await getSession();
+  if (!session || session.user.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const { id, name, username, password } = await request.json();
     
-    // Validation
     if (!id) {
       return NextResponse.json(
         { error: 'ID pelayan wajib disediakan' }, 
@@ -134,12 +149,11 @@ export async function PUT(request) {
       );
     }
     
-    // Check if username already exists (excluding current user)
     const existingUser = await prisma.user.findFirst({
       where: {
         username: username.trim(),
-        id: { not: id }  // Exclude current user
-      }
+        id: { not: id },
+      },
     });
     
     if (existingUser) {
@@ -149,30 +163,25 @@ export async function PUT(request) {
       );
     }
     
-    // Prepare update data
     const updateData = {
       name: name.trim(),
       username: username.trim(),
     };
     
-    // Add password if provided
     if (password) {
       updateData.password = await bcrypt.hash(password, 10);
     }
     
-    // Update the attendant
     const updatedUser = await prisma.user.update({
       where: { id },
-      data: updateData
+      data: updateData,
     });
     
-    // Don't return the password hash
     const { password: _, ...userWithoutPassword } = updatedUser;
     return NextResponse.json(userWithoutPassword);
   } catch (error) {
     console.error('Error updating attendant:', error);
     
-    // Check if it's a Prisma error (e.g., record not found)
     if (error.code === 'P2025') {
       return NextResponse.json(
         { error: 'Pelayan tidak ditemukan' }, 
@@ -184,52 +193,53 @@ export async function PUT(request) {
       { error: 'Failed to update attendant' }, 
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
 // DELETE /api/pelayan - Delete single or multiple attendants
 export async function DELETE(request) {
+  const session = await getSession();
+  if (!session || session.user.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
-    const { ids } = await request.json();
-    
-    if (!ids || !Array.isArray(ids) || ids.length === 0) {
-      // If no IDs array is provided, try to delete a single attendant by ID from query
-      const { searchParams } = new URL(request.url);
-      const id = searchParams.get('id');
-      
-      if (!id) {
-        return NextResponse.json(
-          { error: 'ID pelayan atau array ID harus disediakan' }, 
-          { status: 400 }
-        );
+    const { searchParams } = new URL(request.url);
+    let idsToDelete = [];
+
+    // Try to get IDs from request body (for multiple deletions)
+    const requestBody = await request.json().catch(() => ({})); // Handle case where body is empty or not JSON
+    if (requestBody.ids && Array.isArray(requestBody.ids) && requestBody.ids.length > 0) {
+      idsToDelete = requestBody.ids;
+    } else {
+      // If not in body, try to get a single ID from query params (for single deletion)
+      const singleId = searchParams.get('id');
+      if (singleId) {
+        idsToDelete = [singleId];
       }
-      
-      // Delete single attendant
-      await prisma.user.delete({
-        where: { id }
-      });
-      
-      return NextResponse.json({ message: 'Pelayan berhasil dihapus' });
+    }
+
+    if (idsToDelete.length === 0) {
+      return NextResponse.json(
+        { error: 'ID pelayan atau array ID harus disediakan' }, 
+        { status: 400 }
+      );
     }
     
-    // Delete multiple attendants
     const deletedUsers = await prisma.user.deleteMany({
       where: {
-        id: { in: ids },
-        role: 'ATTENDANT' // Only allow deletion of attendants
-      }
+        id: { in: idsToDelete },
+        role: 'ATTENDANT',
+      },
     });
     
     return NextResponse.json({ 
       message: `Berhasil menghapus ${deletedUsers.count} pelayan`,
-      deletedCount: deletedUsers.count
+      deletedCount: deletedUsers.count,
     });
   } catch (error) {
     console.error('Error deleting attendants:', error);
     
-    // Check if it's a Prisma error (e.g., record not found)
     if (error.code === 'P2025') {
       return NextResponse.json(
         { error: 'Pelayan tidak ditemukan' }, 
@@ -241,7 +251,5 @@ export async function DELETE(request) {
       { error: 'Failed to delete attendants' }, 
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
