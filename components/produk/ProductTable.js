@@ -37,10 +37,10 @@ export default function ProductTable({
               />
             </th>
             <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-pastel-purple-700'}`}>
-              Nama
+              Kode
             </th>
             <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-pastel-purple-700'}`}>
-              Kode
+              Nama
             </th>
             <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-pastel-purple-700'}`}>
               Harga
@@ -67,24 +67,26 @@ export default function ProductTable({
               </td>
             </tr>
           ) : (
-            products.map((product) => (
+            products.map((product) => {
+              const basePrice = product.priceTiers?.sort((a, b) => a.minQty - b.minQty)[0]?.price || 0;
+              return (
               <tr key={product.id} className={`${darkMode ? 'hover:bg-gray-700' : 'hover:bg-pastel-purple-50'}`}>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <input
                     type="checkbox"
                     checked={selectedRows.includes(product.id)}
                     onChange={() => handleSelectRow(product.id)}
-                    className={`h-4 w-4 rounded ${darkMode ? 'text-pastel-purple-600 bg-gray-700 border-gray-600' : 'text-pastel-purple-600 focus:ring-pastel-purple-500 border-pastel-purple-300'}`}
+                    className={`h-4 w-4 rounded ${darkMode ? 'text-purple-600 bg-gray-700 border-gray-600' : 'text-purple-600 focus:ring-purple-500 border-gray-300'}`}
                   />
+                </td>
+                <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                  {product.productCode}
                 </td>
                 <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                   {product.name}
                 </td>
                 <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                  {product.code}
-                </td>
-                <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                  Rp {(product.sellingPrice || 0).toLocaleString('id-ID')}
+                  Rp {basePrice.toLocaleString('id-ID')}
                 </td>
                 <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                   {product.stock || 0}
@@ -99,7 +101,7 @@ export default function ProductTable({
                   <Tooltip content="Edit produk">
                     <button
                       onClick={() => onEdit(product)}
-                      className={`mr-2 p-1 rounded ${darkMode ? 'text-pastel-purple-400 hover:text-pastel-purple-300 hover:bg-gray-700' : 'text-pastel-purple-600 hover:text-pastel-purple-800 hover:bg-pastel-purple-100'}`}
+                      className={`mr-2 p-1 rounded ${darkMode ? 'text-purple-400 hover:text-purple-300 hover:bg-gray-700' : 'text-purple-600 hover:text-purple-800 hover:bg-purple-100'}`}
                     >
                       <Edit className="h-4 w-4" />
                     </button>
@@ -114,7 +116,7 @@ export default function ProductTable({
                   </Tooltip>
                 </td>
               </tr>
-            ))
+            )})
           )}
         </tbody>
       </table>

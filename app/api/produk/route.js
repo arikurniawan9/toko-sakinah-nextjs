@@ -30,7 +30,12 @@ export async function GET(request) {
       take: limit,
       include: {
         category: true,
-        supplier: true
+        supplier: true,
+        priceTiers: {
+          orderBy: {
+            minQty: 'asc'
+          }
+        }
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -55,7 +60,7 @@ export async function GET(request) {
   }
 }
 
-// POST /api/produk - Create a new product
+// POST /api/produk - Create a new product with dynamic price tiers
 export async function POST(request) {
   const session = await getSession();
   if (!session || session.user.role !== 'ADMIN') {
@@ -63,17 +68,23 @@ export async function POST(request) {
   }
 
   try {
-    const data = await request.json();
+    const { priceTiers, ...productData } = await request.json();
     
-    if (!data.name || !data.productCode || !data.categoryId || !data.supplierId || data.sellingPrice === undefined) {
+    if (!productData.name || !productData.productCode || !productData.categoryId || !productData.supplierId) {
       return NextResponse.json(
-        { error: 'Nama, kode produk, kategori, supplier, dan harga jual wajib diisi' }, 
+        { error: 'Nama, kode produk, kategori, dan supplier wajib diisi' }, 
+        { status: 400 }
+      );
+    }
+    if (!priceTiers || !Array.isArray(priceTiers) || priceTiers.length === 0) {
+      return NextResponse.json(
+        { error: 'Minimal harus ada satu tingkatan harga' },
         { status: 400 }
       );
     }
     
     const existingProduct = await prisma.product.findUnique({
-      where: { productCode: data.productCode.trim() }
+      where: { productCode: productData.productCode.trim() }
     });
     
     if (existingProduct) {
@@ -83,22 +94,34 @@ export async function POST(request) {
       );
     }
     
-    const product = await prisma.product.create({
-      data: {
-        ...data,
-        name: data.name.trim(),
-        productCode: data.productCode.trim(),
-        stock: parseInt(data.stock) || 0,
-        purchasePrice: parseInt(data.purchasePrice) || 0,
-        sellingPrice: parseInt(data.sellingPrice) || 0,
-        discount1_3: parseInt(data.discount1_3) || 1000,
-        discount4_6: parseInt(data.discount4_6) || 0,
-        discountMore: data.discountMore ? parseInt(data.discountMore) : null,
-        description: data.description?.trim() || null,
+    const createdProduct = await prisma.$transaction(async (tx) => {
+      const product = await tx.product.create({
+        data: {
+          name: productData.name.trim(),
+          productCode: productData.productCode.trim(),
+          stock: parseInt(productData.stock) || 0,
+          purchasePrice: parseInt(productData.purchasePrice) || 0,
+          category: { connect: { id: productData.categoryId } },
+          supplier: { connect: { id: productData.supplierId } },
+          description: productData.description?.trim() || null,
+        }
+      });
+
+      if (priceTiers && priceTiers.length > 0) {
+        await tx.priceTier.createMany({
+          data: priceTiers.map(tier => ({
+            productId: product.id,
+            minQty: parseInt(tier.minQty),
+            maxQty: tier.maxQty ? parseInt(tier.maxQty) : null,
+            price: parseInt(tier.price)
+          }))
+        });
       }
+
+      return product;
     });
     
-    return NextResponse.json(product);
+    return NextResponse.json(createdProduct);
   } catch (error) {
     console.error('Error creating product:', error);
     return NextResponse.json(
@@ -108,7 +131,7 @@ export async function POST(request) {
   }
 }
 
-// PUT /api/produk - Update a product
+// PUT /api/produk - Update a product and its dynamic price tiers
 export async function PUT(request) {
   const session = await getSession();
   if (!session || session.user.role !== 'ADMIN') {
@@ -116,26 +139,29 @@ export async function PUT(request) {
   }
 
   try {
-    const data = await request.json();
+    const { id, priceTiers, ...productData } = await request.json();
     
-    if (!data.id) {
+    if (!id) {
+      return NextResponse.json({ error: 'ID produk wajib disediakan' }, { status: 400 });
+    }
+    
+    if (!productData.name || !productData.productCode || !productData.categoryId || !productData.supplierId) {
       return NextResponse.json(
-        { error: 'ID produk wajib disediakan' }, 
+        { error: 'Nama, kode produk, kategori, dan supplier wajib diisi' }, 
         { status: 400 }
       );
     }
-    
-    if (!data.name || !data.productCode || !data.categoryId || !data.supplierId || data.sellingPrice === undefined) {
+    if (!priceTiers || !Array.isArray(priceTiers) || priceTiers.length === 0) {
       return NextResponse.json(
-        { error: 'Nama, kode produk, kategori, supplier, dan harga jual wajib diisi' }, 
+        { error: 'Minimal harus ada satu tingkatan harga' },
         { status: 400 }
       );
     }
     
     const existingProduct = await prisma.product.findFirst({
       where: {
-        productCode: data.productCode.trim(),
-        id: { not: data.id }  
+        productCode: productData.productCode.trim(),
+        id: { not: id }  
       }
     });
     
@@ -146,20 +172,32 @@ export async function PUT(request) {
       );
     }
     
-    const updatedProduct = await prisma.product.update({
-      where: { id: data.id },
-      data: {
-        ...data,
-        name: data.name.trim(),
-        productCode: data.productCode.trim(),
-        stock: parseInt(data.stock) || 0,
-        purchasePrice: parseInt(data.purchasePrice) || 0,
-        sellingPrice: parseInt(data.sellingPrice) || 0,
-        discount1_3: parseInt(data.discount1_3) || 1000,
-        discount4_6: parseInt(data.discount4_6) || 0,
-        discountMore: data.discountMore ? parseInt(data.discountMore) : null,
-        description: data.description?.trim() || null,
-      }
+    const updatedProduct = await prisma.$transaction(async (tx) => {
+      const product = await tx.product.update({
+        where: { id: id },
+        data: {
+          name: productData.name.trim(),
+          productCode: productData.productCode.trim(),
+          stock: parseInt(productData.stock) || 0,
+          purchasePrice: parseInt(productData.purchasePrice) || 0,
+          category: { connect: { id: productData.categoryId } },
+          supplier: { connect: { id: productData.supplierId } },
+          description: productData.description?.trim() || null,
+        }
+      });
+
+      // Delete old tiers and create new ones
+      await tx.priceTier.deleteMany({ where: { productId: id } });
+      await tx.priceTier.createMany({
+        data: priceTiers.map(tier => ({
+          productId: id,
+          minQty: parseInt(tier.minQty),
+          maxQty: tier.maxQty ? parseInt(tier.maxQty) : null,
+          price: parseInt(tier.price)
+        }))
+      });
+
+      return product;
     });
     
     return NextResponse.json(updatedProduct);
@@ -179,6 +217,8 @@ export async function PUT(request) {
     );
   }
 }
+
+
 
 // DELETE /api/produk - Delete single or multiple products
 export async function DELETE(request) {
