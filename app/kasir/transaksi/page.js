@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import ProtectedRoute from '../../../components/ProtectedRoute';
 import { Search, Plus, Trash2, Calculator, CreditCard, User, Users } from 'lucide-react';
+import { useDarkMode } from '../../../components/DarkModeContext'; // Import useDarkMode
 
 export default function CashierTransaction() {
   const { data: session } = useSession();
@@ -17,6 +18,7 @@ export default function CashierTransaction() {
   const [calculation, setCalculation] = useState(null);
   const [showMembers, setShowMembers] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { darkMode } = useDarkMode(); // Initialize useDarkMode
 
   // Fetch products
   useEffect(() => {
@@ -200,58 +202,58 @@ export default function CashierTransaction() {
 
   return (
     <ProtectedRoute requiredRole="CASHIER">
-      <div className="min-h-screen bg-gray-50">
+      <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Transaksi Kasir</h1>
+            <h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Transaksi Kasir</h1>
             <div className="text-right">
-              <p className="text-sm font-medium text-gray-900">Halo, {session?.user?.name}</p>
-              <p className="text-xs text-gray-500">Kasir</p>
+              <p className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Halo, {session?.user?.name}</p>
+              <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Kasir</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Product Search & List */}
             <div className="lg:col-span-2">
-              <div className="bg-white rounded-lg shadow p-6 mb-6">
+              <div className={`rounded-lg shadow p-6 mb-6 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
                 <div className="relative">
                   <input
                     type="text"
                     placeholder="Cari produk berdasarkan nama atau kode..."
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pastel-purple-500 focus:border-pastel-purple-500"
+                    className={`w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-pastel-purple-500 focus:border-pastel-purple-500 ${
+                      darkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-300 bg-white text-gray-900'
+                    }`}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     onKeyDown={handleScan} // Add onKeyDown event listener
                   />
-                  <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                  <Search className={`absolute left-3 top-2.5 h-5 w-5 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`} />
                 </div>
               </div>
 
-              {/* Products Grid */}
-              <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div class={`rounded-lg shadow overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-4 max-h-96 overflow-y-auto">
                   {filteredProducts.map(product => (
-                    <div 
-                      key={product.id} 
-                      className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                      onClick={() => addToCart(product)}
-                    >
-                      <div className="font-medium text-gray-900">{product.name}</div>
-                      <div className="text-sm text-gray-600">Kode: {product.productCode}</div>
-                      <div className="text-sm font-semibold text-pastel-purple-600">Rp {(product.sellingPrice || 0).toLocaleString('id-ID')}</div>
-                      <div className="text-xs text-gray-500 mt-1">Stok: {product.stock}</div>
-                    </div>
-                  ))}
+                                        <div
+                                          key={product.id}
+                                          className={`border rounded-lg p-4 cursor-pointer transition-colors ${darkMode ? 'border-gray-700 hover:bg-gray-700' : 'border-gray-200 hover:bg-gray-50'}`}
+                                          onClick={() => addToCart(product)}
+                                        >
+                                          <div className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{product.name}</div>
+                                          <div className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Kode: {product.productCode}</div>
+                                          <div className="text-sm font-semibold text-pastel-purple-600">Rp {(product.sellingPrice || 0).toLocaleString('id-ID')}</div>
+                                          <div className={`text-xs mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Stok: {product.stock}</div>
+                                        </div>                  ))}
                 </div>
               </div>
             </div>
 
             {/* Cart & Payment */}
             <div className="space-y-6">
-              {/* Member Selection */}
-              <div className="bg-white rounded-lg shadow p-6">
+              <div className={`rounded-lg shadow p-6 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-gray-900">Member</h2>
+                  <h2 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Member</h2>
                   {selectedMember && (
                     <span className="text-sm text-green-600">{selectedMember.name}</span>
                   )}
@@ -259,7 +261,7 @@ export default function CashierTransaction() {
                 
                 {selectedMember ? (
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">{selectedMember.name} ({selectedMember.membershipType})</span>
+                    <span className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>{selectedMember.name} ({selectedMember.membershipType})</span>
                     <button 
                       onClick={() => setSelectedMember(null)}
                       className="text-red-600 hover:text-red-800 text-sm"
@@ -270,7 +272,7 @@ export default function CashierTransaction() {
                 ) : (
                   <button
                     onClick={() => setShowMembers(true)}
-                    className="w-full py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                    className={`w-full py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium ${darkMode ? 'text-gray-200 bg-gray-700 hover:bg-gray-600' : 'text-gray-700 bg-white hover:bg-gray-50'}`}
                   >
                     <Users className="h-4 w-4 inline mr-2" />
                     Pilih Member
@@ -279,37 +281,35 @@ export default function CashierTransaction() {
               </div>
 
               {/* Cart */}
-              <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div className={`rounded-lg shadow overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
                 <div className="px-4 py-5 border-b border-gray-200 sm:px-6">
-                  <h2 className="text-lg font-semibold text-gray-900">Keranjang</h2>
+                  <h2 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Keranjang</h2>
                 </div>
                 <div className="p-4 max-h-64 overflow-y-auto">
                   {cart.length === 0 ? (
-                    <p className="text-gray-500 text-center py-4">Keranjang kosong</p>
+                    <p className={`text-center py-4 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Keranjang kosong</p>
                   ) : (
                     <ul className="divide-y divide-gray-200">
                       {cart.map((item, index) => (
                         <li key={index} className="py-2">
                           <div className="flex justify-between items-center">
                             <div>
-                              <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                              <div className="text-xs text-gray-500">
+                              <div className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{item.name}</div>
+                              <div className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                                 {item.quantity} x Rp {(item.price || 0).toLocaleString('id-ID')}
                               </div>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <button 
-                                onClick={() => updateQuantity(item.productId, item.quantity - 1)}
-                                className="text-gray-500 hover:text-gray-700"
-                              >
-                                -
+                                                            <button
+                                                              onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                                                              className={`${darkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}`}
+                                                            >                                -
                               </button>
                               <span className="text-sm">{item.quantity}</span>
-                              <button 
-                                onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                                className="text-gray-500 hover:text-gray-700"
-                              >
-                                +
+                                                            <button
+                                                              onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                                                              className={`${darkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}`}
+                                                            >                                +
                               </button>
                               <button 
                                 onClick={() => removeFromCart(item.productId)}
@@ -331,45 +331,47 @@ export default function CashierTransaction() {
 
               {/* Calculation */}
               {calculation && (
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Perhitungan</h2>
+                <div className={`rounded-lg shadow p-6 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                  <h2 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Perhitungan</h2>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span>Subtotal:</span>
-                      <span>Rp {(calculation.subTotal || 0).toLocaleString('id-ID')}</span>
+                      <span className={`${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>Subtotal:</span>
+                      <span className={`${darkMode ? 'text-white' : 'text-gray-900'}`}>Rp {(calculation.subTotal || 0).toLocaleString('id-ID')}</span>
                     </div>
                     {calculation.itemDiscount > 0 && (
-                      <div className="flex justify-between text-green-600">
+                      <div className={`flex justify-between ${darkMode ? 'text-green-400' : 'text-green-600'}`}>
                         <span>Diskon Item:</span>
                         <span>-Rp {(calculation.itemDiscount || 0).toLocaleString('id-ID')}</span>
                       </div>
                     )}
                     {calculation.memberDiscount > 0 && (
-                      <div className="flex justify-between text-green-600">
+                      <div className={`flex justify-between ${darkMode ? 'text-green-400' : 'text-green-600'}`}>
                         <span>Diskon Member:</span>
                         <span>-Rp {(calculation.memberDiscount || 0).toLocaleString('id-ID')}</span>
                       </div>
                     )}
                     <div className="flex justify-between font-medium">
-                      <span>Total:</span>
-                      <span>Rp {(calculation.grandTotal || 0).toLocaleString('id-ID')}</span>
+                      <span className={`${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>Total:</span>
+                      <span className={`${darkMode ? 'text-white' : 'text-gray-900'}`}>Rp {(calculation.grandTotal || 0).toLocaleString('id-ID')}</span>
                     </div>
                   </div>
                 </div>
               )}
 
               {/* Payment */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Pembayaran</h2>
+              <div className={`rounded-lg shadow p-6 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                <h2 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Pembayaran</h2>
                 <div className="space-y-4">
                   <div>
-                    <label htmlFor="payment" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="payment" className={`block text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'} mb-1`}>
                       Jumlah Bayar
                     </label>
                     <input
                       type="number"
                       id="payment"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pastel-purple-500 focus:border-pastel-purple-500"
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-pastel-purple-500 focus:border-pastel-purple-500 ${
+                        darkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-300 bg-white text-gray-900'
+                      }`}
                       value={payment}
                       onChange={(e) => setPayment(Number(e.target.value))}
                       placeholder="Masukkan jumlah pembayaran"
@@ -379,7 +381,7 @@ export default function CashierTransaction() {
                   {calculation && (
                     <div className="text-sm">
                       <div className="flex justify-between">
-                        <span>Kembalian:</span>
+                        <span className={`${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>Kembalian:</span>
                         <span className="font-medium">
                           Rp {Math.max(0, payment - calculation.grandTotal).toLocaleString('id-ID')}
                         </span>
