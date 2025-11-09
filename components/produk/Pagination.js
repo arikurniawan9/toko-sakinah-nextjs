@@ -6,7 +6,7 @@ export default function Pagination({
   totalPages, 
   setCurrentPage, 
   itemsPerPage, 
-  totalProducts, 
+  totalItems, // Renamed from totalProducts
   darkMode 
 }) {
   const pageNumbers = [];
@@ -44,7 +44,7 @@ export default function Pagination({
         <div>
           <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-pastel-purple-700'}`}>
             Menampilkan <span className="font-medium">{((currentPage - 1) * itemsPerPage) + 1}</span> ke{' '}
-            <span className="font-medium">{Math.min(currentPage * itemsPerPage, totalProducts)}</span> dari <span className="font-medium">{totalProducts}</span> hasil
+            <span className="font-medium">{Math.min(currentPage * itemsPerPage, totalItems)}</span> dari <span className="font-medium">{totalItems}</span> hasil
           </p>
         </div>
         <div>

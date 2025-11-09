@@ -124,7 +124,7 @@ export default function KasirCategoryView() {
                 loading={loading}
                 darkMode={darkMode}
                 selectedRows={[]}
-                onRowClick={handleCategoryClick}
+                onViewDetails={handleCategoryClick} // Changed from onRowClick
                 showActions={false}
               />
             </div>
@@ -133,7 +133,7 @@ export default function KasirCategoryView() {
               totalPages={totalPages}
               setCurrentPage={setCurrentPage}
               itemsPerPage={itemsPerPage}
-              totalProducts={totalCategories} // totalProducts is a misnomer here, but it's the prop name
+              totalItems={totalCategories} // Corrected prop name
               darkMode={darkMode}
             />
           </div>
