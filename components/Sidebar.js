@@ -104,8 +104,8 @@ const Sidebar = ({ children }) => {
     { title: "Laporan", type: 'heading', roles: ['ADMIN'] },
     { title: "Laporan", href: "/admin/laporan", icon: BarChart3, type: 'item', roles: ['ADMIN'] },
     { title: "Transaksi", type: 'heading', roles: ['ADMIN'] },
-    { title: "Transaksi Pembelian", href: "/admin/transaksi/pembelian", icon: ShoppingCart, type: 'item', roles: ['ADMIN'] },
-    { title: "Transaksi Penjualan", href: "/admin/transaksi/penjualan", icon: Receipt, type: 'item', roles: ['ADMIN'] },
+    { title: "Pembelian", href: "/admin/transaksi/pembelian", icon: ShoppingCart, type: 'item', roles: ['ADMIN'] },
+    { title: "Penjualan", href: "/admin/transaksi", icon: Receipt, type: 'item', roles: ['ADMIN'] },
     { title: "Riwayat Penjualan", href: "/admin/transaksi/riwayat-penjualan", icon: History, type: 'item', roles: ['ADMIN'] },
     { title: "Keuangan", type: 'heading', roles: ['ADMIN'] },
     { title: "Pengeluaran", href: "/admin/pengeluaran", icon: DollarSign, type: 'item', roles: ['ADMIN'] },
@@ -291,9 +291,10 @@ const Sidebar = ({ children }) => {
                 </div>
                 {/* Only show text if not collapsed and not mobile */}
                 {!isCollapsed && !isMobile && (
-                  <div className="ml-3">
+                  <div className="ml-3 text-right">
                     <p className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{session?.user?.name || 'User'}</p>
                     <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{session?.user?.role || 'Guest'}</p>
+                    {session?.user?.employeeNumber && <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>Kode: {session.user.employeeNumber}</p>}
                   </div>
                 )}
               </div>
