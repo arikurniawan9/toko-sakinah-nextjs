@@ -2,8 +2,24 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
+import { z } from 'zod';
 
-// GET /api/member - Get all members with pagination, search, and filtering
+// Zod Schemas for Member
+const memberSchema = z.object({
+  name: z.string().trim().min(1, { message: 'Nama member wajib diisi' }),
+  phone: z.string().trim().min(1, { message: 'Nomor telepon wajib diisi' }),
+  address: z.string().trim().optional().nullable(),
+  membershipType: z.enum(['SILVER', 'GOLD', 'PLATINUM'], {
+    errorMap: () => ({ message: 'Tipe keanggotaan tidak valid' }),
+  }),
+  discount: z.number().int().min(0, 'Diskon tidak boleh negatif').max(100, 'Diskon tidak boleh lebih dari 100'),
+});
+
+const memberUpdateSchema = memberSchema.extend({
+  id: z.string().min(1, { message: 'ID member wajib disediakan' }),
+});
+
+// GET /api/member - Get all members with pagination and search
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -13,42 +29,25 @@ export async function GET(request) {
     
     const offset = (page - 1) * limit;
     
-    let members;
-    let totalCount;
+    const where = search
+      ? {
+          OR: [
+            { name: { contains: search, mode: 'insensitive' } },
+            { phone: { contains: search, mode: 'insensitive' } },
+            { address: { contains: search, mode: 'insensitive' } },
+            { membershipType: { contains: search, mode: 'insensitive' } },
+          ],
+        }
+      : {};
 
-    if (search) {
-      const searchLower = `%${search.toLowerCase()}%`;
-      
-      // Fetch members with raw query for case-insensitive search
-      members = await prisma.$queryRaw`
-        SELECT * FROM Member
-        WHERE LOWER(name) LIKE ${searchLower} 
-           OR LOWER(phone) LIKE ${searchLower}
-           OR LOWER(address) LIKE ${searchLower}
-           OR LOWER(membershipType) LIKE ${searchLower}
-        ORDER BY createdAt DESC
-        LIMIT ${limit} OFFSET ${offset}
-      `;
-
-      // Count total members matching the search with raw query
-      const countResult = await prisma.$queryRaw`
-        SELECT COUNT(*) as count FROM Member
-        WHERE LOWER(name) LIKE ${searchLower} 
-           OR LOWER(phone) LIKE ${searchLower}
-           OR LOWER(address) LIKE ${searchLower}
-           OR LOWER(membershipType) LIKE ${searchLower}
-      `;
-      totalCount = Number(countResult[0].count);
-
-    } else {
-      // Standard Prisma findMany when no search term
-      members = await prisma.member.findMany({
-        skip: offset,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-      });
-      totalCount = await prisma.member.count();
-    }
+    const members = await prisma.member.findMany({
+      where,
+      skip: offset,
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+    });
+    
+    const totalCount = await prisma.member.count({ where });
     
     return NextResponse.json({
       members,
@@ -61,10 +60,7 @@ export async function GET(request) {
     });
   } catch (error) {
     console.error('Error fetching members:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch members' }, 
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Gagal mengambil data member' }, { status: 500 });
   }
 }
 
@@ -76,58 +72,26 @@ export async function POST(request) {
   }
 
   try {
-    const data = await request.json();
+    const body = await request.json();
+    const data = memberSchema.parse(body);
     
-    if (!data.name || data.name.trim() === '' || !data.phone || data.phone.trim() === '') {
-      return NextResponse.json(
-        { error: 'Nama dan nomor telepon wajib diisi' }, 
-        { status: 400 }
-      );
-    }
-    
-    const existingMember = await prisma.$queryRaw`
-      SELECT * FROM Member WHERE LOWER(phone) = LOWER(${data.phone.trim()})
-    `;
-    
-    if (existingMember && existingMember.length > 0) {
-      return NextResponse.json(
-        { error: 'Nomor telepon sudah digunakan' }, 
-        { status: 400 }
-      );
-    }
-
-    const validMembershipTypes = ['SILVER', 'GOLD', 'PLATINUM'];
-    if (!data.membershipType || !validMembershipTypes.includes(data.membershipType.toUpperCase())) {
-      return NextResponse.json(
-        { error: 'Tipe keanggotaan tidak valid' }, 
-        { status: 400 }
-      );
-    }
-    if (typeof data.discount !== 'number' || data.discount < 0 || data.discount > 100) {
-      return NextResponse.json(
-        { error: 'Diskon harus berupa angka antara 0 dan 100' }, 
-        { status: 400 }
-      );
-    }
-    
-    const member = await prisma.member.create({
-      data: {
-        ...data,
-        name: data.name.trim(),
-        phone: data.phone.trim(),
-        address: data.address?.trim() || null,
-        membershipType: data.membershipType.toUpperCase(),
-        discount: parseInt(data.discount),
-      },
+    const existingMember = await prisma.member.findUnique({
+      where: { phone: data.phone },
     });
     
-    return NextResponse.json(member);
+    if (existingMember) {
+      return NextResponse.json({ error: 'Nomor telepon sudah digunakan' }, { status: 409 });
+    }
+    
+    const member = await prisma.member.create({ data });
+    
+    return NextResponse.json(member, { status: 201 });
   } catch (error) {
     console.error('Error creating member:', error);
-    return NextResponse.json(
-      { error: 'Failed to create member' }, 
-      { status: 500 }
-    );
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: error.errors[0].message }, { status: 400 });
+    }
+    return NextResponse.json({ error: 'Gagal membuat member' }, { status: 500 });
   }
 }
 
@@ -139,80 +103,43 @@ export async function PUT(request) {
   }
 
   try {
-    const data = await request.json();
+    const body = await request.json();
+    const { id, ...data } = memberUpdateSchema.parse(body);
     
-    if (!data.id) {
-      return NextResponse.json(
-        { error: 'ID member wajib disediakan' }, 
-        { status: 400 }
-      );
-    }
-    if (!data.name || data.name.trim() === '' || !data.phone || data.phone.trim() === '') {
-      return NextResponse.json(
-        { error: 'Nama dan nomor telepon wajib diisi' }, 
-        { status: 400 }
-      );
-    }
+    const existingMember = await prisma.member.findFirst({
+      where: {
+        phone: data.phone,
+        id: { not: id },
+      },
+    });
     
-    const existingMember = await prisma.$queryRaw`
-      SELECT * FROM Member WHERE LOWER(phone) = LOWER(${data.phone.trim()}) AND id != ${data.id}
-    `;
-    
-    if (existingMember && existingMember.length > 0) {
-      return NextResponse.json(
-        { error: 'Nomor telepon sudah digunakan' }, 
-        { status: 400 }
-      );
-    }
-
-    const validMembershipTypes = ['SILVER', 'GOLD', 'PLATINUM'];
-    if (!data.membershipType || !validMembershipTypes.includes(data.membershipType.toUpperCase())) {
-      return NextResponse.json(
-        { error: 'Tipe keanggotaan tidak valid' }, 
-        { status: 400 }
-      );
-    }
-    if (typeof data.discount !== 'number' || data.discount < 0 || data.discount > 100) {
-      return NextResponse.json(
-        { error: 'Diskon harus berupa angka antara 0 dan 100' }, 
-        { status: 400 }
-      );
+    if (existingMember) {
+      return NextResponse.json({ error: 'Nomor telepon sudah digunakan' }, { status: 409 });
     }
     
     const updatedMember = await prisma.member.update({
-      where: { id: data.id },
-      data: {
-        ...data,
-        name: data.name.trim(),
-        phone: data.phone.trim(),
-        address: data.address?.trim() || null,
-        membershipType: data.membershipType.toUpperCase(),
-        discount: parseInt(data.discount),
-      },
+      where: { id },
+      data,
     });
     
     return NextResponse.json(updatedMember);
   } catch (error) {
     console.error('Error updating member:', error);
-    
-    if (error.code === 'P2025') {
-      return NextResponse.json(
-        { error: 'Member tidak ditemukan' }, 
-        { status: 404 }
-      );
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: error.errors[0].message }, { status: 400 });
     }
-    
-    return NextResponse.json(
-      { error: 'Failed to update member' }, 
-      { status: 500 }
-    );
+    if (error.code === 'P2025') {
+      return NextResponse.json({ error: 'Member tidak ditemukan' }, { status: 404 });
+    }
+    return NextResponse.json({ error: 'Gagal memperbarui member' }, { status: 500 });
   }
 }
 
 // DELETE /api/member - Delete single or multiple members
 export async function DELETE(request) {
   const session = await getSession();
-  if (!session || !['ADMIN', 'CASHIER'].includes(session.user.role)) {
+  // Note: Stricter role for deletion
+  if (!session || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -220,68 +147,46 @@ export async function DELETE(request) {
     const { searchParams } = new URL(request.url);
     let idsToDelete = [];
 
-    // Try to get IDs from request body (for multiple deletions)
-    const requestBody = await request.json().catch(() => ({})); // Handle case where body is empty or not JSON
-    if (requestBody.ids && Array.isArray(requestBody.ids) && requestBody.ids.length > 0) {
-      idsToDelete = requestBody.ids;
-    } else {
-      // If not in body, try to get a single ID from query params (for single deletion)
-      const singleId = searchParams.get('id');
-      if (singleId) {
-        idsToDelete = [singleId];
+    try {
+      const body = await request.json();
+      if (body.ids && Array.isArray(body.ids)) {
+        idsToDelete = body.ids;
       }
+    } catch (e) {
+      // Ignore if body is empty
     }
 
     if (idsToDelete.length === 0) {
-      return NextResponse.json(
-        { error: 'ID member atau array ID harus disediakan' }, 
-        { status: 400 }
-      );
+      const singleId = searchParams.get('id');
+      if (singleId) idsToDelete = [singleId];
     }
 
-    const membersWithSales = await prisma.sale.findMany({
-      where: {
-        memberId: { in: idsToDelete },
-      },
-      select: {
-        memberId: true,
-      },
+    if (idsToDelete.length === 0) {
+      return NextResponse.json({ error: 'ID member harus disediakan' }, { status: 400 });
+    }
+
+    const saleCount = await prisma.sale.count({
+      where: { memberId: { in: idsToDelete } },
     });
 
-    if (membersWithSales.length > 0) {
-      const memberIds = [...new Set(membersWithSales.map((s) => s.memberId))];
+    if (saleCount > 0) {
       return NextResponse.json(
-        { 
-          error: 'Tidak dapat menghapus member karena beberapa member masih memiliki transaksi penjualan terkait', 
-          problematicIds: memberIds,
-        }, 
+        { error: `Tidak dapat menghapus karena member masih memiliki ${saleCount} riwayat transaksi.` },
         { status: 400 }
       );
     }
     
-    const deletedMembers = await prisma.member.deleteMany({
-      where: {
-        id: { in: idsToDelete },
-      },
+    const { count } = await prisma.member.deleteMany({
+      where: { id: { in: idsToDelete } },
     });
+
+    if (count === 0) {
+      return NextResponse.json({ error: 'Member tidak ditemukan' }, { status: 404 });
+    }
     
-    return NextResponse.json({ 
-      message: `Berhasil menghapus ${deletedMembers.count} member`,
-      deletedCount: deletedMembers.count,
-    });
+    return NextResponse.json({ message: `Berhasil menghapus ${count} member.` });
   } catch (error) {
     console.error('Error deleting members:', error);
-    
-    if (error.code === 'P2025') {
-      return NextResponse.json(
-        { error: 'Member tidak ditemukan' }, 
-        { status: 404 }
-      );
-    }
-    
-    return NextResponse.json(
-      { error: 'Failed to delete members' }, 
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Gagal menghapus member' }, { status: 500 });
   }
 }
