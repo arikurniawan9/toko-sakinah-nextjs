@@ -40,10 +40,10 @@ export default function CategoryManagementPage() {
     showModal,
     editingCategory,
     formData,
-    formError,
-    setFormError,
-    successMessage: formSuccessMessage, // Renamed
-    setSuccessMessage: setFormSuccessMessage, // Renamed
+    error: formError, // Correctly destructure and rename
+    setError: setFormError, // Correctly destructure and rename
+    success: formSuccessMessage, // Correctly destructure and rename
+    setSuccess: setFormSuccessMessage, // Correctly destructure and rename
     handleInputChange,
     openModalForEdit,
     openModalForCreate,
@@ -221,8 +221,6 @@ export default function CategoryManagementPage() {
                 editingCategory={editingCategory}
                 error={formError}
                 setFormError={setFormError}
-                successMessage={formSuccessMessage} // Pass renamed prop
-                setSuccessMessage={setFormSuccessMessage} // Pass renamed prop
               />
               <ConfirmationModal
                 isOpen={showDeleteModal}
