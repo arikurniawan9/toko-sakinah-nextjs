@@ -103,6 +103,7 @@ const Sidebar = ({ children }) => {
     { title: "Pelayan", href: "/admin/pelayan", icon: Users, type: 'item', roles: ['ADMIN'] },
     { title: "Laporan", type: 'heading', roles: ['ADMIN'] },
     { title: "Laporan", href: "/admin/laporan", icon: BarChart3, type: 'item', roles: ['ADMIN'] },
+    { title: "Laporan Piutang", href: "/admin/laporan/piutang", icon: DollarSign, type: 'item', roles: ['ADMIN'] },
     { title: "Transaksi", type: 'heading', roles: ['ADMIN'] },
     { title: "Pembelian", href: "/admin/transaksi/pembelian", icon: ShoppingCart, type: 'item', roles: ['ADMIN'] },
     { title: "Penjualan", href: "/admin/transaksi", icon: Receipt, type: 'item', roles: ['ADMIN'] },
