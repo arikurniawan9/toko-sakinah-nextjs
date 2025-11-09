@@ -21,6 +21,9 @@ export default function CategoryManagementPage() {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === 'ADMIN';
 
+  // Page-level success message state
+  const [pageSuccessMessage, setPageSuccessMessage] = useState('');
+
   const {
     categories,
     loading,
@@ -39,8 +42,8 @@ export default function CategoryManagementPage() {
     formData,
     formError,
     setFormError,
-    successMessage,
-    setSuccessMessage,
+    successMessage: formSuccessMessage, // Renamed
+    setSuccessMessage: setFormSuccessMessage, // Renamed
     handleInputChange,
     openModalForEdit,
     openModalForCreate,
@@ -89,7 +92,7 @@ export default function CategoryManagementPage() {
       if (!response.ok) throw new Error(result.error || 'Gagal menghapus kategori');
       
       await fetchCategories();
-      setSuccessMessage(`Berhasil menghapus ${idsToDelete.length} kategori.`);
+      setPageSuccessMessage(`Berhasil menghapus ${idsToDelete.length} kategori.`); // Use page-level state
       if (Array.isArray(itemToDelete)) clearSelection();
     } catch (err) {
       setTableError(err.message);
@@ -126,7 +129,7 @@ export default function CategoryManagementPage() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      setSuccessMessage('Data kategori berhasil diekspor.');
+      setPageSuccessMessage('Data kategori berhasil diekspor.'); // Use page-level state
     } catch (err) {
       setTableError('Gagal mengekspor data: ' + err.message);
     } finally {
@@ -175,10 +178,10 @@ export default function CategoryManagementPage() {
                     <p className="text-sm font-medium">{tableError}</p>
                   </div>
                 )}
-                {successMessage && (
+                {pageSuccessMessage && ( // Use page-level state
                   <div className="flex items-center p-4 my-4 rounded-lg bg-green-500/10 text-green-400">
                     <CheckCircle className="h-5 w-5 mr-3" />
-                    <p className="text-sm font-medium">{successMessage}</p>
+                    <p className="text-sm font-medium">{pageSuccessMessage}</p>
                   </div>
                 )}
 
@@ -218,6 +221,8 @@ export default function CategoryManagementPage() {
                 editingCategory={editingCategory}
                 error={formError}
                 setFormError={setFormError}
+                successMessage={formSuccessMessage} // Pass renamed prop
+                setSuccessMessage={setFormSuccessMessage} // Pass renamed prop
               />
               <ConfirmationModal
                 isOpen={showDeleteModal}
