@@ -1,9 +1,9 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import ProtectedRoute from '../../components/ProtectedRoute';
-import Sidebar from '../../components/Sidebar';
-import { useDarkMode } from '../../components/DarkModeContext';
+import ProtectedRoute from '@/components/ProtectedRoute';
+import Sidebar from '@/components/Sidebar';
+import { useDarkMode } from '@/components/DarkModeContext';
 
 export default function PengaturanIndex() {
   const { data: session } = useSession();
