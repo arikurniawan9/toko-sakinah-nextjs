@@ -2,41 +2,13 @@
 
 import Link from 'next/link';
 import { useEffect } from 'react';
-import { useSession } from 'next-auth/react';
 
 export default function Home() {
-  const { data: session, status } = useSession();
-
   // Redirect if already logged in
   useEffect(() => {
-    if (status === 'authenticated' && session?.user) {
-      // Redirect based on role
-      switch(session.user.role) {
-        case 'ADMIN':
-          window.location.href = '/admin';
-          break;
-        case 'CASHIER':
-          window.location.href = '/kasir';
-          break;
-        case 'ATTENDANT':
-          window.location.href = '/pelayan';
-          break;
-        default:
-          break;
-      }
-    }
-  }, [status, session]);
-
-  if (status === 'loading') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pastel-purple-50 to-pastel-purple-100">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pastel-purple-500 mx-auto"></div>
-          <p className="mt-4 text-pastel-purple-700">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+    // This logic will be handled by middleware or server-side checks in Next-Auth v5
+    // For now, we'll keep it simple and assume unauthenticated users land here.
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-pastel-purple-100 to-pastel-purple-300 p-4">

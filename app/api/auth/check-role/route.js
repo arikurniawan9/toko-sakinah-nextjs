@@ -1,6 +1,6 @@
 // app/api/auth/check-role/route.js
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '../[...nextauth]/route';
+import { authOptions } from '@/lib/authOptions';
 
 export async function GET(request) {
   const session = await getServerSession(authOptions);

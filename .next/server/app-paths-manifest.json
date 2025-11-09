@@ -1,5 +1,10 @@
 {
-  "/page": "app/page.js",
   "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
-  "/admin/page": "app/admin/page.js"
+  "/api/member/route": "app/api/member/route.js",
+  "/api/pelayan/route": "app/api/pelayan/route.js",
+  "/api/produk/route": "app/api/produk/route.js",
+  "/api/supplier/route": "app/api/supplier/route.js",
+  "/api/kategori/route": "app/api/kategori/route.js",
+  "/admin/produk/page": "app/admin/produk/page.js",
+  "/kasir/transaksi/page": "app/kasir/transaksi/page.js"
 }

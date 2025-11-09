@@ -21,6 +21,7 @@ model User {
   cashierSales   Sale[] @relation("CashierSales")
   attendantSales Sale[] @relation("AttendantSales")
   tempCarts      TempCart[] @relation("AttendantTempCarts")
+  purchases      Purchase[] @relation("PurchaseUser")
 }
 
 model Category {
@@ -51,6 +52,7 @@ model Product {
   salesDetails SaleDetail[]
   tempCarts TempCart[]
   priceTiers PriceTier[]
+  purchaseItems PurchaseItem[] // Added missing back-relation
 }
 
 model PriceTier {
@@ -74,6 +76,7 @@ model Supplier {
   updatedAt DateTime @updatedAt()
 
   products Product[]
+  purchases Purchase[]
 }
 
 model Member {
@@ -130,4 +133,30 @@ model TempCart {
 
   attendant User    @relation("AttendantTempCarts", fields: [attendantId], references: [id], onDelete: Cascade)
   product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+}
+
+model Purchase {
+  id           String     @id @default(cuid())
+  supplierId   String
+  userId       String     // User who made the purchase (e.g., Admin)
+  purchaseDate DateTime   @default(now())
+  totalAmount  Int
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt()
+
+  supplier     Supplier   @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  user         User       @relation("PurchaseUser", fields: [userId], references: [id], onDelete: Restrict)
+  items        PurchaseItem[]
+}
+
+model PurchaseItem {
+  id            String   @id @default(cuid())
+  purchaseId    String
+  productId     String
+  quantity      Int
+  purchasePrice Int      // Price at which this specific item was purchased
+  subtotal      Int      // quantity * purchasePrice
+
+  purchase      Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
 }

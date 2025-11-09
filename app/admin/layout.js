@@ -2,11 +2,14 @@
 'use client';
 
 import { DarkModeProvider } from '../../components/DarkModeContext';
+import { SidebarProvider } from '../../components/SidebarContext';
 
 export default function AdminLayout({ children }) {
   return (
     <DarkModeProvider>
-      {children}
+      <SidebarProvider>
+        {children}
+      </SidebarProvider>
     </DarkModeProvider>
   );
 }
