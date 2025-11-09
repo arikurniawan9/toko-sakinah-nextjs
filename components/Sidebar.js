@@ -4,15 +4,15 @@
 import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { signOut } from 'next-auth/react';
-import { 
-  Home, 
-  ShoppingBag, 
-  Tag, 
-  Truck, 
-  Users, 
-  CreditCard, 
-  UserRound, 
+import { signOut, useSession } from 'next-auth/react'; // Import useSession
+import {
+  Home,
+  ShoppingBag,
+  Tag,
+  Truck,
+  Users,
+  CreditCard,
+  UserRound,
   BarChart3,
   Menu,
   X,
@@ -43,6 +43,7 @@ const Sidebar = ({ children }) => {
   const pathname = usePathname();
   const { darkMode, toggleDarkMode } = useDarkMode();
   const { isCollapsed, toggleSidebar } = useSidebar();
+  const { data: session } = useSession(); // Get session data
 
   useEffect(() => {
     const checkIfMobile = () => {
@@ -89,26 +90,46 @@ const Sidebar = ({ children }) => {
     signOut({ callbackUrl: '/login' });
   };
 
-  const menuItems = [
-    { title: "Dashboard", href: "/admin", icon: Home, type: 'item' },
-    { title: "Master", type: 'heading' },
-    { title: "Produk", href: "/admin/produk", icon: ShoppingBag, type: 'item' },
-    { title: "Kategori", href: "/admin/kategori", icon: Tag, type: 'item' },
-    { title: "Supplier", href: "/admin/supplier", icon: Truck, type: 'item' },
-    { title: "Member", href: "/admin/member", icon: UserRound, type: 'item' },
-    { title: "Kasir", href: "/admin/kasir", icon: CreditCard, type: 'item' },
-    { title: "Pelayan", href: "/admin/pelayan", icon: Users, type: 'item' },
-    { title: "Laporan", type: 'heading' },
-    { title: "Laporan", href: "/admin/laporan", icon: BarChart3, type: 'item' },
-    { title: "Transaksi", type: 'heading' },
-    { title: "Transaksi Pembelian", href: "/admin/transaksi/pembelian", icon: ShoppingCart, type: 'item' },
-    { title: "Transaksi Penjualan", href: "/admin/transaksi/penjualan", icon: Receipt, type: 'item' },
-    { title: "Riwayat Penjualan", href: "/admin/transaksi/riwayat-penjualan", icon: History, type: 'item' },
-    { title: "Keuangan", type: 'heading' },
-    { title: "Pengeluaran", href: "/admin/pengeluaran", icon: DollarSign, type: 'item' },
-    { title: "Pengaturan", type: 'heading' },
-    { title: "Pengaturan Toko", href: "/admin/pengaturan/toko", icon: Settings, type: 'item' },
+  // Define all menu items
+  const allMenuItems = [
+    // ADMIN menus
+    { title: "Dashboard", href: "/admin", icon: Home, type: 'item', roles: ['ADMIN'] },
+    { title: "Master", type: 'heading', roles: ['ADMIN'] },
+    { title: "Produk", href: "/admin/produk", icon: ShoppingBag, type: 'item', roles: ['ADMIN'] },
+    { title: "Kategori", href: "/admin/kategori", icon: Tag, type: 'item', roles: ['ADMIN'] },
+    { title: "Supplier", href: "/admin/supplier", icon: Truck, type: 'item', roles: ['ADMIN'] },
+    { title: "Member", href: "/admin/member", icon: UserRound, type: 'item', roles: ['ADMIN'] },
+    { title: "Kasir", href: "/admin/kasir", icon: CreditCard, type: 'item', roles: ['ADMIN'] },
+    { title: "Pelayan", href: "/admin/pelayan", icon: Users, type: 'item', roles: ['ADMIN'] },
+    { title: "Laporan", type: 'heading', roles: ['ADMIN'] },
+    { title: "Laporan", href: "/admin/laporan", icon: BarChart3, type: 'item', roles: ['ADMIN'] },
+    { title: "Transaksi", type: 'heading', roles: ['ADMIN'] },
+    { title: "Transaksi Pembelian", href: "/admin/transaksi/pembelian", icon: ShoppingCart, type: 'item', roles: ['ADMIN'] },
+    { title: "Transaksi Penjualan", href: "/admin/transaksi/penjualan", icon: Receipt, type: 'item', roles: ['ADMIN'] },
+    { title: "Riwayat Penjualan", href: "/admin/transaksi/riwayat-penjualan", icon: History, type: 'item', roles: ['ADMIN'] },
+    { title: "Keuangan", type: 'heading', roles: ['ADMIN'] },
+    { title: "Pengeluaran", href: "/admin/pengeluaran", icon: DollarSign, type: 'item', roles: ['ADMIN'] },
+    { title: "Pengaturan", type: 'heading', roles: ['ADMIN'] },
+    { title: "Pengaturan Toko", href: "/admin/pengaturan/toko", icon: Settings, type: 'item', roles: ['ADMIN'] },
+
+    // CASHIER menus
+    { title: "Kasir", type: 'heading', roles: ['CASHIER'] },
+    { title: "Dashboard", href: "/kasir", icon: Home, type: 'item', roles: ['CASHIER'] },
+    { title: "Transaksi", href: "/kasir/transaksi", icon: Receipt, type: 'item', roles: ['CASHIER'] },
+    { title: "Riwayat Transaksi", href: "/kasir/riwayat", icon: History, type: 'item', roles: ['CASHIER'] },
+    { title: "Master", type: 'heading', roles: ['CASHIER'] },
+    { title: "Produk", href: "/kasir/produk", icon: ShoppingBag, type: 'item', roles: ['CASHIER'] },
+    { title: "Kategori", href: "/kasir/kategori", icon: Tag, type: 'item', roles: ['CASHIER'] },
   ];
+
+  // Filter menu items based on user role
+  const menuItems = allMenuItems.filter(item => {
+    if (!session?.user?.role) return false; // No role, no access
+    if (item.roles && !item.roles.includes(session.user.role)) {
+      return false; // User role not in allowed roles for this item
+    }
+    return true;
+  });
 
   const sidebarWidth = isCollapsed ? 'w-20' : 'w-56';
   const mainContentMargin = 'ml-0'; // Main content will not have a left margin from a non-fixed sidebar
@@ -116,9 +137,9 @@ const Sidebar = ({ children }) => {
   return (
     <div className={`flex ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}> {/* Removed h-screen here */}
       {/* Sidebar */}
-      <div 
+      <div
         className={`inset-y-0 left-0 z-40 flex flex-col ${darkMode ? 'bg-gray-800' : 'bg-white'} shadow-lg transition-all duration-300 ease-in-out ${
-          isMobile 
+          isMobile
             ? `w-56 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`
             : `${sidebarWidth}`
         }`}
@@ -208,7 +229,7 @@ const Sidebar = ({ children }) => {
 
       {/* Overlay for mobile */}
       {isMobile && isMobileMenuOpen && (
-        <div 
+        <div
           className={`fixed inset-0 z-30 ${darkMode ? 'bg-black bg-opacity-70' : 'bg-black bg-opacity-50'} md:hidden`}
           onClick={() => setIsMobileMenuOpen(false)}
         ></div>
@@ -261,28 +282,28 @@ const Sidebar = ({ children }) => {
 
             {/* User Menu (moved from sidebar) */}
             <div className="relative" ref={userMenuRef}>
-              <div 
+              <div
                 className={`flex items-center p-2 rounded-lg cursor-pointer ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
               >
                 <div className="w-10 h-10 rounded-full bg-pastel-purple-400 flex items-center justify-center text-white font-bold">
-                  A
+                  {session?.user?.name ? session.user.name.charAt(0).toUpperCase() : 'U'}
                 </div>
                 {/* Only show text if not collapsed and not mobile */}
                 {!isCollapsed && !isMobile && (
                   <div className="ml-3">
-                    <p className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Admin</p>
-                    <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Administrator</p>
+                    <p className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{session?.user?.name || 'User'}</p>
+                    <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{session?.user?.role || 'Guest'}</p>
                   </div>
                 )}
               </div>
-              
+
               {/* Dropdown Menu */}
               {isUserMenuOpen && (
                 <div className={`absolute top-full right-0 mt-2 w-52 ${darkMode ? 'bg-gray-700' : 'bg-white'} rounded-md shadow-lg ring-1 ring-black ring-opacity-5`}>
                   <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
                     <Link
-                      href="/admin/profile"
+                      href={session?.user?.role === 'ADMIN' ? "/admin/profile" : "/kasir/profile"} // Conditional profile link
                       onClick={() => setIsUserMenuOpen(false)}
                       className={`w-full text-left flex items-center px-4 py-2 text-sm ${darkMode ? 'text-gray-300 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-100'}`}
                       role="menuitem"

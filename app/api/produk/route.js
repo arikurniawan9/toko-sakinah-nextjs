@@ -11,17 +11,27 @@ export async function GET(request) {
     const page = parseInt(searchParams.get('page')) || 1;
     const limit = parseInt(searchParams.get('limit')) || 10;
     const search = searchParams.get('search') || '';
+    const categoryId = searchParams.get('categoryId') || '';
+    const productCode = searchParams.get('productCode') || ''; // New: exact productCode search
     
     const offset = (page - 1) * limit;
     
     let whereClause = {};
-    if (search) {
-      whereClause = {
-        OR: [
-          { name: { contains: search } },
-          { productCode: { contains: search } }
-        ]
-      };
+
+    if (productCode) {
+      // Prioritize exact productCode match for barcode scanning.
+      // SQLite's `equals` is case-insensitive for ASCII characters by default.
+      whereClause.productCode = productCode;
+    } else if (search) {
+      // Fallback to general search if no exact productCode
+      whereClause.OR = [
+        { name: { contains: search } },
+        { productCode: { contains: search } }
+      ];
+    }
+
+    if (categoryId) {
+      whereClause.categoryId = categoryId;
     }
     
     const products = await prisma.product.findMany({

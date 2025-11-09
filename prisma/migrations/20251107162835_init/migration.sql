@@ -107,4 +107,13 @@ CREATE TABLE "TempCart" (
 CREATE UNIQUE INDEX "User_username_key" ON "User"("username");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "Category_name_key" ON "Category"("name");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "Product_productCode_key" ON "Product"("productCode");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Supplier_name_key" ON "Supplier"("name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Member_phone_key" ON "Member"("phone");

@@ -95,7 +95,20 @@ async function main() {
     },
   });
 
-  // Create default products
+  // Create a default general customer
+  const generalCustomer = await prisma.member.upsert({
+    where: { phone: '000' },
+    update: {},
+    create: {
+      name: 'Pelanggan Umum',
+      phone: '000',
+      address: '-',
+      membershipType: 'GENERAL',
+      discount: 0,
+    },
+  });
+
+  // Create default products with price tiers
   const product1 = await prisma.product.upsert({
     where: { productCode: 'BAJU001' },
     update: {},
@@ -104,14 +117,39 @@ async function main() {
       productCode: 'BAJU001',
       stock: 50,
       purchasePrice: 85000,
-      sellingPrice: 120000,
-      discount1_3: 1000, // Default discount of 1000 for qty 1-3
-      discount4_6: 5000, // Discount of 5000 for qty 4-6
-      discountMore: 8000, // Discount of 8000 for qty >6
       categoryId: baju.id,
       supplierId: supplier1.id,
-      image: '/uploads/kemeja-putih.jpg',
+      description: 'Kemeja putih berkualitas',
     },
+  });
+
+  // Delete existing price tiers for the product to ensure idempotency
+  await prisma.priceTier.deleteMany({
+    where: { productId: product1.id },
+  });
+
+  // Create price tiers for product1
+  await prisma.priceTier.createMany({
+    data: [
+      {
+        productId: product1.id,
+        minQty: 1,
+        maxQty: 3,
+        price: 120000,
+      },
+      {
+        productId: product1.id,
+        minQty: 4,
+        maxQty: 6,
+        price: 115000,
+      },
+      {
+        productId: product1.id,
+        minQty: 7,
+        maxQty: null, // No upper limit
+        price: 110000,
+      }
+    ]
   });
 
   const product2 = await prisma.product.upsert({
@@ -122,14 +160,39 @@ async function main() {
       productCode: 'CEL001',
       stock: 30,
       purchasePrice: 100000,
-      sellingPrice: 150000,
-      discount1_3: 1000,
-      discount4_6: 7000,
-      discountMore: 10000,
       categoryId: celana.id,
       supplierId: supplier1.id,
-      image: '/uploads/jeans-biru.jpg',
+      description: 'Jeans biru model terbaru',
     },
+  });
+
+  // Delete existing price tiers for the product to ensure idempotency
+  await prisma.priceTier.deleteMany({
+    where: { productId: product2.id },
+  });
+
+  // Create price tiers for product2
+  await prisma.priceTier.createMany({
+    data: [
+      {
+        productId: product2.id,
+        minQty: 1,
+        maxQty: 3,
+        price: 150000,
+      },
+      {
+        productId: product2.id,
+        minQty: 4,
+        maxQty: 6,
+        price: 145000,
+      },
+      {
+        productId: product2.id,
+        minQty: 7,
+        maxQty: null, // No upper limit
+        price: 140000,
+      }
+    ]
   });
 
   const product3 = await prisma.product.upsert({
@@ -140,13 +203,39 @@ async function main() {
       productCode: 'AKS001',
       stock: 20,
       purchasePrice: 45000,
-      sellingPrice: 75000,
-      discount1_3: 1000,
-      discount4_6: 3000,
       categoryId: aksesoris.id,
       supplierId: supplier2.id,
-      image: '/uploads/topi-snapback.jpg',
+      description: 'Topi snapback fashion',
     },
+  });
+
+  // Delete existing price tiers for the product to ensure idempotency
+  await prisma.priceTier.deleteMany({
+    where: { productId: product3.id },
+  });
+
+  // Create price tiers for product3
+  await prisma.priceTier.createMany({
+    data: [
+      {
+        productId: product3.id,
+        minQty: 1,
+        maxQty: 2,
+        price: 75000,
+      },
+      {
+        productId: product3.id,
+        minQty: 3,
+        maxQty: 5,
+        price: 70000,
+      },
+      {
+        productId: product3.id,
+        minQty: 6,
+        maxQty: null, // No upper limit
+        price: 65000,
+      }
+    ]
   });
 
   // Hash passwords for users

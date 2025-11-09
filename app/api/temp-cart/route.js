@@ -1,13 +1,18 @@
+
 // app/api/temp-cart/route.js
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '@/lib/prisma';
+import { getSession } from '@/lib/auth';
 
 // POST /api/temp-cart - Create a temporary shopping list for attendant
 export async function POST(request) {
+  const session = await getSession();
+  if (!session || !['ADMIN', 'ATTENDANT'].includes(session.user.role)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
-    const { attendantId, customerId, items } = await request.json();
+    const { attendantId, items } = await request.json();
     
     if (!attendantId || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -16,19 +21,21 @@ export async function POST(request) {
       );
     }
 
-    // Validate all products exist and have sufficient stock
-    for (const item of items) {
-      const product = await prisma.product.findUnique({
-        where: { id: item.productId }
-      });
+    const productIds = items.map(item => item.productId);
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+    });
 
+    const productMap = new Map(products.map(p => [p.id, p]));
+
+    for (const item of items) {
+      const product = productMap.get(item.productId);
       if (!product) {
         return NextResponse.json(
           { error: `Product with id ${item.productId} not found` }, 
           { status: 404 }
         );
       }
-
       if (product.stock < item.quantity) {
         return NextResponse.json(
           { error: `Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}` }, 
@@ -37,22 +44,20 @@ export async function POST(request) {
       }
     }
 
-    // Create temp cart entries
-    const createdItems = [];
-    for (const item of items) {
-      const createdItem = await prisma.tempCart.create({
-        data: {
+    const createdItems = await prisma.$transaction(async (tx) => {
+      const created = await tx.tempCart.createMany({
+        data: items.map(item => ({
           attendantId,
           productId: item.productId,
-          quantity: item.quantity
-        }
+          quantity: item.quantity,
+        })),
       });
-      createdItems.push(createdItem);
-    }
+      return created;
+    });
 
     return NextResponse.json({
       message: 'Temporary cart created successfully',
-      items: createdItems
+      items: createdItems,
     });
   } catch (error) {
     console.error('Error creating temporary cart:', error);
@@ -60,13 +65,16 @@ export async function POST(request) {
       { error: 'Failed to create temporary cart' }, 
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
 // GET /api/temp-cart - Get temporary shopping lists for cashier
 export async function GET(request) {
+  const session = await getSession();
+  if (!session || !['ADMIN', 'CASHIER'].includes(session.user.role)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const attendantId = searchParams.get('attendantId');
@@ -86,9 +94,9 @@ export async function GET(request) {
       take: limit,
       include: {
         attendant: true,
-        product: true
+        product: true,
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     });
     
     const totalCount = await prisma.tempCart.count({ where: whereClause });
@@ -99,8 +107,8 @@ export async function GET(request) {
         page,
         limit,
         total: totalCount,
-        totalPages: Math.ceil(totalCount / limit)
-      }
+        totalPages: Math.ceil(totalCount / limit),
+      },
     });
   } catch (error) {
     console.error('Error fetching temporary carts:', error);
@@ -108,13 +116,16 @@ export async function GET(request) {
       { error: 'Failed to fetch temporary carts' }, 
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
 // DELETE /api/temp-cart - Clear temporary cart
 export async function DELETE(request) {
+  const session = await getSession();
+  if (!session || !['ADMIN', 'CASHIER'].includes(session.user.role)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const attendantId = searchParams.get('attendantId');
@@ -128,14 +139,12 @@ export async function DELETE(request) {
     }
     
     if (id) {
-      // Delete specific item
       await prisma.tempCart.delete({
-        where: { id }
+        where: { id },
       });
     } else {
-      // Delete all items for attendant
       await prisma.tempCart.deleteMany({
-        where: { attendantId }
+        where: { attendantId },
       });
     }
     
@@ -145,7 +154,6 @@ export async function DELETE(request) {
   } catch (error) {
     console.error('Error clearing temporary cart:', error);
     
-    // Handle not found error
     if (error.code === 'P2025') {
       return NextResponse.json(
         { error: 'Item not found' }, 
@@ -157,7 +165,5 @@ export async function DELETE(request) {
       { error: 'Failed to clear temporary cart' }, 
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }

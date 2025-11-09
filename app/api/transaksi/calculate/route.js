@@ -1,8 +1,6 @@
 // app/api/transaksi/calculate/route.js
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '@/lib/prisma';
 
 /**
  * Calculate transaction totals based on quantity and member discounts
@@ -32,7 +30,14 @@ export async function POST(request) {
     // Fetch product details for each item
     for (const item of items) {
       const product = await prisma.product.findUnique({
-        where: { id: item.productId }
+        where: { id: item.productId },
+        include: {
+          priceTiers: {
+            orderBy: {
+              minQty: 'asc'
+            }
+          }
+        }
       });
 
       if (!product) {
@@ -49,33 +54,46 @@ export async function POST(request) {
         );
       }
 
-      // Calculate discount per item based on quantity
-      let discountPerItem = 0;
+      // Calculate price based on the applicable tier
+      let applicablePrice = product.priceTiers.length > 0 ? product.priceTiers[0].price : 0;
       
-      if (item.quantity >= 1 && item.quantity <= 3) {
-        // Default discount of 1000 or admin-specified discount for qty 1-3
-        discountPerItem = product.discount1_3;
-      } else if (item.quantity >= 4 && item.quantity <= 6) {
-        // Discount for qty 4-6 as specified by admin
-        discountPerItem = product.discount4_6;
-      } else if (item.quantity > 6) {
-        // Discount for qty >6 if specified by admin, otherwise 0
-        discountPerItem = product.discountMore || 0;
+      // Find applicable tier based on quantity
+      if (product.priceTiers && product.priceTiers.length > 0) {
+        // Sort price tiers by minQty to ensure correct lookup
+        const sortedTiers = [...product.priceTiers].sort((a, b) => a.minQty - b.minQty);
+        
+        // Find the highest tier that the quantity qualifies for
+        for (let i = sortedTiers.length - 1; i >= 0; i--) {
+          const tier = sortedTiers[i];
+          if (item.quantity >= tier.minQty) {
+            applicablePrice = tier.price;
+            break;
+          }
+        }
       }
 
-      // Calculate the price after item discount
-      const priceAfterItemDiscount = product.sellingPrice - discountPerItem;
-      const itemSubtotal = priceAfterItemDiscount * item.quantity;
+      // Calculate original price for comparison (price when buying 1 item)
+      let originalPrice = 0;
+      if (product.priceTiers && product.priceTiers.length > 0) {
+        // Find the price tier that applies to quantity 1
+        const sortedTiers = [...product.priceTiers].sort((a, b) => a.minQty - b.minQty);
+        const baseTier = sortedTiers.find(tier => tier.minQty <= 1);
+        originalPrice = baseTier ? baseTier.price : sortedTiers[0].price;
+      }
+
+      // Calculate the discount per item compared to the original price
+      const discountPerItem = originalPrice - applicablePrice;
+      const itemSubtotal = applicablePrice * item.quantity;
       const itemDiscountAmount = discountPerItem * item.quantity;
 
       calculatedItems.push({
         productId: product.id,
         productName: product.name,
         quantity: item.quantity,
-        originalPrice: product.sellingPrice,
+        originalPrice: originalPrice,
         discountPerItem: discountPerItem,
         itemDiscount: itemDiscountAmount,
-        priceAfterItemDiscount: priceAfterItemDiscount,
+        priceAfterItemDiscount: applicablePrice,
         subtotal: itemSubtotal
       });
 
