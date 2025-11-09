@@ -31,7 +31,7 @@ export default function KasirCategoryView() {
     fetchCategories,
   } = useCategoryTable();
 
-  const [exportLoading, setExportLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false); // This state is no longer needed
   const [success, setSuccess] = useState('');
   
   const [showProductsModal, setShowProductsModal] = useState(false);
@@ -42,40 +42,41 @@ export default function KasirCategoryView() {
     setShowProductsModal(true);
   };
 
-  const handleExport = async () => {
-    setExportLoading(true);
-    try {
-      const response = await fetch('/api/kategori?limit=0'); // Fetch all categories for export
-      if (!response.ok) throw new Error('Gagal mengambil data untuk export');
-      const data = await response.json();
+  // The handleExport function is no longer needed
+  // const handleExport = async () => {
+  //   setExportLoading(true);
+  //   try {
+  //     const response = await fetch('/api/kategori?limit=0'); // Fetch all categories for export
+  //     if (!response.ok) throw new Error('Gagal mengambil data untuk export');
+  //     const data = await response.json();
 
-      let csvContent = 'Nama,Deskripsi,Tanggal Dibuat,Tanggal Diubah\n';
-      data.categories.forEach(category => {
-        const name = `"${(category.name || '').replace(/"/g, '""')}"`;
-        const description = `"${(category.description || '').replace(/"/g, '""')}"`;
-        const createdAt = `"${new Date(category.createdAt).toLocaleString('id-ID')}"`;
-        const updatedAt = `"${new Date(category.updatedAt).toLocaleString('id-ID')}"`;
-        csvContent += `${name},${description},${createdAt},${updatedAt}\n`;
-      });
+  //     let csvContent = 'Nama,Deskripsi,Tanggal Dibuat,Tanggal Diubah\n';
+  //     data.categories.forEach(category => {
+  //       const name = `"${(category.name || '').replace(/"/g, '""')}"`;
+  //       const description = `"${(category.description || '').replace(/"/g, '""')}"`;
+  //       const createdAt = `"${new Date(category.createdAt).toLocaleString('id-ID')}"`;
+  //       const updatedAt = `"${new Date(category.updatedAt).toLocaleString('id-ID')}"`;
+  //       csvContent += `${name},${description},${createdAt},${updatedAt}\n`;
+  //     });
 
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `kategori-${new Date().toISOString().slice(0, 10)}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setSuccess('Data kategori berhasil diekspor');
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) {
-      setTableError('Terjadi kesalahan saat mengekspor kategori: ' + err.message);
-      setTimeout(() => setTableError(''), 5000);
-    } finally {
-      setExportLoading(false);
-    }
-  };
+  //     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  //     const link = document.createElement('a');
+  //     const url = URL.createObjectURL(blob);
+  //     link.setAttribute('href', url);
+  //     link.setAttribute('download', `kategori-${new Date().toISOString().slice(0, 10)}.csv`);
+  //     link.style.visibility = 'hidden';
+  //     document.body.appendChild(link);
+  //     link.click();
+  //     document.body.removeChild(link);
+  //     setSuccess('Data kategori berhasil diekspor');
+  //     setTimeout(() => setSuccess(''), 3000);
+  //   } catch (err) {
+  //     setTableError('Terjadi kesalahan saat mengekspor kategori: ' + err.message);
+  //     setTimeout(() => setTableError(''), 5000);
+  //   } finally {
+  //     setExportLoading(false);
+  //   }
+  // };
 
   const error = tableError;
 
@@ -94,8 +95,8 @@ export default function KasirCategoryView() {
                 setSearchTerm={setSearchTerm}
                 itemsPerPage={pagination.limit}
                 setItemsPerPage={(value) => setPagination(p => ({ ...p, limit: value, page: 1 }))}
-                onExport={handleExport}
-                exportLoading={exportLoading}
+                // onExport={handleExport} // Removed
+                // exportLoading={exportLoading} // Removed
                 darkMode={darkMode}
               />
 
