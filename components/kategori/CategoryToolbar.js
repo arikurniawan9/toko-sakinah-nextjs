@@ -32,7 +32,7 @@ export default function CategoryToolbar({
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Cari kategori..."
-            className="w-full pl-10 pr-4 py-2 border rounded-lg shadow-sm bg-transparent focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors"
           />
           {searchTerm && (
             <button
@@ -49,7 +49,7 @@ export default function CategoryToolbar({
             id="itemsPerPage"
             value={itemsPerPage}
             onChange={(e) => setItemsPerPage(Number(e.target.value))}
-            className="w-full px-3 py-2 border rounded-lg shadow-sm bg-transparent focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors"
           >
             <option value={10}>10/halaman</option>
             <option value={20}>20/halaman</option>
