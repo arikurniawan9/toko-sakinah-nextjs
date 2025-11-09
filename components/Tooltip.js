@@ -1,14 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 
-const Tooltip = ({ children, content, position = 'right' }) => { // Default to right
+const Tooltip = ({ children, content }) => {
   const [isVisible, setIsVisible] = useState(false);
   const childRef = useRef(null);
   const [tooltipStyle, setTooltipStyle] = useState({});
   const [portalRoot, setPortalRoot] = useState(null);
+  const tooltipRef = useRef(null); // Ref for the tooltip element itself
 
   useEffect(() => {
-    // Create a div element to be our portal root
     let element = document.getElementById('tooltip-root');
     if (!element) {
       element = document.createElement('div');
@@ -18,7 +18,6 @@ const Tooltip = ({ children, content, position = 'right' }) => { // Default to r
     setPortalRoot(element);
 
     return () => {
-      // Clean up the element if it was created by this component
       if (element && element.parentNode === document.body && element.children.length === 0) {
         document.body.removeChild(element);
       }
@@ -26,29 +25,31 @@ const Tooltip = ({ children, content, position = 'right' }) => { // Default to r
   }, []);
 
   const calculatePosition = () => {
-    if (!childRef.current) return;
+    if (!childRef.current || !tooltipRef.current) return;
 
-    const rect = childRef.current.getBoundingClientRect();
+    const childRect = childRef.current.getBoundingClientRect();
+    const tooltipRect = tooltipRef.current.getBoundingClientRect();
     const style = {};
 
-    // Always position to the right, adjusted for viewport
-    style.left = `${rect.right + 8}px`; // 8px padding from the element
-    style.top = `${rect.top + rect.height / 2}px`;
-    style.transform = 'translateY(-50%)'; // Center vertically
+    // Default to positioning to the left
+    style.left = `${childRect.left - 8}px`; // 8px padding from the element
+    style.top = `${childRect.top + childRect.height / 2}px`;
+    style.transform = 'translateY(-50%) translateX(-100%)'; // Center vertically, shift left by 100% of tooltip width
 
-    // Prevent tooltip from going off-screen to the right
-    if (rect.right + 8 + (content.length * 8) > window.innerWidth) { // Rough estimate of tooltip width
-      style.left = `${rect.left - 8 - (content.length * 8)}px`; // Position to the left instead
+    // Prevent tooltip from going off-screen to the left
+    if (childRect.left - 8 - tooltipRect.width < 0) {
+      // If it goes off-screen left, position to the right instead
+      style.left = `${childRect.right + 8}px`;
       style.transform = 'translateY(-50%)';
     }
 
     // Prevent tooltip from going off-screen to the top/bottom
-    if (rect.top < 0) {
+    if (childRect.top < 0) {
       style.top = '8px'; // Stick to top with some padding
-      style.transform = 'none';
-    } else if (rect.bottom > window.innerHeight) {
-      style.top = `${window.innerHeight - rect.height - 8}px`; // Stick to bottom
-      style.transform = 'none';
+      style.transform = 'none'; // Reset transform if sticking to top
+    } else if (childRect.bottom > window.innerHeight) {
+      style.top = `${window.innerHeight - childRect.height - 8}px`; // Stick to bottom
+      style.transform = 'none'; // Reset transform if sticking to bottom
     }
 
     setTooltipStyle(style);
@@ -56,18 +57,17 @@ const Tooltip = ({ children, content, position = 'right' }) => { // Default to r
 
   useEffect(() => {
     if (isVisible) {
-      calculatePosition();
+      // Recalculate position after the tooltip content has rendered and its size is known
+      const timeoutId = setTimeout(calculatePosition, 0); 
       window.addEventListener('scroll', calculatePosition);
       window.addEventListener('resize', calculatePosition);
-    } else {
-      window.removeEventListener('scroll', calculatePosition);
-      window.removeEventListener('resize', calculatePosition);
+      return () => {
+        clearTimeout(timeoutId);
+        window.removeEventListener('scroll', calculatePosition);
+        window.removeEventListener('resize', calculatePosition);
+      };
     }
-    return () => {
-      window.removeEventListener('scroll', calculatePosition);
-      window.removeEventListener('resize', calculatePosition);
-    };
-  }, [isVisible, content]); // Recalculate if content changes
+  }, [isVisible, content, portalRoot]); // Recalculate if content changes or portal is ready
 
   const handleMouseEnter = () => {
     setIsVisible(true);
@@ -92,11 +92,11 @@ const Tooltip = ({ children, content, position = 'right' }) => { // Default to r
       </div>
       {isVisible && ReactDOM.createPortal(
         <div
+          ref={tooltipRef} // Attach ref to the tooltip element
           className="absolute z-50 whitespace-nowrap text-sm text-white bg-gray-900 px-2 py-1 rounded-md shadow-lg"
           style={tooltipStyle}
         >
           {content}
-          {/* No arrow needed for right-aligned portal tooltip */}
         </div>,
         portalRoot
       )}
