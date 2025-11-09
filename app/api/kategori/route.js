@@ -1,8 +1,18 @@
-
 // app/api/kategori/route.js
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
+import { z } from 'zod';
+
+// Zod Schemas
+const categorySchema = z.object({
+  name: z.string().trim().min(1, { message: 'Nama kategori wajib diisi' }),
+  description: z.string().trim().optional().nullable(),
+});
+
+const categoryUpdateSchema = categorySchema.extend({
+  id: z.string().min(1, { message: 'ID kategori wajib disediakan' }),
+});
 
 // GET /api/kategori - Get all categories with pagination, search, and filtering
 export async function GET(request) {
@@ -14,36 +24,23 @@ export async function GET(request) {
     
     const offset = (page - 1) * limit;
     
-    let categories;
-    let totalCount;
+    const where = search 
+      ? {
+          OR: [
+            { name: { contains: search, mode: 'insensitive' } },
+            { description: { contains: search, mode: 'insensitive' } },
+          ],
+        }
+      : {};
 
-    if (search) {
-      const searchLower = `%${search.toLowerCase()}%`;
-      
-      // Fetch categories with raw query for case-insensitive search
-      categories = await prisma.$queryRaw`
-        SELECT * FROM Category
-        WHERE LOWER(name) LIKE ${searchLower} OR LOWER(description) LIKE ${searchLower}
-        ORDER BY createdAt DESC
-        LIMIT ${limit} OFFSET ${offset}
-      `;
+    const categories = await prisma.category.findMany({
+      where,
+      skip: offset,
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+    });
 
-      // Count total categories matching the search with raw query
-      const countResult = await prisma.$queryRaw`
-        SELECT COUNT(*) as count FROM Category
-        WHERE LOWER(name) LIKE ${searchLower} OR LOWER(description) LIKE ${searchLower}
-      `;
-      totalCount = Number(countResult[0].count);
-
-    } else {
-      // Standard Prisma findMany when no search term
-      categories = await prisma.category.findMany({
-        skip: offset,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-      });
-      totalCount = await prisma.category.count();
-    }
+    const totalCount = await prisma.category.count({ where });
     
     return NextResponse.json({
       categories,
@@ -57,7 +54,7 @@ export async function GET(request) {
   } catch (error) {
     console.error('Error fetching categories:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch categories' }, 
+      { error: 'Gagal mengambil data kategori' }, 
       { status: 500 }
     );
   }
@@ -71,38 +68,38 @@ export async function POST(request) {
   }
 
   try {
-    const { name, description } = await request.json();
+    const body = await request.json();
+    const { name, description } = categorySchema.parse(body);
     
-    if (!name || name.trim() === '') {
-      return NextResponse.json(
-        { error: 'Nama kategori wajib diisi' }, 
-        { status: 400 }
-      );
-    }
+    const existingCategory = await prisma.category.findFirst({
+      where: { name: { equals: name, mode: 'insensitive' } },
+    });
     
-    const existingCategory = await prisma.$queryRaw`
-      SELECT * FROM Category WHERE LOWER(name) = LOWER(${name.trim()})
-    `;
-    
-    if (existingCategory && existingCategory.length > 0) {
+    if (existingCategory) {
       return NextResponse.json(
         { error: 'Nama kategori sudah digunakan' }, 
-        { status: 400 }
+        { status: 409 } // 409 Conflict is more appropriate
       );
     }
     
     const category = await prisma.category.create({
       data: {
-        name: name.trim(),
-        description: description?.trim() || null,
+        name,
+        description,
       },
     });
     
-    return NextResponse.json(category);
+    return NextResponse.json(category, { status: 201 }); // 201 Created
   } catch (error) {
     console.error('Error creating category:', error);
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: error.errors[0].message },
+        { status: 400 }
+      );
+    }
     return NextResponse.json(
-      { error: 'Failed to create category' }, 
+      { error: 'Gagal membuat kategori' }, 
       { status: 500 }
     );
   }
@@ -116,44 +113,41 @@ export async function PUT(request) {
   }
 
   try {
-    const { id, name, description } = await request.json();
+    const body = await request.json();
+    const { id, name, description } = categoryUpdateSchema.parse(body);
     
-    if (!id) {
-      return NextResponse.json(
-        { error: 'ID kategori wajib disediakan' }, 
-        { status: 400 }
-      );
-    }
+    const existingCategory = await prisma.category.findFirst({
+      where: { 
+        name: { equals: name, mode: 'insensitive' },
+        id: { not: id },
+      },
+    });
     
-    if (!name || name.trim() === '') {
-      return NextResponse.json(
-        { error: 'Nama kategori wajib diisi' }, 
-        { status: 400 }
-      );
-    }
-    
-    const existingCategory = await prisma.$queryRaw`
-      SELECT * FROM Category WHERE LOWER(name) = LOWER(${name.trim()}) AND id != ${id}
-    `;
-    
-    if (existingCategory && existingCategory.length > 0) {
+    if (existingCategory) {
       return NextResponse.json(
         { error: 'Nama kategori sudah digunakan' }, 
-        { status: 400 }
+        { status: 409 } // 409 Conflict
       );
     }
     
     const updatedCategory = await prisma.category.update({
       where: { id },
       data: {
-        name: name.trim(),
-        description: description?.trim() || null,
+        name,
+        description,
       },
     });
     
     return NextResponse.json(updatedCategory);
   } catch (error) {
     console.error('Error updating category:', error);
+    
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: error.errors[0].message },
+        { status: 400 }
+      );
+    }
     
     if (error.code === 'P2025') {
       return NextResponse.json(
@@ -163,7 +157,7 @@ export async function PUT(request) {
     }
     
     return NextResponse.json(
-      { error: 'Failed to update category' }, 
+      { error: 'Gagal memperbarui kategori' }, 
       { status: 500 }
     );
   }
@@ -180,12 +174,17 @@ export async function DELETE(request) {
     const { searchParams } = new URL(request.url);
     let idsToDelete = [];
 
-    // Try to get IDs from request body (for multiple deletions)
-    const requestBody = await request.json().catch(() => ({})); // Handle case where body is empty or not JSON
-    if (requestBody.ids && Array.isArray(requestBody.ids) && requestBody.ids.length > 0) {
-      idsToDelete = requestBody.ids;
-    } else {
-      // If not in body, try to get a single ID from query params (for single deletion)
+    // Unified way to get IDs from either body or query params
+    try {
+      const body = await request.json();
+      if (body.ids && Array.isArray(body.ids)) {
+        idsToDelete = body.ids;
+      }
+    } catch (e) {
+      // Ignore error if body is empty or not valid JSON
+    }
+
+    if (idsToDelete.length === 0) {
       const singleId = searchParams.get('id');
       if (singleId) {
         idsToDelete = [singleId];
@@ -199,48 +198,42 @@ export async function DELETE(request) {
       );
     }
 
-    const categoriesWithProducts = await prisma.product.findMany({
+    const productsInCategory = await prisma.product.count({
       where: {
         categoryId: { in: idsToDelete },
       },
-      select: {
-        categoryId: true,
-      },
     });
 
-    if (categoriesWithProducts.length > 0) {
-      const categoryIds = [...new Set(categoriesWithProducts.map((p) => p.categoryId))];
+    if (productsInCategory > 0) {
       return NextResponse.json(
         { 
-          error: 'Tidak dapat menghapus kategori karena beberapa kategori masih memiliki produk terkait', 
-          problematicIds: categoryIds,
+          error: `Tidak dapat menghapus karena ${productsInCategory} produk masih terkait dengan kategori ini.`,
         }, 
         { status: 400 }
       );
     }
     
-    const deletedCategories = await prisma.category.deleteMany({
+    const { count } = await prisma.category.deleteMany({
       where: {
         id: { in: idsToDelete },
       },
     });
-    
-    return NextResponse.json({ 
-      message: `Berhasil menghapus ${deletedCategories.count} kategori`,
-      deletedCount: deletedCategories.count,
-    });
-  } catch (error) {
-    console.error('Error deleting categories:', error);
-    
-    if (error.code === 'P2025') {
+
+    if (count === 0) {
       return NextResponse.json(
-        { error: 'Kategori tidak ditemukan' }, 
+        { error: 'Tidak ada kategori yang ditemukan untuk dihapus' },
         { status: 404 }
       );
     }
     
+    return NextResponse.json({ 
+      message: `Berhasil menghapus ${count} kategori.`,
+      deletedCount: count,
+    });
+  } catch (error) {
+    console.error('Error deleting categories:', error);
     return NextResponse.json(
-      { error: 'Failed to delete categories' }, 
+      { error: 'Gagal menghapus kategori' }, 
       { status: 500 }
     );
   }
