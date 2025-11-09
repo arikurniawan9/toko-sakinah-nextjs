@@ -1,6 +1,6 @@
 import React from 'react';
 import Tooltip from '@/components/Tooltip';
-import { Edit, Trash2, Inbox } from 'lucide-react';
+import { Edit, Trash2, Inbox, Info } from 'lucide-react'; // Import Info icon
 
 const SkeletonRow = () => (
   <tr className="animate-pulse">
@@ -36,6 +36,7 @@ const CategoryTable = ({
   handleSelectRow,
   handleEdit,
   handleDelete,
+  onViewDetails, // Add new prop
   isAdmin,
 }) => {
   const tableHeaderClasses = "px-6 py-3 text-left text-xs font-medium uppercase tracking-wider";
@@ -122,6 +123,14 @@ const CategoryTable = ({
               {isAdmin && (
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex items-center gap-2">
+                    <Tooltip content="Lihat Produk">
+                      <button
+                        onClick={() => onViewDetails(category)}
+                        className="p-2 rounded-full text-blue-600 hover:text-blue-800 hover:bg-blue-100 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-gray-700"
+                      >
+                        <Info className="h-4 w-4" />
+                      </button>
+                    </Tooltip>
                     <Tooltip content="Edit kategori">
                       <button
                         onClick={() => handleEdit(category)}

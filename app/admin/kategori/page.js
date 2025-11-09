@@ -11,6 +11,7 @@ import { useTableSelection } from '@/lib/hooks/useTableSelection';
 import CategoryTable from '@/components/kategori/CategoryTable';
 import CategoryModal from '@/components/kategori/CategoryModal';
 import CategoryToolbar from '@/components/kategori/CategoryToolbar';
+import CategoryDetailModal from '@/components/kategori/CategoryDetailModal'; // Import new modal
 import Pagination from '@/components/produk/Pagination';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import { AlertTriangle, CheckCircle } from 'lucide-react';
@@ -53,6 +54,10 @@ export default function CategoryManagementPage() {
   const [itemToDelete, setItemToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+
+  // State for CategoryDetailModal
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedCategoryForDetail, setSelectedCategoryForDetail] = useState(null);
 
   const handleDelete = (id) => {
     if (!isAdmin) return;
@@ -129,6 +134,12 @@ export default function CategoryManagementPage() {
     }
   };
 
+  // Handler to open CategoryDetailModal
+  const handleViewDetails = (category) => {
+    setSelectedCategoryForDetail(category);
+    setShowDetailModal(true);
+  };
+
   return (
     <ProtectedRoute requiredRole="ADMIN">
       <Sidebar>
@@ -179,6 +190,7 @@ export default function CategoryManagementPage() {
                   handleSelectRow={handleSelectRow}
                   handleEdit={openModalForEdit}
                   handleDelete={handleDelete}
+                  onViewDetails={handleViewDetails} // Pass new handler
                   isAdmin={isAdmin}
                 />
               </div>
@@ -214,6 +226,12 @@ export default function CategoryManagementPage() {
                 title="Konfirmasi Hapus"
                 message={`Apakah Anda yakin ingin menghapus ${Array.isArray(itemToDelete) ? itemToDelete.length : 1} kategori terpilih?`}
                 isLoading={isDeleting}
+              />
+              {/* New CategoryDetailModal */}
+              <CategoryDetailModal
+                isOpen={showDetailModal}
+                onClose={() => setShowDetailModal(false)}
+                category={selectedCategoryForDetail}
               />
             </>
           )}
