@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import ProtectedRoute from '../../../../components/ProtectedRoute';
-import Sidebar from '../../../../components/Sidebar';
 import { useDarkMode } from '../../../../components/DarkModeContext';
 
 export default function PengaturanToko() {
@@ -113,7 +112,7 @@ export default function PengaturanToko() {
 
   return (
     <ProtectedRoute requiredRole="ADMIN">
-      <Sidebar>
+
         <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-6">
             <h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Pengaturan Toko</h1>
@@ -388,7 +387,7 @@ export default function PengaturanToko() {
             </form>
           </div>
         </main>
-      </Sidebar>
+
     </ProtectedRoute>
   );
 }

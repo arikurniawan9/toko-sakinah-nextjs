@@ -1,161 +1,129 @@
-import React from 'react';
-import Tooltip from '@/components/Tooltip';
-import { Edit, Trash2, Inbox, Info } from 'lucide-react'; // Import Info icon
+// components/kategori/CategoryTable.js
+'use client';
 
-const SkeletonRow = () => (
-  <tr className="animate-pulse">
-    <td className="px-6 py-4 whitespace-nowrap">
-      <div className="h-4 w-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
-    </td>
-    <td className="px-6 py-4 whitespace-nowrap">
-      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-    </td>
-    <td className="px-6 py-4">
-      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
-    </td>
-    <td className="px-6 py-4 whitespace-nowrap">
-      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-    </td>
-    <td className="px-6 py-4 whitespace-nowrap">
-      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-    </td>
-    <td className="px-6 py-4 whitespace-nowrap">
-      <div className="flex items-center gap-2">
-        <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
-        <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
-      </div>
-    </td>
-  </tr>
-);
+import { Edit, Trash2, Info } from 'lucide-react';
+import Tooltip from '../Tooltip';
 
-const CategoryTable = ({
+export default function CategoryTable({
   categories,
   loading,
+  darkMode,
   selectedRows,
   handleSelectAll,
   handleSelectRow,
-  handleEdit,
-  handleDelete,
-  onViewDetails, // Add new prop
-  isAdmin,
-}) => {
-  const tableHeaderClasses = "px-6 py-3 text-left text-xs font-medium uppercase tracking-wider";
-
-  if (loading) {
+  onEdit,
+  onDelete,
+  onViewDetails,
+  showActions = true, // Add showActions prop with default true
+}) {
+  if (loading && categories.length === 0) {
     return (
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-700/50">
-            <tr>
-              {isAdmin && <th scope="col" className={tableHeaderClasses}><input type="checkbox" className="h-4 w-4 rounded" disabled /></th>}
-              <th scope="col" className={tableHeaderClasses}>Nama</th>
-              <th scope="col" className={tableHeaderClasses}>Deskripsi</th>
-              <th scope="col" className={tableHeaderClasses}>Tanggal Dibuat</th>
-              <th scope="col" className={tableHeaderClasses}>Tanggal Diubah</th>
-              {isAdmin && <th scope="col" className={tableHeaderClasses}>Aksi</th>}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-            {Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)}
-          </tbody>
-        </table>
-      </div>
-    );
-  }
-
-  if (categories.length === 0) {
-    return (
-      <div className="text-center py-16">
-        <Inbox className="mx-auto h-12 w-12 text-gray-400" />
-        <h3 className="mt-2 text-lg font-semibold">Tidak Ada Kategori</h3>
-        <p className="mt-1 text-sm text-gray-500">Belum ada kategori yang ditambahkan.</p>
+      <div className="animate-pulse">
+        <div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-200'} h-12 rounded mb-4`}></div>
+        <div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-200'} h-96 rounded`}></div>
       </div>
     );
   }
 
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-        <thead className="bg-gray-50 dark:bg-gray-700/50">
+      <table className="min-w-full divide-y divide-pastel-purple-200">
+        <thead className={`${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
           <tr>
-            {isAdmin && (
-              <th scope="col" className={tableHeaderClasses}>
+            {showActions && ( // Conditionally render select all checkbox header
+              <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-12 ${darkMode ? 'text-pastel-purple-300' : 'text-pastel-purple-700'}`}>
                 <input
                   type="checkbox"
                   onChange={handleSelectAll}
                   checked={categories.length > 0 && selectedRows.length === categories.length}
-                  className="h-4 w-4 rounded bg-transparent border-gray-300 dark:border-gray-600 text-purple-600 focus:ring-purple-500"
+                  className={`h-4 w-4 rounded ${darkMode ? 'text-pastel-purple-600 bg-gray-700 border-gray-600' : 'text-pastel-purple-600 focus:ring-pastel-purple-500 border-pastel-purple-300'}`}
                 />
               </th>
             )}
-            <th scope="col" className={tableHeaderClasses}>Nama</th>
-            <th scope="col" className={tableHeaderClasses}>Deskripsi</th>
-            <th scope="col" className={tableHeaderClasses}>Tanggal Dibuat</th>
-            <th scope="col" className={tableHeaderClasses}>Tanggal Diubah</th>
-            {isAdmin && <th scope="col" className={tableHeaderClasses}>Aksi</th>}
+            <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-pastel-purple-300' : 'text-pastel-purple-700'}`}>
+              Nama
+            </th>
+            <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-pastel-purple-300' : 'text-pastel-purple-700'}`}>
+              Deskripsi
+            </th>
+            <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-pastel-purple-300' : 'text-pastel-purple-700'}`}>
+              Jumlah Produk
+            </th>
+            <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-pastel-purple-300' : 'text-pastel-purple-700'}`}>
+              Tanggal Dibuat
+            </th>
+            <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-pastel-purple-300' : 'text-pastel-purple-700'}`}>
+              Aksi
+            </th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-          {categories.map((category) => (
-            <tr key={category.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-              {isAdmin && (
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <input
-                    type="checkbox"
-                    checked={selectedRows.includes(category.id)}
-                    onChange={() => handleSelectRow(category.id)}
-                    className="h-4 w-4 rounded bg-transparent border-gray-300 dark:border-gray-600 text-purple-600 focus:ring-purple-500"
-                  />
-                </td>
-              )}
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                {category.name}
+        <tbody className={`${darkMode ? 'divide-gray-700 bg-gray-950' : 'bg-gray-50'} divide-y ${darkMode ? 'divide-gray-700' : 'divide-pastel-purple-200'}`}>
+          {categories.length === 0 ? (
+            <tr>
+              <td colSpan={showActions ? "6" : "5"} className={`px-6 py-4 text-center text-sm ${darkMode ? 'text-gray-400' : 'text-pastel-purple-700'}`}>
+                {loading ? 'Memuat data...' : 'Tidak ada data kategori ditemukan'}
               </td>
-              <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate">
-                {category.description || '-'}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                {new Date(category.createdAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                {new Date(category.updatedAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}
-              </td>
-              {isAdmin && (
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <div className="flex items-center gap-2">
-                    <Tooltip content="Lihat Produk">
-                      <button
-                        onClick={() => onViewDetails(category)}
-                        className="p-2 rounded-full text-blue-600 hover:text-blue-800 hover:bg-blue-100 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-gray-700"
-                      >
-                        <Info className="h-4 w-4" />
-                      </button>
-                    </Tooltip>
-                    <Tooltip content="Edit kategori">
-                      <button
-                        onClick={() => handleEdit(category)}
-                        className="p-2 rounded-full text-purple-600 hover:text-purple-800 hover:bg-purple-100 dark:text-purple-400 dark:hover:text-purple-300 dark:hover:bg-gray-700"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                    </Tooltip>
-                    <Tooltip content="Hapus kategori">
-                      <button
-                        onClick={() => handleDelete(category.id)}
-                        className="p-2 rounded-full text-red-600 hover:text-red-800 hover:bg-red-100 dark:text-red-500 dark:hover:text-red-400 dark:hover:bg-gray-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </Tooltip>
-                  </div>
-                </td>
-              )}
             </tr>
-          ))}
+          ) : (
+            categories.map((category) => (
+              <tr key={category.id} className={`${darkMode ? 'hover:bg-gray-800' : 'hover:bg-pastel-purple-50'}`}>
+                {showActions && ( // Conditionally render individual checkbox
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      checked={selectedRows.includes(category.id)}
+                      onChange={() => handleSelectRow(category.id)}
+                      className={`h-4 w-4 rounded ${darkMode ? 'text-purple-600 bg-gray-700 border-gray-600' : 'text-purple-600 focus:ring-purple-500 border-gray-300'}`}
+                    />
+                  </td>
+                )}
+                <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                  {category.name}
+                </td>
+                <td className={`px-6 py-4 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'} max-w-xs truncate`}>
+                  {category.description || '-'}
+                </td>
+                <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                  {category.productCount || 0}
+                </td>
+                <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                  {new Date(category.createdAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <Tooltip content="Lihat Detail">
+                    <button
+                      onClick={() => onViewDetails(category)}
+                      className={`mr-2 p-1 rounded ${darkMode ? 'text-blue-400 hover:text-blue-300 hover:bg-gray-700' : 'text-blue-600 hover:text-blue-800 hover:bg-blue-100'}`}
+                    >
+                      <Info className="h-4 w-4" />
+                    </button>
+                  </Tooltip>
+                  {showActions && ( // Conditionally render Edit and Delete buttons
+                    <>
+                      <Tooltip content="Edit kategori">
+                        <button
+                          onClick={() => onEdit(category)}
+                          className={`mr-2 p-1 rounded ${darkMode ? 'text-purple-400 hover:text-purple-300 hover:bg-gray-700' : 'text-purple-600 hover:text-purple-800 hover:bg-purple-100'}`}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                      </Tooltip>
+                      <Tooltip content="Hapus kategori">
+                        <button
+                          onClick={() => onDelete(category.id)}
+                          className={`p-1 rounded ${darkMode ? 'text-red-500 hover:text-red-400 hover:bg-gray-700' : 'text-red-600 hover:text-red-800 hover:bg-red-100'}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </Tooltip>
+                    </>
+                  )}
+                </td>
+              </tr>
+            ))
+          )}
         </tbody>
       </table>
     </div>
   );
-};
-
-export default CategoryTable;
+}

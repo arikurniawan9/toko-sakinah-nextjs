@@ -3,7 +3,6 @@
 
 import { useState, useEffect } from 'react';
 import ProtectedRoute from '../../../components/ProtectedRoute';
-import Sidebar from '../../../components/Sidebar';
 import { useDarkMode } from '../../../components/DarkModeContext';
 
 import { useSupplierTable } from '../../../lib/hooks/useSupplierTable';
@@ -198,14 +197,13 @@ export default function SupplierManagement() {
     }
   };
 
-  return (
-    <ProtectedRoute requiredRole="ADMIN">
-      <Sidebar>
+    return (
+      <ProtectedRoute requiredRole="ADMIN">
         <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
           <h1 className={`text-3xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
             Manajemen Supplier
           </h1>
-
+  
           <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
             <div className="p-4 sm:p-6">
               <SupplierToolbar
@@ -222,7 +220,7 @@ export default function SupplierManagement() {
                 exportLoading={exportLoading}
                 darkMode={darkMode}
               />
-
+  
               {tableError && (
                 <div className={`my-4 p-4 ${darkMode ? 'bg-red-900/30 border-red-700 text-red-200' : 'bg-red-50 border border-red-200 text-red-700'} rounded-md`}>
                   {tableError}
@@ -238,7 +236,7 @@ export default function SupplierManagement() {
                   {formSuccess}
                 </div>
               )}
-
+  
               <SupplierTable
                 key={suppliers.length}
                 suppliers={suppliers}
@@ -260,7 +258,7 @@ export default function SupplierManagement() {
               darkMode={darkMode}
             />
           </div>
-
+  
           <SupplierModal
             showModal={showModal}
             closeModal={closeModal}
@@ -272,7 +270,7 @@ export default function SupplierManagement() {
             setFormError={setFormError}
             darkMode={darkMode}
           />
-
+  
           <ConfirmationModal
             isOpen={showDeleteModal}
             onClose={() => setShowDeleteModal(false)}
@@ -285,7 +283,5 @@ export default function SupplierManagement() {
             isLoading={isDeleting}
           />
         </main>
-      </Sidebar>
-    </ProtectedRoute>
-  );
-}
+      </ProtectedRoute>
+    );}

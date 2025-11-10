@@ -37,7 +37,6 @@ export default function KasirProductView() {
 
   const [categories, setCategories] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
-  const [exportLoading, setExportLoading] = useState(false);
   const [success, setSuccess] = useState('');
 
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -67,50 +66,7 @@ export default function KasirProductView() {
     setShowDetailModal(true);
   };
 
-  const handleExport = async () => {
-    setExportLoading(true);
-    try {
-      const response = await fetch('/api/produk');
-      if (!response.ok) throw new Error('Gagal mengambil data untuk export');
-      const data = await response.json();
 
-      let csvContent = 'Nama,Kode,Harga,Stok,Kategori,Supplier,Deskripsi,Tanggal Dibuat,Tanggal Diubah\n';
-      data.products.forEach(product => {
-        const basePrice = product.priceTiers?.sort((a, b) => a.minQty - b.minQty)[0]?.price || 0;
-        const category = categories.find(cat => cat.id === product.categoryId);
-        const supplier = suppliers.find(supp => supp.id === product.supplierId);
-        const row = [
-          `"${product.name.replace(/"/g, '""')}"`,
-          `"${product.productCode.replace(/"/g, '""')}"`,
-          basePrice,
-          product.stock,
-          `"${category?.name || ''}"`,
-          `"${supplier?.name || ''}"`,
-          `"${product.description ? product.description.replace(/"/g, '""') : ''}"`,
-          `"${new Date(product.createdAt).toLocaleDateString('id-ID')}"`,
-          `"${new Date(product.updatedAt).toLocaleDateString('id-ID')}"`
-        ].join(',');
-        csvContent += row + '\n';
-      });
-
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('download', `produk-${new Date().toISOString().slice(0, 10)}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setSuccess('Data produk berhasil diekspor');
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) {
-      setTableError('Terjadi kesalahan saat export: ' + err.message);
-      setTimeout(() => setTableError(''), 5000);
-    } finally {
-      setExportLoading(false);
-    }
-  };
 
   const error = tableError;
 
@@ -132,8 +88,6 @@ export default function KasirProductView() {
                   setItemsPerPage(value);
                   setCurrentPage(1);
                 }}
-                onExport={handleExport}
-                exportLoading={exportLoading}
                 darkMode={darkMode}
               />
 

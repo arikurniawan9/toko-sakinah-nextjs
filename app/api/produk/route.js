@@ -7,16 +7,16 @@ import { z } from 'zod';
 
 // Zod Schemas for Product
 const priceTierSchema = z.object({
-  minQty: z.number().int().positive({ message: 'Kuantitas minimum harus lebih dari 0' }),
-  price: z.number().int().positive({ message: 'Harga harus lebih dari 0' }),
-  maxQty: z.number().int().positive().optional().nullable(),
+  minQty: z.preprocess((val) => typeof val === 'string' ? parseInt(val) : val, z.number().int().positive({ message: 'Kuantitas minimum harus lebih dari 0' })),
+  price: z.preprocess((val) => typeof val === 'string' ? parseInt(val) : val, z.number().int().positive({ message: 'Harga harus lebih dari 0' })),
+  maxQty: z.preprocess((val) => typeof val === 'string' ? parseInt(val) : val, z.number().int().positive().optional().nullable()).optional().nullable(),
 });
 
 const productSchema = z.object({
   name: z.string().trim().min(1, { message: 'Nama produk wajib diisi' }),
   productCode: z.string().trim().min(1, { message: 'Kode produk wajib diisi' }),
-  stock: z.number().int().min(0, { message: 'Stok tidak boleh negatif' }).default(0),
-  purchasePrice: z.number().int().min(0, { message: 'Harga beli tidak boleh negatif' }).default(0),
+  stock: z.preprocess((val) => typeof val === 'string' ? parseInt(val) : val, z.number().int().min(0, { message: 'Stok tidak boleh negatif' }).default(0)),
+  purchasePrice: z.preprocess((val) => typeof val === 'string' ? parseInt(val) : val, z.number().int().min(0, { message: 'Harga beli tidak boleh negatif' }).default(0)),
   categoryId: z.string().min(1, { message: 'Kategori wajib dipilih' }),
   supplierId: z.string().min(1, { message: 'Supplier wajib dipilih' }),
   description: z.string().trim().optional().nullable(),
@@ -100,12 +100,15 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Kode produk sudah digunakan' }, { status: 409 });
     }
     
+    // Pisahkan field categoryId dan supplierId dari productData
+    const { categoryId, supplierId, ...restProductData } = productData;
+    
     const createdProduct = await prisma.$transaction(async (tx) => {
       const product = await tx.product.create({
         data: {
-          ...productData,
-          category: { connect: { id: productData.categoryId } },
-          supplier: { connect: { id: productData.supplierId } },
+          ...restProductData,
+          category: { connect: { id: categoryId } },
+          supplier: { connect: { id: supplierId } },
         },
       });
 
@@ -149,13 +152,16 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'Kode produk sudah digunakan' }, { status: 409 });
     }
     
+    // Pisahkan field categoryId dan supplierId dari productData
+    const { categoryId, supplierId, ...restProductData } = productData;
+    
     const updatedProduct = await prisma.$transaction(async (tx) => {
       const product = await tx.product.update({
         where: { id },
         data: {
-          ...productData,
-          category: { connect: { id: productData.categoryId } },
-          supplier: { connect: { id: productData.supplierId } },
+          ...restProductData,
+          category: { connect: { id: categoryId } },
+          supplier: { connect: { id: supplierId } },
         },
       });
 

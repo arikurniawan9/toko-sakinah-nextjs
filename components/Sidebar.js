@@ -35,6 +35,7 @@ import { useSidebar } from './SidebarContext';
 import Tooltip from './Tooltip';
 
 const Sidebar = ({ children }) => {
+  const [hasMounted, setHasMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -46,6 +47,7 @@ const Sidebar = ({ children }) => {
   const { data: session } = useSession(); // Get session data
 
   useEffect(() => {
+    setHasMounted(true);
     const checkIfMobile = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
@@ -76,6 +78,10 @@ const Sidebar = ({ children }) => {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
+  if (!hasMounted) {
+    return null;
+  }
+  
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen();

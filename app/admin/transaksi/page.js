@@ -5,7 +5,6 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 
 import ProtectedRoute from '../../../components/ProtectedRoute';
-import Sidebar from '../../../components/Sidebar';
 import { useDarkMode } from '../../../components/DarkModeContext';
 import ProductSearch from '../../../components/kasir/transaksi/ProductSearch';
 import TransactionCart from '../../../components/kasir/transaksi/TransactionCart';
@@ -332,78 +331,76 @@ export default function AdminTransaction() {
 
   return (
     <ProtectedRoute requiredRole="ADMIN">
-      <Sidebar>
-        <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-50'}`}>
-          <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-50'}`}>
+        <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <ProductSearch
-                searchTerm={searchTerm}
-                setSearchTerm={setSearchTerm}
-                handleScan={handleScan}
-                products={products}
-                addToCart={addToCart}
-                isProductListLoading={isProductListLoading}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <ProductSearch
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              handleScan={handleScan}
+              products={products}
+              addToCart={addToCart}
+              isProductListLoading={isProductListLoading}
+              darkMode={darkMode}
+              getTierPrice={getTierPrice}
+              total={calculation?.grandTotal || 0} // Pass total to ProductSearch
+            />
+
+            <div className="space-y-6">
+              <MemberSelection
+                selectedMember={selectedMember}
+                onSelectMember={setSelectedMember}
+                onRemoveMember={() => setSelectedMember(null)}
+                members={members}
                 darkMode={darkMode}
-                getTierPrice={getTierPrice}
-                total={calculation?.grandTotal || 0} // Pass total to ProductSearch
+                isOpen={showMembersModal}
+                onToggle={setShowMembersModal}
               />
-
-              <div className="space-y-6">
-                <MemberSelection
-                  selectedMember={selectedMember}
-                  onSelectMember={setSelectedMember}
-                  onRemoveMember={() => setSelectedMember(null)}
-                  members={members}
-                  darkMode={darkMode}
-                  isOpen={showMembersModal}
-                  onToggle={setShowMembersModal}
-                />
-                <AttendantSelection
-                  selectedAttendant={selectedAttendant}
-                  onSelectAttendant={setSelectedAttendant}
-                  onRemoveAttendant={() => setSelectedAttendant(null)}
-                  attendants={attendants}
-                  darkMode={darkMode}
-                  isOpen={showAttendantsModal}
-                  onToggle={setShowAttendantsModal}
-                />
-                <TransactionCart
-                  cart={calculation?.items || []}
-                  updateQuantity={updateQuantity}
-                  removeFromCart={removeFromCart}
-                  darkMode={darkMode}
-                />
-                <PaymentSummary
-                  calculation={calculation}
-                  payment={payment}
-                  setPayment={setPayment}
-                  processPayment={handleInitiatePayment}
-                  loading={loading}
-                  darkMode={darkMode}
-                  additionalDiscount={additionalDiscount}
-                  setAdditionalDiscount={setAdditionalDiscount}
-                  sessionStatus={session?.status ?? 'loading'}
-                />
-              </div>
+              <AttendantSelection
+                selectedAttendant={selectedAttendant}
+                onSelectAttendant={setSelectedAttendant}
+                onRemoveAttendant={() => setSelectedAttendant(null)}
+                attendants={attendants}
+                darkMode={darkMode}
+                isOpen={showAttendantsModal}
+                onToggle={setShowAttendantsModal}
+              />
+              <TransactionCart
+                cart={calculation?.items || []}
+                updateQuantity={updateQuantity}
+                removeFromCart={removeFromCart}
+                darkMode={darkMode}
+              />
+              <PaymentSummary
+                calculation={calculation}
+                payment={payment}
+                setPayment={setPayment}
+                processPayment={handleInitiatePayment}
+                loading={loading}
+                darkMode={darkMode}
+                additionalDiscount={additionalDiscount}
+                setAdditionalDiscount={setAdditionalDiscount}
+                sessionStatus={session?.status ?? 'loading'}
+              />
             </div>
           </div>
         </div>
-        <div className="printable-receipt">
-          <Receipt ref={receiptRef} receiptData={receiptData} />
-        </div>
-        <ConfirmationModal
-          isOpen={isConfirmModalOpen}
-          onClose={() => setIsConfirmModalOpen(false)}
-          onConfirm={processPayment}
-          title="Konfirmasi Transaksi"
-          message="Apakah Anda yakin ingin menyimpan dan menyelesaikan transaksi ini?"
-          confirmText="Simpan"
-          cancelText="Batal"
-          darkMode={darkMode}
-          isLoading={loading}
-        />
-      </Sidebar>
+      </div>
+      <div className="printable-receipt">
+        <Receipt ref={receiptRef} receiptData={receiptData} />
+      </div>
+      <ConfirmationModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        onConfirm={processPayment}
+        title="Konfirmasi Transaksi"
+        message="Apakah Anda yakin ingin menyimpan dan menyelesaikan transaksi ini?"
+        confirmText="Simpan"
+        cancelText="Batal"
+        darkMode={darkMode}
+        isLoading={loading}
+      />
     </ProtectedRoute>
   );
 }

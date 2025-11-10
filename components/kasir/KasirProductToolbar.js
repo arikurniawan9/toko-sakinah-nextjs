@@ -1,20 +1,17 @@
 // components/kasir/KasirProductToolbar.js
 'use client';
 
-import { Download, Search, Folder, X } from 'lucide-react';
-import Tooltip from '../Tooltip';
+import { Search, X } from 'lucide-react';
 
 export default function KasirProductToolbar({ 
   searchTerm, 
   setSearchTerm, 
   itemsPerPage, 
-  setItemsPerPage, 
-  onExport, 
-  exportLoading, 
-  darkMode 
+  setItemsPerPage,
+  darkMode
 }) {
   return (
-    <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
+    <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
       {/* Left side: Search and Filters */}
       <div className="flex-grow flex flex-col sm:flex-row gap-4">
         <div className="relative flex-grow">
@@ -52,35 +49,6 @@ export default function KasirProductToolbar({
             <option value={50}>50/halaman</option>
           </select>
         </div>
-      </div>
-
-      {/* Right side: Action Buttons (simplified for cashier) */}
-      <div className="flex items-center justify-start md:justify-end flex-wrap gap-2">
-        <Tooltip content="Export data ke file">
-          <button
-            onClick={onExport}
-            disabled={exportLoading}
-            className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${darkMode ? 'text-gray-200 bg-gray-800 hover:bg-gray-700' : 'text-gray-700 bg-gray-100 hover:bg-gray-200'}`}
-          >
-            {exportLoading ? (
-              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            ) : (
-              <Download className="h-4 w-4" />
-            )}
-          </button>
-        </Tooltip>
-        <Tooltip content="Template Produk">
-          <a
-            href="/templates/template-produk.xlsx"
-            download="template-produk.xlsx"
-            className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${darkMode ? 'text-gray-200 bg-gray-800 hover:bg-gray-700' : 'text-gray-700 bg-gray-100 hover:bg-gray-200'}`}
-          >
-            <Folder className="h-4 w-4" />
-          </a>
-        </Tooltip>
       </div>
     </div>
   );

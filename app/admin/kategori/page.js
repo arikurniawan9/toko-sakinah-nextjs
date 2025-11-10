@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import Sidebar from '@/components/Sidebar';
 import { useDarkMode } from '@/components/DarkModeContext';
 import { useSession } from 'next-auth/react';
 import { useCategoryTable } from '@/lib/hooks/useCategoryTable';
@@ -145,101 +144,99 @@ export default function CategoryManagementPage() {
 
   return (
     <ProtectedRoute requiredRole="ADMIN">
-      <Sidebar>
-        <main className={`flex-1 p-4 sm:p-6 lg:p-8 min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
-          <div className="max-w-7xl mx-auto">
-            <div className="mb-8">
-              <h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                Manajemen Kategori
-              </h1>
-              <p className={`mt-1 text-lg ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                Kelola semua kategori produk Anda di satu tempat.
-              </p>
-            </div>
-
-            <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'} border overflow-hidden`}>
-              <div className="p-4 sm:p-6">
-                <CategoryToolbar
-                  searchTerm={searchTerm}
-                  setSearchTerm={setSearchTerm}
-                  itemsPerPage={pagination.limit}
-                  setItemsPerPage={(value) => setPagination(p => ({ ...p, limit: value, page: 1 }))}
-                  onAddNew={openModalForCreate}
-                  onDeleteMultiple={handleDeleteMultiple}
-                  selectedRowsCount={selectedRows.length}
-                  onExport={handleExport}
-                  exportLoading={exportLoading}
-                  isAdmin={isAdmin}
-                />
-
-                {tableError && (
-                  <div className="flex items-center p-4 my-4 rounded-lg bg-red-500/10 text-red-400">
-                    <AlertTriangle className="h-5 w-5 mr-3" />
-                    <p className="text-sm font-medium">{tableError}</p>
-                  </div>
-                )}
-                {pageSuccessMessage && ( // Use page-level state
-                  <div className="flex items-center p-4 my-4 rounded-lg bg-green-500/10 text-green-400">
-                    <CheckCircle className="h-5 w-5 mr-3" />
-                    <p className="text-sm font-medium">{pageSuccessMessage}</p>
-                  </div>
-                )}
-
-                <CategoryTable
-                  categories={categories}
-                  loading={loading}
-                  selectedRows={selectedRows}
-                  handleSelectAll={handleSelectAll}
-                  handleSelectRow={handleSelectRow}
-                  handleEdit={openModalForEdit}
-                  handleDelete={handleDelete}
-                  onViewDetails={handleViewDetails} // Pass new handler
-                  isAdmin={isAdmin}
-                />
-              </div>
-              
-              {pagination.totalPages > 1 && (
-                <Pagination
-                  currentPage={pagination.page}
-                  totalPages={pagination.totalPages}
-                  setCurrentPage={(page) => setPagination(p => ({ ...p, page }))}
-                  itemsPerPage={pagination.limit}
-                  totalItems={pagination.total}
-                />
-              )}
-            </div>
+      <main className={`flex-1 p-4 sm:p-6 lg:p-8 min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-8">
+            <h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+              Manajemen Kategori
+            </h1>
+            <p className={`mt-1 text-lg ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              Kelola semua kategori produk Anda di satu tempat.
+            </p>
           </div>
 
-          {isAdmin && (
-            <>
-              <CategoryModal
-                showModal={showModal}
-                closeModal={closeModal}
-                handleSave={handleSave}
-                formData={formData}
-                handleInputChange={handleInputChange}
-                editingCategory={editingCategory}
-                error={formError}
-                setFormError={setFormError}
+          <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'} border overflow-hidden`}>
+            <div className="p-4 sm:p-6">
+              <CategoryToolbar
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+                itemsPerPage={pagination.limit}
+                setItemsPerPage={(value) => setPagination(p => ({ ...p, limit: value, page: 1 }))}
+                onAddNew={openModalForCreate}
+                onDeleteMultiple={handleDeleteMultiple}
+                selectedRowsCount={selectedRows.length}
+                onExport={handleExport}
+                exportLoading={exportLoading}
+                isAdmin={isAdmin}
               />
-              <ConfirmationModal
-                isOpen={showDeleteModal}
-                onClose={() => setShowDeleteModal(false)}
-                onConfirm={handleConfirmDelete}
-                title="Konfirmasi Hapus"
-                message={`Apakah Anda yakin ingin menghapus ${Array.isArray(itemToDelete) ? itemToDelete.length : 1} kategori terpilih?`}
-                isLoading={isDeleting}
+
+              {tableError && (
+                <div className="flex items-center p-4 my-4 rounded-lg bg-red-500/10 text-red-400">
+                  <AlertTriangle className="h-5 w-5 mr-3" />
+                  <p className="text-sm font-medium">{tableError}</p>
+                </div>
+              )}
+              {pageSuccessMessage && ( // Use page-level state
+                <div className="flex items-center p-4 my-4 rounded-lg bg-green-500/10 text-green-400">
+                  <CheckCircle className="h-5 w-5 mr-3" />
+                  <p className="text-sm font-medium">{pageSuccessMessage}</p>
+                </div>
+              )}
+
+              <CategoryTable
+                categories={categories}
+                loading={loading}
+                selectedRows={selectedRows}
+                handleSelectAll={handleSelectAll}
+                handleSelectRow={handleSelectRow}
+                handleEdit={openModalForEdit}
+                handleDelete={handleDelete}
+                onViewDetails={handleViewDetails} // Pass new handler
+                isAdmin={isAdmin}
               />
-              {/* New CategoryDetailModal */}
-              <CategoryDetailModal
-                isOpen={showDetailModal}
-                onClose={() => setShowDetailModal(false)}
-                category={selectedCategoryForDetail}
+            </div>
+            
+            {pagination.totalPages > 1 && (
+              <Pagination
+                currentPage={pagination.page}
+                totalPages={pagination.totalPages}
+                setCurrentPage={(page) => setPagination(p => ({ ...p, page }))}
+                itemsPerPage={pagination.limit}
+                totalItems={pagination.total}
               />
-            </>
-          )}
-        </main>
-      </Sidebar>
+            )}
+          </div>
+        </div>
+
+        {isAdmin && (
+          <>
+            <CategoryModal
+              showModal={showModal}
+              closeModal={closeModal}
+              handleSave={handleSave}
+              formData={formData}
+              handleInputChange={handleInputChange}
+              editingCategory={editingCategory}
+              error={formError}
+              setFormError={setFormError}
+            />
+            <ConfirmationModal
+              isOpen={showDeleteModal}
+              onClose={() => setShowDeleteModal(false)}
+              onConfirm={handleConfirmDelete}
+              title="Konfirmasi Hapus"
+              message={`Apakah Anda yakin ingin menghapus ${Array.isArray(itemToDelete) ? itemToDelete.length : 1} kategori terpilih?`}
+              isLoading={isDeleting}
+            />
+            {/* New CategoryDetailModal */}
+            <CategoryDetailModal
+              isOpen={showDetailModal}
+              onClose={() => setShowDetailModal(false)}
+              category={selectedCategoryForDetail}
+            />
+          </>
+        )}
+      </main>
     </ProtectedRoute>
   );
 }

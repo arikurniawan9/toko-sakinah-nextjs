@@ -3,12 +3,15 @@
 
 import { DarkModeProvider } from '../../components/DarkModeContext';
 import { SidebarProvider } from '../../components/SidebarContext';
+import Sidebar from '../../components/Sidebar';
 
 export default function AdminLayout({ children }) {
   return (
     <DarkModeProvider>
       <SidebarProvider>
-        {children}
+        <Sidebar>
+          {children}
+        </Sidebar>
       </SidebarProvider>
     </DarkModeProvider>
   );

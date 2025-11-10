@@ -21,10 +21,10 @@ export async function GET(request) {
     const page = parseInt(searchParams.get('page')) || 1;
     const limit = parseInt(searchParams.get('limit')) || 10;
     const search = searchParams.get('search') || '';
-    
+
     const offset = (page - 1) * limit;
-    
-    const where = search 
+
+    const where = search
       ? {
           OR: [
             { name: { contains: search } },
@@ -33,15 +33,27 @@ export async function GET(request) {
         }
       : {};
 
-    const categories = await prisma.category.findMany({
+    // Dapatkan kategori dengan jumlah produk masing-masing
+    const categoriesWithProductCount = await prisma.category.findMany({
       where,
       skip: offset,
       take: limit,
       orderBy: { createdAt: 'desc' },
+      include: {
+        _count: {
+          select: { products: true }
+        }
+      }
     });
 
+    // Sesuaikan nama field agar sesuai dengan nama yang digunakan di UI
+    const categories = categoriesWithProductCount.map(cat => ({
+      ...cat,
+      productCount: cat._count.products
+    }));
+
     const totalCount = await prisma.category.count({ where });
-    
+
     return NextResponse.json({
       categories,
       pagination: {
@@ -54,7 +66,7 @@ export async function GET(request) {
   } catch (error) {
     console.error('Error fetching categories:', error);
     return NextResponse.json(
-      { error: 'Gagal mengambil data kategori' }, 
+      { error: 'Gagal mengambil data kategori' },
       { status: 500 }
     );
   }
@@ -70,25 +82,25 @@ export async function POST(request) {
   try {
     const body = await request.json();
     const { name, description } = categorySchema.parse(body);
-    
+
     const existingCategory = await prisma.category.findFirst({
       where: { name: { equals: name } },
     });
-    
+
     if (existingCategory) {
       return NextResponse.json(
-        { error: 'Nama kategori sudah digunakan' }, 
+        { error: 'Nama kategori sudah digunakan' },
         { status: 409 } // 409 Conflict is more appropriate
       );
     }
-    
+
     const category = await prisma.category.create({
       data: {
         name,
         description,
       },
     });
-    
+
     return NextResponse.json(category, { status: 201 }); // 201 Created
   } catch (error) {
     console.error('Error creating category:', error);
@@ -99,7 +111,7 @@ export async function POST(request) {
       );
     }
     return NextResponse.json(
-      { error: 'Gagal membuat kategori' }, 
+      { error: 'Gagal membuat kategori' },
       { status: 500 }
     );
   }
@@ -115,21 +127,21 @@ export async function PUT(request) {
   try {
     const body = await request.json();
     const { id, name, description } = categoryUpdateSchema.parse(body);
-    
+
     const existingCategory = await prisma.category.findFirst({
-      where: { 
+      where: {
         name: { equals: name },
         id: { not: id },
       },
     });
-    
+
     if (existingCategory) {
       return NextResponse.json(
-        { error: 'Nama kategori sudah digunakan' }, 
+        { error: 'Nama kategori sudah digunakan' },
         { status: 409 } // 409 Conflict
       );
     }
-    
+
     const updatedCategory = await prisma.category.update({
       where: { id },
       data: {
@@ -137,27 +149,27 @@ export async function PUT(request) {
         description,
       },
     });
-    
+
     return NextResponse.json(updatedCategory);
   } catch (error) {
     console.error('Error updating category:', error);
-    
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: error.errors[0].message },
         { status: 400 }
       );
     }
-    
+
     if (error.code === 'P2025') {
       return NextResponse.json(
-        { error: 'Kategori tidak ditemukan' }, 
+        { error: 'Kategori tidak ditemukan' },
         { status: 404 }
       );
     }
-    
+
     return NextResponse.json(
-      { error: 'Gagal memperbarui kategori' }, 
+      { error: 'Gagal memperbarui kategori' },
       { status: 500 }
     );
   }
@@ -193,7 +205,7 @@ export async function DELETE(request) {
 
     if (idsToDelete.length === 0) {
       return NextResponse.json(
-        { error: 'ID kategori atau array ID harus disediakan' }, 
+        { error: 'ID kategori atau array ID harus disediakan' },
         { status: 400 }
       );
     }
@@ -206,13 +218,13 @@ export async function DELETE(request) {
 
     if (productsInCategory > 0) {
       return NextResponse.json(
-        { 
+        {
           error: `Tidak dapat menghapus karena ${productsInCategory} produk masih terkait dengan kategori ini.`,
-        }, 
+        },
         { status: 400 }
       );
     }
-    
+
     const { count } = await prisma.category.deleteMany({
       where: {
         id: { in: idsToDelete },
@@ -225,15 +237,15 @@ export async function DELETE(request) {
         { status: 404 }
       );
     }
-    
-    return NextResponse.json({ 
+
+    return NextResponse.json({
       message: `Berhasil menghapus ${count} kategori.`,
       deletedCount: count,
     });
   } catch (error) {
     console.error('Error deleting categories:', error);
     return NextResponse.json(
-      { error: 'Gagal menghapus kategori' }, 
+      { error: 'Gagal menghapus kategori' },
       { status: 500 }
     );
   }

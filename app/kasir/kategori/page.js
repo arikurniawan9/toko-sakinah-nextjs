@@ -1,7 +1,7 @@
 // app/kasir/kategori/page.js
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ProtectedRoute from '../../../components/ProtectedRoute';
 import Sidebar from '../../../components/Sidebar';
 import { useDarkMode } from '../../../components/DarkModeContext';
@@ -11,8 +11,8 @@ import { useCategoryTable } from '../../../lib/hooks/useCategoryTable';
 
 import CategoryTable from '../../../components/kategori/CategoryTable';
 import KasirCategoryToolbar from '../../../components/kasir/KasirCategoryToolbar';
-import Pagination from '../../../components/produk/Pagination'; // Reusing product pagination
-import CategoryProductsModal from '../../../components/kasir/CategoryProductsModal'; // Import the new modal
+import Pagination from '../../../components/produk/Pagination';
+import KategoriDetailModal from '../../../components/kategori/KategoriDetailModal';
 
 export default function KasirCategoryView() {
   const { darkMode } = useDarkMode();
@@ -23,60 +23,32 @@ export default function KasirCategoryView() {
     categories,
     loading,
     error: tableError,
-    setError: setTableError,
     searchTerm,
     setSearchTerm,
-    pagination, // Get pagination object
-    setPagination, // Get setPagination function
+    itemsPerPage,
+    setItemsPerPage,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    totalCategories,
     fetchCategories,
+    setError: setTableError,
   } = useCategoryTable();
 
-  const [exportLoading, setExportLoading] = useState(false); // This state is no longer needed
   const [success, setSuccess] = useState('');
-  
-  const [showProductsModal, setShowProductsModal] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState(null);
 
-  const handleCategoryClick = (category) => {
-    setSelectedCategory(category);
-    setShowProductsModal(true);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedCategoryForDetail, setSelectedCategoryForDetail] = useState(null);
+
+  useEffect(() => {
+    // Fetch initial data if needed
+    fetchCategories();
+  }, [fetchCategories]);
+
+  const handleViewDetails = (category) => {
+    setSelectedCategoryForDetail(category);
+    setShowDetailModal(true);
   };
-
-  // The handleExport function is no longer needed
-  // const handleExport = async () => {
-  //   setExportLoading(true);
-  //   try {
-  //     const response = await fetch('/api/kategori?limit=0'); // Fetch all categories for export
-  //     if (!response.ok) throw new Error('Gagal mengambil data untuk export');
-  //     const data = await response.json();
-
-  //     let csvContent = 'Nama,Deskripsi,Tanggal Dibuat,Tanggal Diubah\n';
-  //     data.categories.forEach(category => {
-  //       const name = `"${(category.name || '').replace(/"/g, '""')}"`;
-  //       const description = `"${(category.description || '').replace(/"/g, '""')}"`;
-  //       const createdAt = `"${new Date(category.createdAt).toLocaleString('id-ID')}"`;
-  //       const updatedAt = `"${new Date(category.updatedAt).toLocaleString('id-ID')}"`;
-  //       csvContent += `${name},${description},${createdAt},${updatedAt}\n`;
-  //     });
-
-  //     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  //     const link = document.createElement('a');
-  //     const url = URL.createObjectURL(blob);
-  //     link.setAttribute('href', url);
-  //     link.setAttribute('download', `kategori-${new Date().toISOString().slice(0, 10)}.csv`);
-  //     link.style.visibility = 'hidden';
-  //     document.body.appendChild(link);
-  //     link.click();
-  //     document.body.removeChild(link);
-  //     setSuccess('Data kategori berhasil diekspor');
-  //     setTimeout(() => setSuccess(''), 3000);
-  //   } catch (err) {
-  //     setTableError('Terjadi kesalahan saat mengekspor kategori: ' + err.message);
-  //     setTimeout(() => setTableError(''), 5000);
-  //   } finally {
-  //     setExportLoading(false);
-  //   }
-  // };
 
   const error = tableError;
 
@@ -93,10 +65,11 @@ export default function KasirCategoryView() {
               <KasirCategoryToolbar
                 searchTerm={searchTerm}
                 setSearchTerm={setSearchTerm}
-                itemsPerPage={pagination.limit}
-                setItemsPerPage={(value) => setPagination(p => ({ ...p, limit: value, page: 1 }))}
-                // onExport={handleExport} // Removed
-                // exportLoading={exportLoading} // Removed
+                itemsPerPage={itemsPerPage}
+                setItemsPerPage={(value) => {
+                  setItemsPerPage(value);
+                  setCurrentPage(1);
+                }}
                 darkMode={darkMode}
               />
 
@@ -115,28 +88,32 @@ export default function KasirCategoryView() {
                 categories={categories}
                 loading={loading}
                 darkMode={darkMode}
-                selectedRows={[]}
-                onViewDetails={handleCategoryClick}
-                showActions={false}
+                selectedRows={[]} // Cashier doesn't need selection
+                handleSelectAll={() => {}} // Cashier doesn't need selection
+                handleSelectRow={() => {}} // Cashier doesn't need selection
+                onEdit={() => {}} // Cashier doesn't need edit
+                onDelete={() => {}} // Cashier doesn't need delete
+                onViewDetails={handleViewDetails}
+                showActions={false} // Hide action column for cashier
               />
             </div>
             <Pagination
-              currentPage={pagination.page}
-              totalPages={pagination.totalPages}
-              setCurrentPage={(page) => setPagination(p => ({ ...p, page }))}
-              itemsPerPage={pagination.limit}
-              totalItems={pagination.total}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              setCurrentPage={setCurrentPage}
+              itemsPerPage={itemsPerPage}
+              totalItems={totalCategories}
               darkMode={darkMode}
             />
           </div>
-        </main>
-        {showProductsModal && (
-          <CategoryProductsModal
-            category={selectedCategory}
-            onClose={() => setShowProductsModal(false)}
+
+          <KategoriDetailModal
+            isOpen={showDetailModal}
+            onClose={() => setShowDetailModal(false)}
+            category={selectedCategoryForDetail}
             darkMode={darkMode}
           />
-        )}
+        </main>
       </Sidebar>
     </ProtectedRoute>
   );

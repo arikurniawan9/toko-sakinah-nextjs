@@ -3,7 +3,6 @@
 
 import { useState, useEffect } from 'react';
 import ProtectedRoute from '../../../components/ProtectedRoute';
-import Sidebar from '../../../components/Sidebar';
 import { useDarkMode } from '../../../components/DarkModeContext';
 
 import { useKasirTable } from '../../../lib/hooks/useKasirTable';
@@ -199,92 +198,90 @@ export default function CashierManagement() {
 
   return (
     <ProtectedRoute requiredRole="ADMIN">
-      <Sidebar>
-        <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
-          <h1 className={`text-3xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-            Manajemen Kasir
-          </h1>
+      <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
+        <h1 className={`text-3xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+          Manajemen Kasir
+        </h1>
 
-          <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
-            <div className="p-4 sm:p-6">
-              <KasirToolbar
-                searchTerm={searchTerm}
-                setSearchTerm={setSearchTerm}
-                itemsPerPage={itemsPerPage}
-                setItemsPerPage={setItemsPerPage}
-                onAddNew={openModalForCreate}
-                onDeleteMultiple={handleDeleteMultiple}
-                selectedRowsCount={selectedRows.length}
-                onExport={handleExport}
-                onImport={handleImport}
-                importLoading={importLoading}
-                exportLoading={exportLoading}
-                darkMode={darkMode}
-              />
-
-              {tableError && (
-                <div className={`my-4 p-4 ${darkMode ? 'bg-red-900/30 border-red-700 text-red-200' : 'bg-red-50 border border-red-200 text-red-700'} rounded-md`}>
-                  {tableError}
-                </div>
-              )}
-              {formError && (
-                <div className={`my-4 p-4 ${darkMode ? 'bg-red-900/30 border-red-700 text-red-200' : 'bg-red-50 border border-red-200 text-red-700'} rounded-md`}>
-                  {formError}
-                </div>
-              )}
-              {(formSuccess || (formSuccess === '' && !formError)) && ( // Display formSuccess if it exists or if it's empty and no formError
-                <div className={`my-4 p-4 ${darkMode ? 'bg-green-900/30 border-green-700 text-green-200' : 'bg-green-50 border-green-200 text-green-700'} rounded-md`}>
-                  {formSuccess}
-                </div>
-              )}
-
-              <KasirTable
-                key={cashiers.length}
-                cashiers={cashiers}
-                loading={loading}
-                darkMode={darkMode}
-                selectedRows={selectedRows}
-                handleSelectAll={handleSelectAll}
-                handleSelectRow={handleSelectRow}
-                handleEdit={openModalForEdit}
-                handleDelete={handleDelete}
-              />
-            </div>
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              setCurrentPage={setCurrentPage}
+        <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
+          <div className="p-4 sm:p-6">
+            <KasirToolbar
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
               itemsPerPage={itemsPerPage}
-              totalProducts={totalCashiers} // Renamed from totalProducts to totalCashiers
+              setItemsPerPage={setItemsPerPage}
+              onAddNew={openModalForCreate}
+              onDeleteMultiple={handleDeleteMultiple}
+              selectedRowsCount={selectedRows.length}
+              onExport={handleExport}
+              onImport={handleImport}
+              importLoading={importLoading}
+              exportLoading={exportLoading}
               darkMode={darkMode}
             />
+
+            {tableError && (
+              <div className={`my-4 p-4 ${darkMode ? 'bg-red-900/30 border-red-700 text-red-200' : 'bg-red-50 border border-red-200 text-red-700'} rounded-md`}>
+                {tableError}
+              </div>
+            )}
+            {formError && (
+              <div className={`my-4 p-4 ${darkMode ? 'bg-red-900/30 border-red-700 text-red-200' : 'bg-red-50 border border-red-200 text-red-700'} rounded-md`}>
+                {formError}
+              </div>
+            )}
+            {(formSuccess || (formSuccess === '' && !formError)) && ( // Display formSuccess if it exists or if it's empty and no formError
+              <div className={`my-4 p-4 ${darkMode ? 'bg-green-900/30 border-green-700 text-green-200' : 'bg-green-50 border-green-200 text-green-700'} rounded-md`}>
+                {formSuccess}
+              </div>
+            )}
+
+            <KasirTable
+              key={cashiers.length}
+              cashiers={cashiers}
+              loading={loading}
+              darkMode={darkMode}
+              selectedRows={selectedRows}
+              handleSelectAll={handleSelectAll}
+              handleSelectRow={handleSelectRow}
+              handleEdit={openModalForEdit}
+              handleDelete={handleDelete}
+            />
           </div>
-
-          <KasirModal
-            showModal={showModal}
-            closeModal={closeModal}
-            handleSave={handleSave}
-            formData={formData}
-            handleInputChange={handleInputChange}
-            editingCashier={editingCashier}
-            error={formError}
-            setFormError={setFormError}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            setCurrentPage={setCurrentPage}
+            itemsPerPage={itemsPerPage}
+            totalProducts={totalCashiers} // Renamed from totalProducts to totalCashiers
             darkMode={darkMode}
           />
+        </div>
 
-          <ConfirmationModal
-            isOpen={showDeleteModal}
-            onClose={() => setShowDeleteModal(false)}
-            onConfirm={handleConfirmDelete}
-            title="Konfirmasi Hapus"
-            message={`Apakah Anda yakin ingin menghapus ${ 
-              Array.isArray(itemToDelete) ? itemToDelete.length + ' kasir' : 'kasir ini'
-            }?`}
-            darkMode={darkMode}
-            isLoading={isDeleting}
-          />
-        </main>
-      </Sidebar>
+        <KasirModal
+          showModal={showModal}
+          closeModal={closeModal}
+          handleSave={handleSave}
+          formData={formData}
+          handleInputChange={handleInputChange}
+          editingCashier={editingCashier}
+          error={formError}
+          setFormError={setFormError}
+          darkMode={darkMode}
+        />
+
+        <ConfirmationModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={handleConfirmDelete}
+          title="Konfirmasi Hapus"
+          message={`Apakah Anda yakin ingin menghapus ${ 
+            Array.isArray(itemToDelete) ? itemToDelete.length + ' kasir' : 'kasir ini'
+          }?`}
+          darkMode={darkMode}
+          isLoading={isDeleting}
+        />
+      </main>
     </ProtectedRoute>
   );
 }
