@@ -6,6 +6,7 @@ import ProtectedRoute from '../../../components/ProtectedRoute';
 import Sidebar from '../../../components/Sidebar';
 import { useDarkMode } from '../../../components/DarkModeContext';
 import { useSession } from 'next-auth/react';
+import { Home } from 'lucide-react';
 
 import { useProductTable } from '../../../lib/hooks/useProductTable';
 
@@ -74,9 +75,27 @@ export default function KasirProductView() {
     <ProtectedRoute requiredRole="CASHIER">
       <Sidebar>
         <main className={`w-full px-4 sm:px-6 lg:px-8 py-8 ${darkMode ? 'bg-gray-900 text-gray-100' : ''}`}>
-          <h1 className={`text-3xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-            Daftar Produk
-          </h1>
+          <div className="flex justify-between items-center mb-6">
+            <h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+              Daftar Produk
+            </h1>
+            <div className="group relative">
+              <button
+                onClick={() => window.location.href = '/kasir'}
+                className={`p-2 rounded-md ${
+                  darkMode
+                    ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                    : 'bg-purple-600 hover:bg-purple-700 text-white'
+                } transition-colors`}
+                title="Dashboard"
+              >
+                <Home size={20} />
+              </button>
+              <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 hidden group-hover:block bg-gray-800 text-white text-xs py-1 px-2 rounded">
+                Dashboard
+              </span>
+            </div>
+          </div>
 
           <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-pastel-purple-700' : 'bg-white border-gray-200'} border`}>
             <div className="p-4 sm:p-6">

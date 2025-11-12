@@ -1,0 +1,45 @@
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .printable-receipt, .printable-receipt * {
+    visibility: visible;
+  }
+  .printable-receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: 3.5in;
+    margin: 0 auto;
+    padding: 0;
+    box-shadow: none;
+    background: white;
+    color: black;
+  }
+  .receipt-content {
+    width: 100%;
+    max-width: 3.5in;
+    margin: 0 auto;
+    padding: 0.25in;
+    box-sizing: border-box;
+  }
+}
+
+/* CSS untuk ukuran kertas struk thermal */
+.receipt-container {
+  width: 100%;
+  max-width: 3.5in;
+  margin: 0 auto;
+  padding: 0.25in;
+  box-sizing: border-box;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+/* Gaya untuk tampilan di layar */
+@media screen {
+  .printable-receipt {
+    display: none;
+  }
+}

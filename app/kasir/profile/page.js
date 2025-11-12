@@ -6,7 +6,7 @@ import { useSession } from 'next-auth/react';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Sidebar from '@/components/Sidebar';
 import { useDarkMode } from '@/components/DarkModeContext';
-import { User, Lock, CheckCircle, AlertTriangle } from 'lucide-react';
+import { User, Lock, CheckCircle, AlertTriangle, Home } from 'lucide-react';
 
 export default function CashierProfile() {
   const { data: session, update: updateSession } = useSession();
@@ -90,8 +90,28 @@ export default function CashierProfile() {
         <main className={`flex-1 p-4 sm:p-6 lg:p-8 min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
           <div className="max-w-2xl mx-auto">
             <div className="mb-8">
-              <h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Profil Saya</h1>
-              <p className={`mt-1 text-lg ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Perbarui informasi profil dan kata sandi Anda.</p>
+              <div className="flex justify-between items-center">
+                <div>
+                  <h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Profil Saya</h1>
+                  <p className={`mt-1 text-lg ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Perbarui informasi profil dan kata sandi Anda.</p>
+                </div>
+                <div className="group relative">
+                  <button
+                    onClick={() => window.location.href = '/kasir'}
+                    className={`p-2 rounded-md ${
+                      darkMode
+                        ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                        : 'bg-purple-600 hover:bg-purple-700 text-white'
+                    } transition-colors`}
+                    title="Dashboard"
+                  >
+                    <Home size={20} />
+                  </button>
+                  <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 hidden group-hover:block bg-gray-800 text-white text-xs py-1 px-2 rounded">
+                    Dashboard
+                  </span>
+                </div>
+              </div>
             </div>
 
             {/* Form Card */}

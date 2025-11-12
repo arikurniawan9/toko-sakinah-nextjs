@@ -1,0 +1,180 @@
+// utils/thermalPrint.js
+export const printThermalReceipt = (receiptData) => {
+  return new Promise((resolve, reject) => {
+    try {
+      // Format currency function
+      const formatCurrencyForPrint = (amount) => {
+        return new Intl.NumberFormat('id-ID', {
+          style: 'currency',
+          currency: 'IDR',
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        }).format(amount).replace('Rp', 'Rp. ');
+      };
+
+      // Limit text function
+      const limitTextForPrint = (text, maxLength) => {
+        if (!text) return '';
+        return text.length > maxLength ? text.substring(0, maxLength - 3) + '...' : text;
+      };
+
+      // Buat jendela baru untuk cetak thermal
+      const printWindow = window.open('', '_blank', 'width=300,height=600');
+      
+      // HTML untuk thermal receipt dengan ukuran kertas 72mm
+      const receiptHTML = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Struk Transaksi - ${receiptData.id}</title>
+          <style>
+            @media print {
+              @page {
+                size: 72mm auto;
+                margin: 2mm;
+              }
+              body {
+                margin: 0;
+                padding: 2mm;
+                font-family: monospace;
+                font-size: 12px;
+                line-height: 1.1;
+              }
+            }
+            body {
+              font-family: monospace;
+              font-size: 12px;
+              line-height: 1.1;
+              width: 72mm;
+              margin: 0 auto;
+              padding: 2mm;
+            }
+            .text-center { text-align: center; }
+            .text-right { text-align: right; }
+            .text-xs { font-size: 10px; }
+            .font-bold { font-weight: bold; }
+            .font-semibold { font-weight: 600; }
+            .my-1 { margin: 4px 0; }
+            .my-2 { margin: 8px 0; }
+            .pt-1 { padding-top: 2px; }
+            .border-t { border-top: 1px solid black; }
+            .border-b { border-bottom: 1px solid black; }
+            .py-1 { padding: 2px 0; }
+            .flex { display: flex; }
+            .justify-between { justify-content: space-between; }
+            .items-center { align-items: center; }
+            .w-full { width: 100%; }
+            .w-16 { width: 60px; }
+            .w-24 { width: 80px; }
+            .italic { font-style: italic; }
+            .uppercase { text-transform: uppercase; }
+            hr { border: 0; border-top: 1px solid black; margin: 4px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="text-center">
+            <h2 class="text-lg font-bold uppercase">TOKO SAKINAH</h2>
+            <p class="text-xs">Jl. Raya No. 123, Kota Anda</p>
+            <p class="text-xs">0812-3456-7890</p>
+          </div>
+          
+          <div class="my-2 border-t border-b py-1">
+            <div class="flex justify-between text-xs">
+              <span>No: ${limitTextForPrint(receiptData.id, 10)}</span>
+              <span>${new Date(receiptData.date).toLocaleString('id-ID', { 
+                day: '2-digit', 
+                month: '2-digit', 
+                year: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}</span>
+            </div>
+            <div class="flex justify-between text-xs">
+              <span>Kasir: ${limitTextForPrint(receiptData.cashier?.name || 'N/A', 10)}</span>
+              <span>Pelayan: ${limitTextForPrint(receiptData.attendant?.name || 'N/A', 10)}</span>
+            </div>
+          </div>
+          
+          <div class="my-2">
+            ${receiptData.items.map(item => `
+              <div class="text-xs mb-1">
+                <div class="flex justify-between">
+                  <span class="flex-1 truncate">${limitTextForPrint(item.name || '', 18)}</span>
+                  <span class="w-16 text-right">${item.quantity}x</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-right">@${formatCurrencyForPrint(item.originalPrice || 0)}</span>
+                  <span class="w-16 text-right">${formatCurrencyForPrint(item.originalPrice * item.quantity || 0)}</span>
+                </div>
+                ${item.originalPrice !== item.priceAfterItemDiscount ? 
+                  `<div class="flex justify-between text-right text-xs italic">
+                    <span></span>
+                    <span class="text-right">Pot:${formatCurrencyForPrint(item.originalPrice - item.priceAfterItemDiscount)}</span>
+                  </div>` : ''}
+              </div>
+            `).join('')}
+          </div>
+          
+          <div class="my-2 border-t pt-1">
+            <div class="flex justify-between text-sm font-semibold">
+              <span>Subtotal</span>
+              <span>${formatCurrencyForPrint(receiptData.subTotal || 0)}</span>
+            </div>
+            ${receiptData.totalDiscount > 0 ? `
+              <div class="flex justify-between text-sm">
+                <span>Diskon</span>
+                <span>-${formatCurrencyForPrint(receiptData.totalDiscount || 0)}</span>
+              </div>
+            ` : ''}
+            <div class="flex justify-between text-sm font-bold border-t border-black py-1">
+              <span>Total</span>
+              <span>${formatCurrencyForPrint(receiptData.grandTotal || 0)}</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span>Bayar</span>
+              <span>${formatCurrencyForPrint(receiptData.payment || 0)}</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span>Kembali</span>
+              <span>${formatCurrencyForPrint(receiptData.change || 0)}</span>
+            </div>
+          </div>
+          
+          <div class="my-2 border-t pt-1">
+            <div class="text-xs text-center">
+              <div class="mb-1">Metode: ${receiptData.paymentMethod || 'CASH'}</div>
+              <div>Terima kasih telah berbelanja!</div>
+              <div class="text-xs mt-1">Barang yg sdh dibeli</div>
+              <div class="text-xs">tidak dpt ditukar/dikembalikan</div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      printWindow.document.write(receiptHTML);
+      printWindow.document.close();
+      
+      // Tunggu sampai dokumen selesai dimuat
+      printWindow.onload = () => {
+        // Fokus ke jendela cetak
+        printWindow.focus();
+        
+        // Setelah jendela selesai dimuat, cetak
+        setTimeout(() => {
+          printWindow.print();
+          printWindow.close();
+          resolve(true);
+        }, 500); // Delay kecil untuk memastikan dokumen siap dicetak
+      };
+
+      // Tangani error
+      printWindow.onerror = (error) => {
+        reject(error);
+      };
+
+    } catch (error) {
+      reject(error);
+    }
+  });
+};

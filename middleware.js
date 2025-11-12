@@ -1,11 +1,12 @@
 // middleware.js
 import { withAuth } from 'next-auth/middleware';
 import { NextResponse } from 'next/server';
+import { ROLES } from './lib/constants';
 
 const rolePermissions = {
-  '/admin': ['ADMIN'],
-  '/kasir': ['CASHIER', 'ADMIN'],
-  '/pelayan': ['ATTENDANT', 'ADMIN'],
+  '/admin': [ROLES.ADMIN],
+  '/kasir': [ROLES.CASHIER, ROLES.ADMIN],
+  '/pelayan': [ROLES.ATTENDANT, ROLES.ADMIN],
 };
 
 export default withAuth(
@@ -29,7 +30,7 @@ export default withAuth(
   },
   {
     pages: {
-      signIn: '/',
+      signIn: '/login',
     },
   }
 );

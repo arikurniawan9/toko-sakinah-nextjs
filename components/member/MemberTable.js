@@ -128,7 +128,7 @@ const MemberTable = ({
                       ? 'bg-gray-100 text-gray-800' 
                       : member.membershipType === 'gold' 
                         ? 'bg-yellow-100 text-yellow-800' 
-                        : 'bg-purple-100 text-purple-800'
+                        : 'bg-indigo-100 text-indigo-800'
                   }`}>
                     {member.membershipType.charAt(0).toUpperCase() + member.membershipType.slice(1)}
                   </span>

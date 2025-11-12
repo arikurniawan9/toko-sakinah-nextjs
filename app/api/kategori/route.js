@@ -8,6 +8,7 @@ import { z } from 'zod';
 const categorySchema = z.object({
   name: z.string().trim().min(1, { message: 'Nama kategori wajib diisi' }),
   description: z.string().trim().optional().nullable(),
+  icon: z.string().trim().optional().nullable(),
 });
 
 const categoryUpdateSchema = categorySchema.extend({
@@ -81,7 +82,7 @@ export async function POST(request) {
 
   try {
     const body = await request.json();
-    const { name, description } = categorySchema.parse(body);
+    const { name, description, icon } = categorySchema.parse(body);
 
     const existingCategory = await prisma.category.findFirst({
       where: { name: { equals: name } },
@@ -98,6 +99,7 @@ export async function POST(request) {
       data: {
         name,
         description,
+        icon,
       },
     });
 
@@ -126,7 +128,7 @@ export async function PUT(request) {
 
   try {
     const body = await request.json();
-    const { id, name, description } = categoryUpdateSchema.parse(body);
+    const { id, name, description, icon } = categoryUpdateSchema.parse(body);
 
     const existingCategory = await prisma.category.findFirst({
       where: {
@@ -147,6 +149,7 @@ export async function PUT(request) {
       data: {
         name,
         description,
+        icon,
       },
     });
 

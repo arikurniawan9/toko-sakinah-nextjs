@@ -50,9 +50,6 @@ export default function CategoryTable({
               Jumlah Produk
             </th>
             <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-pastel-purple-300' : 'text-pastel-purple-700'}`}>
-              Tanggal Dibuat
-            </th>
-            <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-pastel-purple-300' : 'text-pastel-purple-700'}`}>
               Aksi
             </th>
           </tr>
@@ -60,7 +57,7 @@ export default function CategoryTable({
         <tbody className={`${darkMode ? 'divide-gray-700 bg-gray-950' : 'bg-gray-50'} divide-y ${darkMode ? 'divide-gray-700' : 'divide-pastel-purple-200'}`}>
           {categories.length === 0 ? (
             <tr>
-              <td colSpan={showActions ? "6" : "5"} className={`px-6 py-4 text-center text-sm ${darkMode ? 'text-gray-400' : 'text-pastel-purple-700'}`}>
+              <td colSpan={showActions ? "5" : "4"} className={`px-6 py-4 text-center text-sm ${darkMode ? 'text-gray-400' : 'text-pastel-purple-700'}`}>
                 {loading ? 'Memuat data...' : 'Tidak ada data kategori ditemukan'}
               </td>
             </tr>
@@ -85,9 +82,6 @@ export default function CategoryTable({
                 </td>
                 <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                   {category.productCount || 0}
-                </td>
-                <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                  {new Date(category.createdAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <Tooltip content="Lihat Detail">

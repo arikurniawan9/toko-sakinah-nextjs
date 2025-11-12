@@ -1,179 +1,127 @@
-
 // app/api/transaksi/route.js
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
-import { getSession } from '@/lib/auth';
+import prisma from '../../../lib/prisma';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '../../../lib/authOptions';
 
-// POST /api/transaksi - Process a sale transaction
-export async function POST(request) {
-  const session = await getSession();
-  if (!session || !['ADMIN', 'CASHIER'].includes(session.user.role)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+// Function to generate a unique 10-digit invoice number
+async function generateInvoiceNumber() {
+  const date = new Date();
+  const year = date.getFullYear().toString().slice(-2);
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  
+  const datePrefix = `${year}${month}${day}`; // YYMMDD format
 
-  try {
-    const { cashierId, memberId, items, total, payment, change, additionalDiscount, discount, tax, transactionType = 'PAID' } = await request.json();
+  let isUnique = false;
+  let invoiceNumber;
 
-    if (!cashierId || !Array.isArray(items) || items.length === 0) {
-      return NextResponse.json(
-        { error: 'Cashier ID and items array are required' },
-        { status: 400 }
-      );
-    }
+  // This loop is a safeguard against rare duplicate invoice numbers.
+  // In a high-concurrency environment, a more robust solution like a dedicated sequence generator might be needed.
+  while (!isUnique) {
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000).toString(); // 4 random digits
+    invoiceNumber = `${datePrefix}${randomSuffix}`;
 
-    const createdSale = await prisma.$transaction(async (tx) => {
-      const cashier = await tx.user.findUnique({ where: { id: cashierId } });
-      if (!cashier) throw new Error('Cashier not found');
-
-      let member = null;
-      if (memberId) {
-        member = await tx.member.findUnique({ where: { id: memberId } });
-        if (!member) throw new Error('Member not found');
-      }
-
-      if (transactionType === 'UNPAID') {
-        if (!member || member.name === 'Pelanggan Umum') {
-          throw new Error('Transaksi hutang harus memiliki member yang spesifik, bukan "Pelanggan Umum".');
-        }
-      }
-
-      const productIds = items.map((item) => item.productId);
-      const products = await tx.product.findMany({ where: { id: { in: productIds } } });
-      const productMap = new Map(products.map((p) => [p.id, p]));
-
-      for (const item of items) {
-        const product = productMap.get(item.productId);
-        if (!product) throw new Error(`Product with id ${item.productId} not found`);
-        if (product.stock < item.quantity) {
-          throw new Error(`Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`);
-        }
-      }
-
-      const saleData = {
-        cashierId,
-        memberId: memberId || null,
-        total: Math.round(total),
-        additionalDiscount: Math.round(additionalDiscount || 0),
-        discount: Math.round(discount || 0),
-        tax: Math.round(tax || 0),
-        date: new Date(),
-        status: transactionType, // PAID or UNPAID
-        payment: Math.round(payment), // Store partial payment as well
-        change: transactionType === 'PAID' ? Math.round(change) : 0, // No change for unpaid
-      };
-
-      const sale = await tx.sale.create({ data: saleData });
-
-      if (transactionType === 'UNPAID') {
-        const partialPayment = Math.round(payment);
-        await tx.receivable.create({
-          data: {
-            saleId: sale.id,
-            memberId: member.id,
-            amountDue: Math.round(total),
-            amountPaid: partialPayment,
-            status: partialPayment > 0 ? 'PARTIALLY_PAID' : 'UNPAID',
-          }
-        });
-      }
-
-      await Promise.all(items.map(item => 
-        tx.saleDetail.create({
-          data: {
-            saleId: sale.id,
-            productId: item.productId,
-            quantity: item.quantity,
-            price: item.price,
-            discount: item.discount || 0,
-            subtotal: item.price * item.quantity - (item.discount || 0) * item.quantity,
-          },
-        })
-      ));
-
-      await Promise.all(items.map(item => 
-        tx.product.update({
-          where: { id: item.productId },
-          data: { stock: { decrement: item.quantity } },
-        })
-      ));
-
-      return tx.sale.findUnique({
-        where: { id: sale.id },
-        include: {
-          cashier: true,
-          member: true,
-          saleDetails: { include: { product: true } },
-          receivable: true, // Include receivable data
-        },
-      });
+    const existingSale = await prisma.sale.findUnique({
+      where: { invoiceNumber },
     });
 
-    return NextResponse.json(createdSale);
-  } catch (error) {
-    console.error('Error processing transaction:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to process transaction' },
-      { status: 500 }
-    );
+    if (!existingSale) {
+      isUnique = true;
+    }
   }
+  return invoiceNumber;
 }
 
-// GET /api/transaksi - Get sales with pagination and optional filters
-export async function GET(request) {
-  const session = await getSession();
-  if (!session || !['ADMIN', 'CASHIER'].includes(session.user.role)) {
+
+export async function POST(request) {
+  const session = await getServerSession(authOptions);
+
+  if (!session || !['CASHIER', 'ADMIN'].includes(session.user.role)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const body = await request.json();
+  const {
+    items,
+    total,
+    payment,
+    change,
+    tax,
+    discount,
+    additionalDiscount,
+    memberId,
+    attendantId,
+  } = body;
+
+  if (!items || items.length === 0) {
+    return NextResponse.json({ error: 'Cart is empty' }, { status: 400 });
+  }
+  
+  if (!attendantId) {
+    return NextResponse.json({ error: 'Attendant must be selected' }, { status: 400 });
+  }
+
   try {
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page')) || 1;
-    const limit = parseInt(searchParams.get('limit')) || 10;
-    const cashierId = searchParams.get('cashierId');
-    const memberId = searchParams.get('memberId');
-    const dateFrom = searchParams.get('dateFrom');
-    const dateTo = searchParams.get('dateTo');
-    
-    const offset = (page - 1) * limit;
-    
-    let whereClause = {};
-    
-    if (cashierId) whereClause.cashierId = cashierId;
-    if (memberId) whereClause.memberId = memberId;
-    if (dateFrom || dateTo) {
-      whereClause.date = {};
-      if (dateFrom) whereClause.date.gte = new Date(dateFrom);
-      if (dateTo) whereClause.date.lte = new Date(dateTo);
-    }
-    
-    const sales = await prisma.sale.findMany({
-      where: whereClause,
-      skip: offset,
-      take: limit,
-      include: {
-        cashier: { select: { id: true, name: true } },
-        member: { select: { id: true, name: true } },
-        saleDetails: { include: { product: { select: { id: true, name: true } } }, take: 5 },
-      },
-      orderBy: { date: 'desc' },
+    const newInvoiceNumber = await generateInvoiceNumber();
+
+    const sale = await prisma.$transaction(async (tx) => {
+      // 1. Create the Sale record
+      const newSale = await tx.sale.create({
+        data: {
+          invoiceNumber: newInvoiceNumber,
+          cashierId: session.user.id,
+          attendantId: attendantId,
+          memberId: memberId,
+          total: total,
+          discount: discount,
+          additionalDiscount: additionalDiscount,
+          tax: tax,
+          payment: payment,
+          change: change,
+          status: 'PAID',
+          saleDetails: {
+            create: items.map(item => ({
+              productId: item.productId,
+              quantity: item.quantity,
+              price: item.price,
+              discount: item.discount,
+              subtotal: item.price * item.quantity,
+            })),
+          },
+        },
+        include: {
+          saleDetails: {
+            include: {
+              product: true,
+            }
+          }
+        }
+      });
+
+      // 2. Update product stock
+      for (const item of items) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: {
+            stock: {
+              decrement: item.quantity,
+            },
+          },
+        });
+      }
+      
+      return newSale;
     });
-    
-    const totalCount = await prisma.sale.count({ where: whereClause });
-    
-    return NextResponse.json({
-      sales,
-      pagination: {
-        page,
-        limit,
-        total: totalCount,
-        totalPages: Math.ceil(totalCount / limit),
-      },
-    });
+
+    // Return the complete sale object, which now includes saleDetails and product info
+    return NextResponse.json(sale, { status: 201 });
   } catch (error) {
-    console.error('Error fetching sales:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch sales' }, 
-      { status: 500 }
-    );
+    console.error('Failed to create sale:', error);
+    // Check for specific Prisma error for insufficient stock
+    if (error.code === 'P2025' || (error.meta && error.meta.cause === 'Record to update not found.')) {
+       return NextResponse.json({ error: 'Failed to create sale: Insufficient stock for one or more items.' }, { status: 400 });
+    }
+    return NextResponse.json({ error: 'Failed to create sale' }, { status: 500 });
   }
 }

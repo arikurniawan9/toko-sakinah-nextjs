@@ -1,5 +1,6 @@
 import React from 'react';
 import { Save, X } from 'lucide-react';
+import IconPicker from './IconPicker'; // Import the new component
 
 const CategoryModal = ({
   showModal,
@@ -7,9 +8,11 @@ const CategoryModal = ({
   editingCategory,
   formData,
   handleInputChange,
+  handleIconChange, // Add a new handler for the icon picker
   handleSave,
   error,
   setFormError,
+  darkMode, // Pass darkMode for the picker
 }) => {
   if (!showModal) return null;
 
@@ -57,7 +60,7 @@ const CategoryModal = ({
                 value={formData.name}
                 onChange={handleInputChange}
                 onFocus={() => setFormError('')}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-transparent focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-transparent focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-colors"
                 placeholder="e.g., Pakaian Pria"
                 required
               />
@@ -72,10 +75,16 @@ const CategoryModal = ({
                 rows={3}
                 value={formData.description}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-transparent focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-transparent focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-colors"
                 placeholder="e.g., Kumpulan semua pakaian untuk pria dewasa"
               ></textarea>
             </div>
+            {/* Add the IconPicker component */}
+            <IconPicker 
+              value={formData.icon}
+              onChange={handleIconChange}
+              darkMode={darkMode}
+            />
           </div>
 
           {/* Footer */}
@@ -89,7 +98,7 @@ const CategoryModal = ({
             </button>
             <button
               type="submit"
-              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-purple-600 hover:bg-purple-700 rounded-lg shadow-sm transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg shadow-sm transition-colors"
             >
               <Save className="h-4 w-4" />
               <span>{editingCategory ? 'Simpan Perubahan' : 'Simpan'}</span>

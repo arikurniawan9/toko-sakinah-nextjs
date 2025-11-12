@@ -9,11 +9,12 @@ import { useMemberTable } from '../../../lib/hooks/useMemberTable';
 import { useMemberForm } from '../../../lib/hooks/useMemberForm';
 import { useTableSelection } from '../../../lib/hooks/useTableSelection';
 
-import MemberTable from '../../../components/member/MemberTable';
+import MemberView from '../../../components/member/MemberView';
 import MemberModal from '../../../components/member/MemberModal';
 import MemberToolbar from '../../../components/member/MemberToolbar';
 import Pagination from '../../../components/produk/Pagination'; // Reusing existing Pagination
 import ConfirmationModal from '../../../components/ConfirmationModal'; // Reusing existing ConfirmationModal
+import FloatingAddButton from '../../../components/member/FloatingAddButton';
 
 export default function MemberManagement() {
   const { darkMode } = useDarkMode();
@@ -53,6 +54,7 @@ export default function MemberManagement() {
 
   const [importLoading, setImportLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+  const [view, setView] = useState('table'); // 'grid' or 'table'
 
   // State for delete confirmation modal
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -212,7 +214,6 @@ export default function MemberManagement() {
               setSearchTerm={setSearchTerm}
               itemsPerPage={itemsPerPage}
               setItemsPerPage={setItemsPerPage}
-              onAddNew={openModalForCreate}
               onDeleteMultiple={handleDeleteMultiple}
               selectedRowsCount={selectedRows.length}
               onExport={handleExport}
@@ -220,6 +221,8 @@ export default function MemberManagement() {
               importLoading={importLoading}
               exportLoading={exportLoading}
               darkMode={darkMode}
+              view={view}
+              setView={setView}
             />
 
             {tableError && (
@@ -232,14 +235,13 @@ export default function MemberManagement() {
                 {formError}
               </div>
             )}
-            {(formSuccess || (formSuccess === '' && !formError)) && ( // Display formSuccess if it exists or if it's empty and no formError
+            {formSuccess && formSuccess.trim() !== '' && (
               <div className={`my-4 p-4 ${darkMode ? 'bg-green-900/30 border-green-700 text-green-200' : 'bg-green-50 border-green-200 text-green-700'} rounded-md`}>
                 {formSuccess}
               </div>
             )}
 
-            <MemberTable
-              key={members.length}
+            <MemberView
               members={members}
               loading={loading}
               darkMode={darkMode}
@@ -248,6 +250,7 @@ export default function MemberManagement() {
               handleSelectRow={handleSelectRow}
               handleEdit={openModalForEdit}
               handleDelete={handleDelete}
+              view={view}
             />
           </div>
           <Pagination
@@ -283,6 +286,9 @@ export default function MemberManagement() {
           darkMode={darkMode}
           isLoading={isDeleting}
         />
+
+        {/* Floating Add Button */}
+        <FloatingAddButton onClick={openModalForCreate} darkMode={darkMode} />
       </main>
     </ProtectedRoute>
   );

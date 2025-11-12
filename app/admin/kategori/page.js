@@ -1,65 +1,104 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useDarkMode } from '@/components/DarkModeContext';
 import { useSession } from 'next-auth/react';
-import { useCategoryTable } from '@/lib/hooks/useCategoryTable';
 import { useCategoryForm } from '@/lib/hooks/useCategoryForm';
-import { useTableSelection } from '@/lib/hooks/useTableSelection';
-import CategoryTable from '@/components/kategori/CategoryTable';
+import CategoryCard from '@/components/kategori/CategoryCard';
 import CategoryModal from '@/components/kategori/CategoryModal';
-import CategoryToolbar from '@/components/kategori/CategoryToolbar';
-import CategoryDetailModal from '@/components/kategori/CategoryDetailModal'; // Import new modal
 import Pagination from '@/components/produk/Pagination';
 import ConfirmationModal from '@/components/ConfirmationModal';
-import { AlertTriangle, CheckCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Plus, Search, Loader2 } from 'lucide-react';
+
+// Skeleton component for loading state
+const CardSkeleton = ({ darkMode }) => (
+  <div className={`rounded-xl shadow-md p-6 animate-pulse ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+    <div className="flex items-start justify-between">
+      <div className={`w-12 h-12 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-600'}`}></div>
+      <div className={`h-6 w-20 rounded-full ${darkMode ? 'bg-gray-700' : 'bg-gray-600'}`}></div>
+    </div>
+    <div className="mt-4">
+      <div className={`h-6 w-3/4 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-600'}`}></div>
+      <div className={`h-4 w-1/2 rounded mt-2 ${darkMode ? 'bg-gray-700' : 'bg-gray-600'}`}></div>
+    </div>
+  </div>
+);
 
 export default function CategoryManagementPage() {
   const { darkMode } = useDarkMode();
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === 'ADMIN';
 
-  // Page-level success message state
-  const [pageSuccessMessage, setPageSuccessMessage] = useState('');
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [pagination, setPagination] = useState({ page: 1, limit: 12, total: 0, totalPages: 1 });
 
-  const {
-    categories,
-    loading,
-    error: tableError,
-    setError: setTableError,
-    searchTerm,
-    setSearchTerm,
-    pagination,
-    setPagination,
-    fetchCategories,
-  } = useCategoryTable();
+  const fetchCategories = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const url = `/api/kategori?page=${pagination.page}&limit=${pagination.limit}&search=${searchTerm}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Gagal mengambil data');
+      setCategories(data.categories);
+      setPagination(prev => ({ ...prev, total: data.pagination.total, totalPages: data.pagination.totalPages }));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [pagination.page, pagination.limit, searchTerm]);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
+  
+  // Debounce search term
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setPagination(p => ({ ...p, page: 1 })); // Reset to page 1 on search
+      fetchCategories();
+    }, 500); // 500ms delay
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
 
   const {
     showModal,
     editingCategory,
     formData,
-    error: formError, // Correctly destructure and rename
-    setError: setFormError, // Correctly destructure and rename
-    success: formSuccessMessage, // Correctly destructure and rename
-    setSuccess: setFormSuccessMessage, // Correctly destructure and rename
+    setFormData, // Expose setFormData to handle icon change
+    error: formError,
+    setError: setFormError,
     handleInputChange,
     openModalForEdit,
     openModalForCreate,
     closeModal,
-    handleSave,
+    handleSave: originalHandleSave,
   } = useCategoryForm(fetchCategories);
 
-  const { selectedRows, handleSelectAll, handleSelectRow, clearSelection } = useTableSelection(categories);
+  // Wrapper to clear success message on save
+  const handleSave = async () => {
+    setSuccess(''); // Clear previous success message
+    const result = await originalHandleSave();
+    if (result.success) {
+      setSuccess('Kategori berhasil disimpan!');
+    }
+  };
+
+  // New handler for IconPicker
+  const handleIconChange = (iconName) => {
+    setFormData(prev => ({ ...prev, icon: iconName }));
+  };
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [exportLoading, setExportLoading] = useState(false);
-
-  // State for CategoryDetailModal
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [selectedCategoryForDetail, setSelectedCategoryForDetail] = useState(null);
 
   const handleDelete = (id) => {
     if (!isAdmin) return;
@@ -67,147 +106,133 @@ export default function CategoryManagementPage() {
     setShowDeleteModal(true);
   };
 
-  const handleDeleteMultiple = () => {
-    if (!isAdmin || selectedRows.length === 0) return;
-    setItemToDelete(selectedRows);
-    setShowDeleteModal(true);
-  };
-
   const handleConfirmDelete = async () => {
     if (!itemToDelete || !isAdmin) return;
     setIsDeleting(true);
-
-    const idsToDelete = Array.isArray(itemToDelete) ? itemToDelete : [itemToDelete];
-    const url = '/api/kategori';
-    const options = {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids: idsToDelete }),
-    };
+    setSuccess('');
+    setError('');
 
     try {
-      const response = await fetch(url, options);
+      const response = await fetch(`/api/kategori?id=${itemToDelete}`, { method: 'DELETE' });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Gagal menghapus kategori');
       
-      await fetchCategories();
-      setPageSuccessMessage(`Berhasil menghapus ${idsToDelete.length} kategori.`); // Use page-level state
-      if (Array.isArray(itemToDelete)) clearSelection();
+      setSuccess('Kategori berhasil dihapus.');
+      // Refresh data
+      setPagination(p => ({ ...p, page: 1 }));
+      fetchCategories();
     } catch (err) {
-      setTableError(err.message);
+      setError(err.message);
     } finally {
       setIsDeleting(false);
       setShowDeleteModal(false);
       setItemToDelete(null);
     }
   };
-
-  const handleExport = async () => {
-    setExportLoading(true);
-    try {
-      // Fetch all categories without pagination for export
-      const response = await fetch('/api/kategori?limit=0');
-      if (!response.ok) throw new Error('Gagal mengambil data untuk export');
-      const data = await response.json();
-
-      let csvContent = 'Nama,Deskripsi,Tanggal Dibuat,Tanggal Diubah\n';
-      data.categories.forEach(category => {
-        const name = `"${(category.name || '').replace(/"/g, '""')}"`;
-        const description = `"${(category.description || '').replace(/"/g, '""')}"`;
-        const createdAt = `"${new Date(category.createdAt).toLocaleString('id-ID')}"`;
-        const updatedAt = `"${new Date(category.updatedAt).toLocaleString('id-ID')}"`;
-        csvContent += `${name},${description},${createdAt},${updatedAt}\n`;
-      });
-
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `kategori-${new Date().toISOString().slice(0, 10)}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setPageSuccessMessage('Data kategori berhasil diekspor.'); // Use page-level state
-    } catch (err) {
-      setTableError('Gagal mengekspor data: ' + err.message);
-    } finally {
-      setExportLoading(false);
+  
+  // Clear messages after a delay
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(''), 5000);
+      return () => clearTimeout(timer);
     }
-  };
-
-  // Handler to open CategoryDetailModal
-  const handleViewDetails = (category) => {
-    setSelectedCategoryForDetail(category);
-    setShowDetailModal(true);
-  };
+    if (error) {
+      const timer = setTimeout(() => setError(''), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [success, error]);
 
   return (
     <ProtectedRoute requiredRole="ADMIN">
-      <main className={`flex-1 p-4 sm:p-6 lg:p-8 min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+      <main className={`flex-1 p-4 sm:p-6 lg:p-8 min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-950'}`}>
         <div className="max-w-7xl mx-auto">
+          {/* Header */}
           <div className="mb-8">
             <h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
               Manajemen Kategori
             </h1>
             <p className={`mt-1 text-lg ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              Kelola semua kategori produk Anda di satu tempat.
+              Kelola semua kategori produk Anda dengan tampilan kartu yang modern.
             </p>
           </div>
 
-          <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'} border overflow-hidden`}>
-            <div className="p-4 sm:p-6">
-              <CategoryToolbar
-                searchTerm={searchTerm}
-                setSearchTerm={setSearchTerm}
-                itemsPerPage={pagination.limit}
-                setItemsPerPage={(value) => setPagination(p => ({ ...p, limit: value, page: 1 }))}
-                onAddNew={openModalForCreate}
-                onDeleteMultiple={handleDeleteMultiple}
-                selectedRowsCount={selectedRows.length}
-                onExport={handleExport}
-                exportLoading={exportLoading}
-                isAdmin={isAdmin}
-              />
-
-              {tableError && (
-                <div className="flex items-center p-4 my-4 rounded-lg bg-red-500/10 text-red-400">
-                  <AlertTriangle className="h-5 w-5 mr-3" />
-                  <p className="text-sm font-medium">{tableError}</p>
-                </div>
-              )}
-              {pageSuccessMessage && ( // Use page-level state
-                <div className="flex items-center p-4 my-4 rounded-lg bg-green-500/10 text-green-400">
-                  <CheckCircle className="h-5 w-5 mr-3" />
-                  <p className="text-sm font-medium">{pageSuccessMessage}</p>
-                </div>
-              )}
-
-              <CategoryTable
-                categories={categories}
-                loading={loading}
-                selectedRows={selectedRows}
-                handleSelectAll={handleSelectAll}
-                handleSelectRow={handleSelectRow}
-                handleEdit={openModalForEdit}
-                handleDelete={handleDelete}
-                onViewDetails={handleViewDetails} // Pass new handler
-                isAdmin={isAdmin}
+          {/* Toolbar */}
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
+            <div className="relative w-full md:max-w-md">
+              <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+              <input
+                type="text"
+                placeholder="Cari kategori..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className={`w-full pl-10 pr-4 py-2 border rounded-lg ${darkMode ? 'bg-gray-800 border-gray-700 text-white focus:ring-cyan-500' : 'bg-white border-gray-300 text-gray-900 focus:ring-cyan-500'} focus:outline-none focus:ring-2`}
               />
             </div>
-            
-            {pagination.totalPages > 1 && (
-              <Pagination
-                currentPage={pagination.page}
-                totalPages={pagination.totalPages}
-                setCurrentPage={(page) => setPagination(p => ({ ...p, page }))}
-                itemsPerPage={pagination.limit}
-                totalItems={pagination.total}
-              />
-            )}
+            <button
+              onClick={openModalForCreate}
+              className="w-full md:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg shadow-sm transition-colors"
+            >
+              <Plus className="h-5 w-5" />
+              <span>Tambah Kategori</span>
+            </button>
           </div>
+
+          {/* Alerts */}
+          {error && (
+            <div className="flex items-center p-4 mb-4 rounded-lg bg-red-500/10 text-red-400">
+              <AlertTriangle className="h-5 w-5 mr-3" />
+              <p className="text-sm font-medium">{error}</p>
+            </div>
+          )}
+          {success && (
+            <div className="flex items-center p-4 mb-4 rounded-lg bg-green-500/10 text-green-400">
+              <CheckCircle className="h-5 w-5 mr-3" />
+              <p className="text-sm font-medium">{success}</p>
+            </div>
+          )}
+
+          {/* Grid Content */}
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {[...Array(pagination.limit)].map((_, i) => <CardSkeleton key={i} darkMode={darkMode} />)}
+            </div>
+          ) : categories.length > 0 ? (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {categories.map(category => (
+                  <CategoryCard
+                    key={category.id}
+                    category={category}
+                    onEdit={openModalForEdit}
+                    onDelete={handleDelete}
+                    darkMode={darkMode}
+                  />
+                ))}
+              </div>
+              {pagination.totalPages > 1 && (
+                <div className="mt-8">
+                  <Pagination
+                    currentPage={pagination.page}
+                    totalPages={pagination.totalPages}
+                    setCurrentPage={(page) => setPagination(p => ({ ...p, page }))}
+                    itemsPerPage={pagination.limit}
+                    totalItems={pagination.total}
+                    darkMode={darkMode}
+                  />
+                </div>
+              )}
+            </>
+          ) : (
+            <div className={`text-center py-16 px-6 rounded-xl ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+              <h3 className={`text-xl font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>Tidak Ada Kategori Ditemukan</h3>
+              <p className={`mt-2 text-md ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                Coba kata kunci lain atau buat kategori baru.
+              </p>
+            </div>
+          )}
         </div>
 
+        {/* Modals */}
         {isAdmin && (
           <>
             <CategoryModal
@@ -216,23 +241,19 @@ export default function CategoryManagementPage() {
               handleSave={handleSave}
               formData={formData}
               handleInputChange={handleInputChange}
+              handleIconChange={handleIconChange} // Pass the new handler
               editingCategory={editingCategory}
               error={formError}
               setFormError={setFormError}
+              darkMode={darkMode}
             />
             <ConfirmationModal
               isOpen={showDeleteModal}
               onClose={() => setShowDeleteModal(false)}
               onConfirm={handleConfirmDelete}
               title="Konfirmasi Hapus"
-              message={`Apakah Anda yakin ingin menghapus ${Array.isArray(itemToDelete) ? itemToDelete.length : 1} kategori terpilih?`}
+              message={`Apakah Anda yakin ingin menghapus kategori ini? Semua produk terkait harus dipindahkan terlebih dahulu.`}
               isLoading={isDeleting}
-            />
-            {/* New CategoryDetailModal */}
-            <CategoryDetailModal
-              isOpen={showDetailModal}
-              onClose={() => setShowDetailModal(false)}
-              category={selectedCategoryForDetail}
             />
           </>
         )}

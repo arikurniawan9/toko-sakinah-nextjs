@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { Users, X } from 'lucide-react';
 
-const MemberSelection = ({ selectedMember, onSelectMember, onRemoveMember, members, darkMode, isOpen, onToggle }) => {
+const MemberSelection = ({ selectedMember, defaultMember, onSelectMember, onRemoveMember, members, darkMode, isOpen, onToggle }) => {
   const [memberSearchTerm, setMemberSearchTerm] = useState('');
 
   const filteredMembers = members.filter(member =>
@@ -45,17 +45,22 @@ const MemberSelection = ({ selectedMember, onSelectMember, onRemoveMember, membe
             </button>
           </div>
         ) : (
-          <button
-            onClick={() => onToggle(true)}
-            className={`w-full py-2 px-4 border rounded-md shadow-sm text-sm font-medium flex items-center justify-center ${
-              darkMode
-                ? 'border-gray-600 text-gray-200 bg-gray-700 hover:bg-gray-600'
-                : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
-            }`}
-          >
-            <Users className="h-4 w-4 inline mr-2" />
-            Pilih Member
-          </button>
+          <div className="flex items-center justify-between">
+            <span className={`text-sm italic ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              {defaultMember ? defaultMember.name : 'Tidak ada member'}
+            </span>
+            <button
+              onClick={() => onToggle(true)}
+              className={`py-2 px-4 border rounded-md shadow-sm text-sm font-medium flex items-center justify-center ${
+                darkMode
+                  ? 'border-gray-600 text-gray-200 bg-gray-700 hover:bg-gray-600'
+                  : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
+              }`}
+            >
+              <Users className="h-4 w-4 inline mr-2" />
+              Pilih Member
+            </button>
+          </div>
         )}
       </div>
 

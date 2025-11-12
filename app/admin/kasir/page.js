@@ -9,11 +9,12 @@ import { useKasirTable } from '../../../lib/hooks/useKasirTable';
 import { useKasirForm } from '../../../lib/hooks/useKasirForm';
 import { useTableSelection } from '../../../lib/hooks/useTableSelection';
 
-import KasirTable from '../../../components/kasir/KasirTable';
+import KasirView from '../../../components/kasir/KasirView';
 import KasirModal from '../../../components/kasir/KasirModal';
 import KasirToolbar from '../../../components/kasir/KasirToolbar';
 import Pagination from '../../../components/produk/Pagination'; // Reusing existing Pagination
 import ConfirmationModal from '../../../components/ConfirmationModal'; // Reusing existing ConfirmationModal
+import FloatingAddButton from '../../../components/kasir/FloatingAddButton';
 
 export default function CashierManagement() {
   const { darkMode } = useDarkMode();
@@ -53,6 +54,7 @@ export default function CashierManagement() {
 
   const [importLoading, setImportLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+  const [view, setView] = useState('table'); // 'grid' or 'table'
 
   // State for delete confirmation modal
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -210,7 +212,6 @@ export default function CashierManagement() {
               setSearchTerm={setSearchTerm}
               itemsPerPage={itemsPerPage}
               setItemsPerPage={setItemsPerPage}
-              onAddNew={openModalForCreate}
               onDeleteMultiple={handleDeleteMultiple}
               selectedRowsCount={selectedRows.length}
               onExport={handleExport}
@@ -218,6 +219,8 @@ export default function CashierManagement() {
               importLoading={importLoading}
               exportLoading={exportLoading}
               darkMode={darkMode}
+              view={view}
+              setView={setView}
             />
 
             {tableError && (
@@ -230,14 +233,13 @@ export default function CashierManagement() {
                 {formError}
               </div>
             )}
-            {(formSuccess || (formSuccess === '' && !formError)) && ( // Display formSuccess if it exists or if it's empty and no formError
+            {formSuccess && formSuccess.trim() !== '' && (
               <div className={`my-4 p-4 ${darkMode ? 'bg-green-900/30 border-green-700 text-green-200' : 'bg-green-50 border-green-200 text-green-700'} rounded-md`}>
                 {formSuccess}
               </div>
             )}
 
-            <KasirTable
-              key={cashiers.length}
+            <KasirView
               cashiers={cashiers}
               loading={loading}
               darkMode={darkMode}
@@ -246,6 +248,7 @@ export default function CashierManagement() {
               handleSelectRow={handleSelectRow}
               handleEdit={openModalForEdit}
               handleDelete={handleDelete}
+              view={view}
             />
           </div>
           <Pagination
@@ -281,6 +284,9 @@ export default function CashierManagement() {
           darkMode={darkMode}
           isLoading={isDeleting}
         />
+
+        {/* Floating Add Button */}
+        <FloatingAddButton onClick={openModalForCreate} darkMode={darkMode} />
       </main>
     </ProtectedRoute>
   );

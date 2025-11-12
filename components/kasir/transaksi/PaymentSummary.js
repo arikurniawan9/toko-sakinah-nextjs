@@ -2,11 +2,14 @@
 'use client';
 
 import { CreditCard, Save } from 'lucide-react';
+import { memo } from 'react';
 
-const PaymentSummary = ({ 
+const PaymentSummary = memo(({ 
   calculation, 
   payment, 
   setPayment, 
+  paymentMethod,
+  setPaymentMethod,
   initiatePaidPayment, 
   initiateUnpaidPayment,
   loading, 
@@ -30,7 +33,7 @@ const PaymentSummary = ({
 
   // Logic for disabling buttons
   const isPaidDisabled = loading || !hasCalculation || payment < grandTotal || !selectedAttendant;
-  const isUnpaidDisabled = loading || !hasCalculation || !selectedMember || selectedMember.name === 'Pelanggan Umum' || payment >= grandTotal;
+  const isUnpaidDisabled = loading || !hasCalculation || !selectedMember || selectedMember.name === 'Pelanggan Umum' || !selectedAttendant || payment >= grandTotal;
 
 
   return (
@@ -73,6 +76,22 @@ const PaymentSummary = ({
         <h2 className={`text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Pembayaran</h2>
         <div className="space-y-4">
           <div>
+            <label htmlFor="paymentMethod" className={`block text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'} mb-1`}>
+              Metode Pembayaran
+            </label>
+            <select
+              id="paymentMethod"
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                darkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-300 bg-white text-gray-900'
+              }`}
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+            >
+              <option value="CASH">CASH</option>
+              <option value="TRANSFER">TRANSFER</option>
+            </select>
+          </div>
+          <div>
             <label htmlFor="additionalDiscount" className={`block text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'} mb-1`}>
               Diskon Tambahan
             </label>
@@ -88,9 +107,22 @@ const PaymentSummary = ({
             />
           </div>
           <div>
-            <label htmlFor="payment" className={`block text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'} mb-1`}>
-              Jumlah Bayar
-            </label>
+            <div className="flex justify-between items-center mb-1">
+              <label htmlFor="payment" className={`block text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                Jumlah Bayar
+              </label>
+              <button
+                onClick={() => setPayment(grandTotal)}
+                disabled={!hasCalculation}
+                className={`px-2 py-1 text-xs font-medium rounded ${
+                  darkMode 
+                    ? 'bg-purple-600 hover:bg-purple-700 text-white disabled:bg-gray-600' 
+                    : 'bg-purple-100 hover:bg-purple-200 text-purple-700 disabled:bg-gray-200'
+                } disabled:cursor-not-allowed`}
+              >
+                Uang Pas
+              </button>
+            </div>
             <input
               type="number"
               id="payment"
@@ -163,6 +195,6 @@ const PaymentSummary = ({
       </div>
     </>
   );
-};
+});
 
 export default PaymentSummary;

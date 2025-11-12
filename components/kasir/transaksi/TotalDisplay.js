@@ -2,8 +2,9 @@
 'use client';
 
 import terbilang from 'terbilang';
+import { memo } from 'react';
 
-const TotalDisplay = ({ total, darkMode }) => {
+const TotalDisplay = memo(({ total, darkMode }) => {
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -32,6 +33,6 @@ const TotalDisplay = ({ total, darkMode }) => {
       </p>
     </div>
   );
-};
+});
 
 export default TotalDisplay;

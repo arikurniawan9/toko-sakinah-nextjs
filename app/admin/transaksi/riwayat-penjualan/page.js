@@ -373,7 +373,7 @@ export default function RiwayatPenjualan() {
                                   <p>ID: #${selectedTransaction.id.substring(0, 8)}</p>
                                   <p>${formatDate(selectedTransaction.date)}</p>
                                   <p>Kasir: ${selectedTransaction.cashierName}</p>
-                                  ${selectedTransaction.customerName !== '-' ? '<p>Pelanggan: ' + selectedTransaction.customerName + '</p>' : ''}
+                                  ${selectedTransaction.customerName !== '-' ? `<p>Pelanggan: ${selectedTransaction.customerName}</p>` : ''}
                                 </div>
                               </div>
                               
@@ -403,7 +403,10 @@ export default function RiwayatPenjualan() {
                                   <span>-${formatCurrency(selectedTransaction.additionalDiscount)}</span>
                                 </div>` : ''}
                                 ${(selectedTransaction.tax || 0) > 0 ? `<div class="summary-row">
-                                  <span>PPN ${((selectedTransaction.tax || 0) > 0 ? ((selectedTransaction.tax / (selectedTransaction.totalAmount || 1)) * 100).toFixed(0) : 0)}%:</span>
+                                  <span>PPN ${(() => {
+                                    const taxRate = selectedTransaction.totalAmount ? (selectedTransaction.tax / selectedTransaction.totalAmount) * 100 : 0;
+                                    return taxRate.toFixed(0);
+                                  })()}%:</span>
                                   <span>${formatCurrency(selectedTransaction.tax)}</span>
                                 </div>` : ''}
                               </div>
@@ -544,8 +547,8 @@ export default function RiwayatPenjualan() {
               </div>
             </div>
           </div>
-        )}
-      </Sidebar>
+        </div>
+      )}
     </ProtectedRoute>
   );
 }

@@ -34,7 +34,7 @@ const SupplierModal = ({
             <div className="sm:flex sm:items-start">
               <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
                 <h3 className={`text-lg leading-6 font-medium ${
-                  darkMode ? 'text-pastel-purple-400' : 'text-pastel-purple-800'
+                  darkMode ? 'text-cyan-400' : 'text-cyan-800'
                 }`} id="modal-title">
                   {editingSupplier ? 'Edit Supplier' : 'Tambah Supplier Baru'}
                 </h3>
@@ -58,7 +58,7 @@ const SupplierModal = ({
                       id="name"
                       value={formData.name}
                       onChange={handleInputChange}
-                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-pastel-purple-500 focus:border-pastel-purple-500 sm:text-sm ${
+                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm ${
                         darkMode 
                           ? 'bg-gray-700 border-gray-600 text-white' 
                           : 'border-pastel-purple-300 text-gray-900'
@@ -78,7 +78,7 @@ const SupplierModal = ({
                       id="address"
                       value={formData.address}
                       onChange={handleInputChange}
-                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-pastel-purple-500 focus:border-pastel-purple-500 sm:text-sm ${
+                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm ${
                         darkMode 
                           ? 'bg-gray-700 border-gray-600 text-white' 
                           : 'border-pastel-purple-300 text-gray-900'
@@ -99,7 +99,7 @@ const SupplierModal = ({
                                                     id="phone"
                                                     value={formData.phone}
                                                     onChange={handleInputChange}
-                                                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-pastel-purple-500 focus:border-pastel-purple-500 sm:text-sm ${
+                                                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm ${
                                                       darkMode 
                                                         ? 'bg-gray-700 border-gray-600 text-white' 
                                                         : 'border-pastel-purple-300 text-gray-900'
@@ -118,7 +118,7 @@ const SupplierModal = ({
                                                     id="email"
                                                     value={formData.email}
                                                     onChange={handleInputChange}
-                                                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-pastel-purple-500 focus:border-pastel-purple-500 sm:text-sm ${
+                                                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm ${
                                                       darkMode 
                                                         ? 'bg-gray-700 border-gray-600 text-white' 
                                                         : 'border-pastel-purple-300 text-gray-900'
@@ -138,8 +138,8 @@ const SupplierModal = ({
               onClick={handleSave}
               className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm flex items-center ${
                 darkMode 
-                  ? 'bg-pastel-purple-600 hover:bg-pastel-purple-700' 
-                  : 'bg-pastel-purple-600 hover:bg-pastel-purple-700'
+                  ? 'bg-cyan-600 hover:bg-cyan-700' 
+                  : 'bg-cyan-600 hover:bg-cyan-700'
               }`}
             >
               <Save className="h-4 w-4 mr-1" />

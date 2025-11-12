@@ -29,6 +29,7 @@ model Category {
   id          String   @id @default(cuid())
   name        String   @unique
   description String?
+  icon        String?  // Add icon field
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt()
 
@@ -96,6 +97,7 @@ model Member {
 
 model Sale {
   id                 String   @id @default(cuid())
+  invoiceNumber      String   @unique // Customer-facing 10-digit invoice number
   cashierId          String
   attendantId        String?
   memberId           String?
@@ -187,4 +189,14 @@ model SuspendedSale {
   memberId  String?
   notes     String?
   createdAt DateTime @default(now())
+}
+
+model Setting {
+  id         String   @id @default(cuid())
+  shopName   String?
+  address    String?
+  phone      String?
+  themeColor String?  @default("#3c8dbc") // Default AdminLTE blue
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt()
 }

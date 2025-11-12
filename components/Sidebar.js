@@ -32,9 +32,11 @@ import {
 } from 'lucide-react';
 import { useDarkMode } from './DarkModeContext';
 import { useSidebar } from './SidebarContext';
+import { useTheme } from './ThemeContext';
 import Tooltip from './Tooltip';
 
 const Sidebar = ({ children }) => {
+  const { shopName, themeColor } = useTheme();
   const [hasMounted, setHasMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -117,7 +119,10 @@ const Sidebar = ({ children }) => {
     { title: "Keuangan", type: 'heading', roles: ['ADMIN'] },
     { title: "Pengeluaran", href: "/admin/pengeluaran", icon: DollarSign, type: 'item', roles: ['ADMIN'] },
     { title: "Pengaturan", type: 'heading', roles: ['ADMIN'] },
+    { title: "Pengaturan", href: "/admin/pengaturan", icon: Settings, type: 'item', roles: ['ADMIN'] },
     { title: "Pengaturan Toko", href: "/admin/pengaturan/toko", icon: Settings, type: 'item', roles: ['ADMIN'] },
+    { title: "Pengaturan Sistem", href: "/admin/pengaturan/sistem", icon: Settings, type: 'item', roles: ['ADMIN'] },
+    { title: "Pengaturan Keamanan", href: "/admin/pengaturan/keamanan", icon: Settings, type: 'item', roles: ['ADMIN'] },
 
     // CASHIER menus
     { title: "Kasir", type: 'heading', roles: ['CASHIER'] },
@@ -152,9 +157,9 @@ const Sidebar = ({ children }) => {
         }`}
       >
         {/* Logo */}
-        <div className={`flex items-center justify-center h-16 px-4 border-b ${darkMode ? 'border-gray-700' : 'border-pastel-purple-200'}`}>
-          <h1 className={`text-xl font-bold ${darkMode ? 'text-pastel-purple-400' : 'text-pastel-purple-700'} ${isCollapsed && !isMobile ? 'hidden' : ''}`}>Toko Sakinah</h1>
-          <ShoppingBag className={`${darkMode ? 'text-pastel-purple-400' : 'text-pastel-purple-700'} ${!isCollapsed || isMobile ? 'hidden' : ''}`} />
+        <div className={`flex items-center justify-center h-16 px-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`} style={{ borderColor: darkMode ? '' : themeColor }}>
+          <h1 style={{ color: themeColor }} className={`text-xl font-bold ${isCollapsed && !isMobile ? 'hidden' : ''}`}>{shopName}</h1>
+          <ShoppingBag style={{ color: themeColor }} className={`${!isCollapsed || isMobile ? 'hidden' : ''}`} />
         </div>
 
         {/* Navigation */}
@@ -196,9 +201,12 @@ const Sidebar = ({ children }) => {
                         href={item.href}
                         className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                           isActive
-                            ? `${darkMode ? 'bg-pastel-purple-900 text-pastel-purple-100' : 'bg-pastel-purple-100 text-pastel-purple-800'}`
-                            : `${darkMode ? 'text-gray-300 hover:bg-gray-700 hover:text-white' : 'text-gray-700 hover:bg-pastel-purple-50 hover:text-pastel-purple-600'}`
+                            ? `text-white`
+                            : `${darkMode ? 'text-gray-300 hover:bg-gray-700 hover:text-white' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'}`
                         }`}
+                        style={{
+                          backgroundColor: isActive ? themeColor : '',
+                        }}
                       >
                         {linkContent}
                       </Link>
@@ -209,9 +217,13 @@ const Sidebar = ({ children }) => {
                       onClick={() => isMobile && setIsMobileMenuOpen(false)}
                       className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                         isActive
-                          ? `${darkMode ? 'bg-pastel-purple-900 text-pastel-purple-100' : 'bg-pastel-purple-100 text-pastel-purple-800'} border-r-4 ${darkMode ? 'border-pastel-purple-500' : 'border-pastel-purple-500'}`
-                          : `${darkMode ? 'text-gray-300 hover:bg-gray-700 hover:text-white' : 'text-gray-700 hover:bg-pastel-purple-50 hover:text-pastel-purple-600'}`
+                          ? 'text-white'
+                          : `${darkMode ? 'text-gray-300 hover:bg-gray-700 hover:text-white' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'}`
                       }`}
+                      style={{
+                        backgroundColor: isActive ? themeColor : '',
+                        borderRight: isActive ? `4px solid ${themeColor}` : '',
+                      }}
                     >
                       {linkContent}
                     </Link>
@@ -293,7 +305,7 @@ const Sidebar = ({ children }) => {
                 className={`flex items-center p-2 rounded-lg cursor-pointer ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
               >
-                <div className="w-10 h-10 rounded-full bg-pastel-purple-400 flex items-center justify-center text-white font-bold">
+                <div style={{ backgroundColor: themeColor }} className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold">
                   {session?.user?.name ? session.user.name.charAt(0).toUpperCase() : 'U'}
                 </div>
                 {/* Only show text if not collapsed and not mobile */}

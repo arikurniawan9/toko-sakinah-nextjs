@@ -3,6 +3,9 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../../../../lib/authOptions';
 import { PrismaClient } from '@prisma/client';
 
+// Tell Next.js this route is dynamic and should not be statically generated
+export const dynamic = 'force-dynamic';
+
 const prisma = new PrismaClient();
 
 export async function GET(request) {

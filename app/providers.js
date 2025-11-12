@@ -3,11 +3,14 @@
 
 import { SessionProvider } from 'next-auth/react';
 import { DarkModeProvider } from '@/components/DarkModeContext'; // Import DarkModeProvider
+import { ThemeProvider } from '@/components/ThemeContext';
 
 export function Providers({ children }) {
   return (
     <DarkModeProvider>
-      <SessionProvider>{children}</SessionProvider>
+      <ThemeProvider>
+        <SessionProvider>{children}</SessionProvider>
+      </ThemeProvider>
     </DarkModeProvider>
   );
 }

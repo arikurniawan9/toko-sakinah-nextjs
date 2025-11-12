@@ -1,13 +1,13 @@
 import React from 'react';
 import Tooltip from '../Tooltip';
-import { Plus, Download, Upload, X, Search, Folder, Trash2 } from 'lucide-react';
+import { Download, Upload, X, Search, Trash2, LayoutGrid, Table } from 'lucide-react';
+import DownloadTemplate from './DownloadTemplate';
 
 const KasirToolbar = ({
   searchTerm,
   setSearchTerm,
   itemsPerPage,
   setItemsPerPage,
-  onAddNew,
   onDeleteMultiple,
   selectedRowsCount,
   onExport,
@@ -15,6 +15,8 @@ const KasirToolbar = ({
   importLoading,
   exportLoading,
   darkMode,
+  view,
+  setView,
 }) => {
   return (
     <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
@@ -58,7 +60,29 @@ const KasirToolbar = ({
       </div>
 
       {/* Right side: Action Buttons */}
-      <div className="flex items-center justify-start md:justify-end flex-wrap gap-2">
+      <div className="flex items-center justify-start md:justify-end flex-wrap gap-3">
+        {/* View Toggle */}
+        <div className="flex rounded-lg border border-gray-300 dark:border-gray-700">
+          <Tooltip content="Tampilan Grid">
+            <button
+              onClick={() => setView('grid')}
+              className={`p-2 rounded-l-lg ${view === 'grid' ? 'bg-purple-600 text-white' : (darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-white text-gray-700 hover:bg-gray-100')}`}
+              aria-label="Tampilan Grid"
+            >
+              <LayoutGrid className="h-5 w-5" />
+            </button>
+          </Tooltip>
+          <Tooltip content="Tampilan Tabel">
+            <button
+              onClick={() => setView('table')}
+              className={`p-2 rounded-r-lg ${view === 'table' ? 'bg-purple-600 text-white' : (darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-white text-gray-700 hover:bg-gray-100')}`}
+              aria-label="Tampilan Tabel"
+            >
+              <Table className="h-5 w-5" />
+            </button>
+          </Tooltip>
+        </div>
+
         {selectedRowsCount > 0 && (
           <Tooltip content={`Hapus ${selectedRowsCount} kasir terpilih`}>
             <button
@@ -70,10 +94,14 @@ const KasirToolbar = ({
             </button>
           </Tooltip>
         )}
+        
+        {/* Download Template Button */}
+        <DownloadTemplate darkMode={darkMode} />
+
         <Tooltip content="Import data dari Excel">
           <label className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${
-            importLoading 
-              ? 'text-gray-300 bg-gray-700 cursor-not-allowed' 
+            importLoading
+              ? 'text-gray-300 bg-gray-700 cursor-not-allowed'
               : (darkMode ? 'text-gray-300 bg-gray-700 hover:bg-gray-600' : 'text-gray-700 bg-gray-100 hover:bg-gray-200')
           } cursor-pointer`}>
             {importLoading ? (
@@ -84,11 +112,11 @@ const KasirToolbar = ({
             ) : (
               <Upload className="h-4 w-4" />
             )}
-            <input 
-              type="file" 
-              accept=".xlsx,.xls,.csv" 
-              onChange={onImport} 
-              className="hidden" 
+            <input
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              onChange={onImport}
+              className="hidden"
               disabled={importLoading}
             />
           </label>
@@ -107,24 +135,6 @@ const KasirToolbar = ({
             ) : (
               <Download className="h-4 w-4" />
             )}
-          </button>
-        </Tooltip>
-        <Tooltip content="Template Kasir">
-          <a
-            href="/templates/template-kasir.xlsx"
-            download="template-kasir.xlsx"
-            className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${darkMode ? 'text-gray-300 bg-gray-700 hover:bg-gray-600' : 'text-gray-700 bg-gray-100 hover:bg-gray-200'}`}
-          >
-            <Folder className="h-4 w-4" />
-          </a>
-        </Tooltip>
-        <Tooltip content="Tambah kasir baru">
-          <button
-            onClick={onAddNew}
-            className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            <span>Baru</span>
           </button>
         </Tooltip>
       </div>

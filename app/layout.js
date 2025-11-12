@@ -7,7 +7,6 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata = {
   title: 'Toko Sakinah - Aplikasi Kasir',
   description: 'Aplikasi kasir untuk toko pakaian Toko Sakinah',
-  viewport: 'width=device-width, initial-scale=1',
 }
 
 export default function RootLayout({ children }) {

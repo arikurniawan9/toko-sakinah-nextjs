@@ -37,12 +37,22 @@ export async function GET(request) {
         }
       : {};
 
-    const suppliers = await prisma.supplier.findMany({
+    const suppliersWithProductCount = await prisma.supplier.findMany({
       where,
       skip: offset,
       take: limit,
       orderBy: { createdAt: 'desc' },
+      include: {
+        _count: {
+          select: { products: true }
+        }
+      }
     });
+
+    const suppliers = suppliersWithProductCount.map(sup => ({
+      ...sup,
+      productCount: sup._count.products
+    }));
     
     const totalCount = await prisma.supplier.count({ where });
     

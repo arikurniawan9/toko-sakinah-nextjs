@@ -3,8 +3,9 @@
 
 import { Search, Loader } from 'lucide-react';
 import TotalDisplay from './TotalDisplay'; // Import TotalDisplay
+import { memo } from 'react';
 
-const ProductSearch = ({
+const ProductSearch = memo(({
   searchTerm,
   setSearchTerm,
   handleScan,
@@ -48,7 +49,7 @@ const ProductSearch = ({
             </div>
           )}
           {!isProductListLoading && products.length === 0 && searchTerm && (
-            <div className="p-4 text-center">Produk tidak ditemukan.</div>
+            <div className="p-4 text-center text-gray-500">Produk tidak ditemukan.</div>
           )}
           {!isProductListLoading && products.map(product => (
             <div
@@ -72,6 +73,6 @@ const ProductSearch = ({
       </div>
     </div>
   );
-};
+});
 
 export default ProductSearch;
