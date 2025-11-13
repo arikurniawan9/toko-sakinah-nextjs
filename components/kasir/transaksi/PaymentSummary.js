@@ -4,21 +4,21 @@
 import { CreditCard, Save } from 'lucide-react';
 import { memo } from 'react';
 
-const PaymentSummary = memo(({ 
-  calculation, 
-  payment, 
-  setPayment, 
+const PaymentSummary = memo(({
+  calculation,
+  payment,
+  setPayment,
   paymentMethod,
   setPaymentMethod,
-  initiatePaidPayment, 
+  initiatePaidPayment,
   initiateUnpaidPayment,
-  loading, 
-  darkMode, 
-  additionalDiscount, 
-  setAdditionalDiscount, 
+  loading,
+  darkMode,
+  additionalDiscount,
+  setAdditionalDiscount,
   sessionStatus,
   selectedMember,
-  selectedAttendant 
+  selectedAttendant
 }) => {
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('id-ID', {
@@ -33,8 +33,20 @@ const PaymentSummary = memo(({
 
   // Logic for disabling buttons
   const isPaidDisabled = loading || !hasCalculation || payment < grandTotal || !selectedAttendant;
-  const isUnpaidDisabled = loading || !hasCalculation || !selectedMember || selectedMember.name === 'Pelanggan Umum' || !selectedAttendant || payment >= grandTotal;
+  const isUnpaidDisabled = loading || !hasCalculation || !selectedMember || selectedMember.name === 'Pelanggan Umum' || !selectedAttendant;
 
+  // Fungsi untuk pembulatan ke kelipatan tertentu (misalnya ke ribuan terdekat)
+  const roundToNearest = (num, roundTo = 1000) => {
+    return Math.ceil(num / roundTo) * roundTo;
+  };
+
+  // Fungsi untuk menghitung pembayaran cepat
+  const quickPayment = (multiplier) => {
+    if (hasCalculation) {
+      const calculatedPayment = Math.max(grandTotal, roundToNearest(grandTotal * multiplier));
+      setPayment(calculatedPayment);
+    }
+  };
 
   return (
     <>
@@ -104,6 +116,8 @@ const PaymentSummary = memo(({
               value={additionalDiscount}
               onChange={(e) => setAdditionalDiscount(Number(e.target.value))}
               placeholder="Masukkan diskon tambahan"
+              min="0"
+              max={calculation?.subTotal || 0}
             />
           </div>
           <div>
@@ -111,17 +125,19 @@ const PaymentSummary = memo(({
               <label htmlFor="payment" className={`block text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
                 Jumlah Bayar
               </label>
-              <button
-                onClick={() => setPayment(grandTotal)}
-                disabled={!hasCalculation}
-                className={`px-2 py-1 text-xs font-medium rounded ${
-                  darkMode 
-                    ? 'bg-purple-600 hover:bg-purple-700 text-white disabled:bg-gray-600' 
-                    : 'bg-purple-100 hover:bg-purple-200 text-purple-700 disabled:bg-gray-200'
-                } disabled:cursor-not-allowed`}
-              >
-                Uang Pas
-              </button>
+              <div className="flex space-x-1">
+                <button
+                  onClick={() => setPayment(grandTotal)}
+                  disabled={!hasCalculation}
+                  className={`px-2 py-1 text-xs font-medium rounded ${
+                    darkMode
+                      ? 'bg-purple-600 hover:bg-purple-700 text-white disabled:bg-gray-600'
+                      : 'bg-purple-100 hover:bg-purple-200 text-purple-700 disabled:bg-gray-200'
+                  } disabled:cursor-not-allowed`}
+                >
+                  Uang Pas
+                </button>
+              </div>
             </div>
             <input
               type="number"
@@ -132,12 +148,66 @@ const PaymentSummary = memo(({
               value={payment}
               onChange={(e) => setPayment(Number(e.target.value))}
               placeholder="Masukkan jumlah pembayaran"
+              min={grandTotal}
             />
              {calculation && payment > 0 && payment < grandTotal && (
               <p className="mt-2 text-xs text-red-500">
-                Kurang {formatCurrency(grandTotal - payment)}
+                Kurang {formatCurrency(grandTotal - payment)} lagi untuk menyelesaikan pembayaran
               </p>
             )}
+            {calculation && payment >= grandTotal && payment > 0 && (
+              <p className="mt-2 text-xs text-green-500">
+                Kembalian: {formatCurrency(payment - grandTotal)}
+              </p>
+            )}
+          </div>
+
+          {/* Tombol pembayaran cepat */}
+          <div className="grid grid-cols-4 gap-2">
+            <button
+              onClick={() => quickPayment(1)}
+              disabled={!hasCalculation}
+              className={`text-xs py-2 rounded ${
+                darkMode 
+                  ? 'bg-gray-700 hover:bg-gray-600 text-white disabled:opacity-50' 
+                  : 'bg-gray-200 hover:bg-gray-300 text-gray-800 disabled:opacity-50'
+              }`}
+            >
+              {formatCurrency(roundToNearest(grandTotal, 1000))}
+            </button>
+            <button
+              onClick={() => quickPayment(1.1)}
+              disabled={!hasCalculation}
+              className={`text-xs py-2 rounded ${
+                darkMode 
+                  ? 'bg-gray-700 hover:bg-gray-600 text-white disabled:opacity-50' 
+                  : 'bg-gray-200 hover:bg-gray-300 text-gray-800 disabled:opacity-50'
+              }`}
+            >
+              +10%
+            </button>
+            <button
+              onClick={() => quickPayment(1.25)}
+              disabled={!hasCalculation}
+              className={`text-xs py-2 rounded ${
+                darkMode 
+                  ? 'bg-gray-700 hover:bg-gray-600 text-white disabled:opacity-50' 
+                  : 'bg-gray-200 hover:bg-gray-300 text-gray-800 disabled:opacity-50'
+              }`}
+            >
+              +25%
+            </button>
+            <button
+              onClick={() => quickPayment(2)}
+              disabled={!hasCalculation}
+              className={`text-xs py-2 rounded ${
+                darkMode 
+                  ? 'bg-gray-700 hover:bg-gray-600 text-white disabled:opacity-50' 
+                  : 'bg-gray-200 hover:bg-gray-300 text-gray-800 disabled:opacity-50'
+              }`}
+            >
+              x2
+            </button>
           </div>
 
           {calculation && (

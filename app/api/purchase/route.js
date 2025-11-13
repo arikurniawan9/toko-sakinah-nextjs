@@ -1,7 +1,62 @@
-// app/api/purchase/route.js
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
+
+// GET /api/purchase - Get all purchases with filtering
+export async function GET(request) {
+  const session = await getSession();
+  if (!session || session.user.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { searchParams } = new URL(request.url);
+  const supplierId = searchParams.get('supplierId');
+  const startDate = searchParams.get('startDate');
+  const endDate = searchParams.get('endDate');
+
+  const whereClause = {};
+  if (supplierId) {
+    whereClause.supplierId = supplierId;
+  }
+  if (startDate && endDate) {
+    whereClause.purchaseDate = {
+      gte: new Date(startDate),
+      lte: new Date(new Date(endDate).getTime() + 86400000), // include the whole end day
+    };
+  } else if (startDate) {
+    whereClause.purchaseDate = {
+      gte: new Date(startDate),
+    };
+  } else if (endDate) {
+    whereClause.purchaseDate = {
+      lte: new Date(new Date(endDate).getTime() + 86400000),
+    };
+  }
+
+  try {
+    const purchases = await prisma.purchase.findMany({
+      where: whereClause,
+      orderBy: {
+        purchaseDate: 'desc',
+      },
+      include: {
+        supplier: true, // Include supplier details
+        user: { // Include user (creator) details
+          select: {
+            name: true,
+          }
+        },
+      },
+    });
+    return NextResponse.json({ purchases });
+  } catch (error) {
+    console.error('Error fetching purchases:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch purchases.' },
+      { status: 500 }
+    );
+  }
+}
 
 export async function POST(request) {
   const session = await getSession();

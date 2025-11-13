@@ -148,6 +148,25 @@ export default function CashierDashboard() {
                     );
                   })}
                 </div>
+                
+                {/* Quick Tips Section */}
+                <div className={`mt-8 p-6 rounded-xl shadow border ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                  <h2 className={`text-xl font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'}`}>Tips Harian</h2>
+                  <ul className={`space-y-2 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                    <li className="flex items-start">
+                      <span className="mr-2">•</span>
+                      <span>Gunakan tombol pintas (Alt+H) untuk kembali ke dashboard</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="mr-2">•</span>
+                      <span>Tekan Enter setelah mengetik kode produk untuk scan cepat</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="mr-2">•</span>
+                      <span>Gunakan Alt+Enter untuk langsung membayar jika jumlah sudah cukup</span>
+                    </li>
+                  </ul>
+                </div>
               </div>
 
               {/* Right Column: Quick Stats & Low Stock Products */}

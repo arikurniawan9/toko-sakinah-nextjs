@@ -81,8 +81,98 @@ export default function KasirTransaksiPage() {
     setIsConfirmModalOpen(true);
   };
 
+  const [isUnpaidConfirmModalOpen, setIsUnpaidConfirmModalOpen] = useState(false);
+
+  const handleUnpaidPayment = useCallback(async () => {
+    setIsUnpaidConfirmModalOpen(false); // Close modal before processing
+    if (!session?.user?.id) {
+      alert("Sesi pengguna tidak ditemukan. Harap login kembali.");
+      setLoading(false);
+      return;
+    }
+    if (cart.length === 0) {
+      alert(
+        "Keranjang belanja kosong! Tambahkan produk sebelum memproses pembayaran."
+      );
+      setLoading(false);
+      return;
+    }
+    if (!selectedAttendant) {
+      alert("Pelayan harus dipilih sebelum memproses transaksi!");
+      setLoading(false);
+      return;
+    }
+    if (!selectedMember || selectedMember.name === 'Pelanggan Umum') {
+      alert("Member harus dipilih sebelum menyimpan sebagai hutang!");
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch("/api/transaksi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cashierId: session.user.id,
+          attendantId: selectedAttendant.id,
+          memberId: selectedMember.id,
+          paymentMethod: paymentMethod,
+          items: cart.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            price: getTierPrice(item, item.quantity),
+            discount: getTierPrice(item, 1) - getTierPrice(item, item.quantity),
+          })),
+          total: calculation.grandTotal,
+          payment: 0, // Bayar 0 untuk hutang
+          change: 0, // Tidak ada kembalian
+          tax: calculation.tax,
+          discount: calculation.totalDiscount,
+          additionalDiscount: additionalDiscount,
+          status: 'UNPAID', // Set status sebagai UNPAID
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert(`Transaksi hutang berhasil disimpan.\nNomor Invoice: ${result.invoiceNumber || result.id}`);
+
+        // Reset form setelah transaksi hutang
+        setCart([]);
+        setSelectedMember(null);
+        setSelectedAttendant(null);
+        setPayment(0);
+        setCalculation(null);
+        setSearchTerm("");
+        setProducts([]);
+        setAdditionalDiscount(0);
+      } else {
+        alert(`Gagal: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Error processing unpaid payment:", error);
+      alert("Terjadi kesalahan saat memproses pembayaran hutang");
+    } finally {
+      setLoading(false);
+    }
+  }, [calculation, session, selectedAttendant, selectedMember, cart, getTierPrice, paymentMethod, additionalDiscount]);
+
   const initiateUnpaidPayment = () => {
-    alert("Fitur simpan sebagai hutang belum tersedia di halaman ini.");
+    // Tambahkan konfirmasi untuk pembayaran hutang
+    if (!selectedMember || selectedMember.name === 'Pelanggan Umum') {
+      alert("Member harus dipilih untuk transaksi hutang!");
+      return;
+    }
+    
+    if (cart.length === 0) {
+      alert("Keranjang belanja kosong!");
+      return;
+    }
+    
+    // Buka modal konfirmasi
+    setIsUnpaidConfirmModalOpen(true);
   };
 
   // Fungsi untuk lock saja (Alt+A hanya mengunci)
@@ -345,13 +435,13 @@ export default function KasirTransaksiPage() {
     const fetchInitialData = async () => {
       try {
         const [membersRes, attendantsRes] = await Promise.all([
-          fetch("/api/member"),
-          fetch("/api/pelayan"),
+          fetch("/api/member?simple=true"),  // Gunakan parameter simple untuk mendapatkan array langsung
+          fetch("/api/pelayan?simple=true"),  // Gunakan parameter simple untuk mendapatkan array langsung
         ]);
-        const membersData = await membersRes.json();
-        const attendantsData = await attendantsRes.json();
+        const membersData = await membersRes.json();  // Ini sekarang langsung array
+        const attendantsData = await attendantsRes.json();  // Ini sekarang langsung array
 
-        const allMembers = membersData.members || [];
+        const allMembers = membersData || [];
         setMembers(allMembers);
 
         const generalCustomer = allMembers.find(
@@ -359,7 +449,7 @@ export default function KasirTransaksiPage() {
         );
         setDefaultMember(generalCustomer);
 
-        setAttendants(attendantsData.attendants || []);
+        setAttendants(attendantsData || []);
       } catch (error) {
         console.error("Error fetching initial data:", error);
       }
@@ -452,14 +542,25 @@ export default function KasirTransaksiPage() {
         subtotal: itemSubtotal,
       };
     });
+    
     let memberDiscount = 0;
     if (selectedMember?.discount) {
+      // Diskon member dihitung dari subtotal sebelum diskon item
       memberDiscount = (subtotal * selectedMember.discount) / 100;
     }
+    
+    // Total diskon adalah jumlah dari semua jenis diskon
     const totalDiscount = itemDiscount + memberDiscount;
-    const grandTotal = subtotal - memberDiscount; // Re-introduce this line
-    const finalGrandTotal = grandTotal - additionalDiscount;
+    
+    // Hitung grand total setelah diskon member diterapkan
+    const grandTotalAfterMemberDiscount = subtotal - memberDiscount;
+    
+    // Terapkan diskon tambahan jika ada
+    const finalGrandTotal = Math.max(0, grandTotalAfterMemberDiscount - additionalDiscount);
+    
+    // Total diskon akhir adalah jumlah semua diskon
     const finalTotalDiscount = totalDiscount + additionalDiscount;
+    
     setCalculation({
       items: calculatedItems,
       subTotal: subtotal,
@@ -467,8 +568,8 @@ export default function KasirTransaksiPage() {
       memberDiscount: memberDiscount,
       additionalDiscount: additionalDiscount,
       totalDiscount: finalTotalDiscount,
-      tax: 0,
-      grandTotal: Math.round(finalGrandTotal),
+      tax: 0, // Pajak bisa ditambahkan nanti jika diperlukan
+      grandTotal: Math.max(0, Math.round(finalGrandTotal)), // Pastikan tidak negatif
     });
   }, [cart, selectedMember, getTierPrice, additionalDiscount]);
 
@@ -506,8 +607,9 @@ export default function KasirTransaksiPage() {
       prevCart.map((item) => {
         if (item.productId === productId) {
           if (newQuantity > item.stock) {
-            console.warn(`Cannot add more ${item.name}. Stock limit reached.`);
-            return { ...item, quantity: item.stock };
+            // Tampilkan peringatan jika jumlah melebihi stok
+            alert(`Jumlah maksimum ${item.name} adalah ${item.stock} (stok tersedia).`);
+            return { ...item, quantity: Math.min(newQuantity, item.stock) };
           }
           return { ...item, quantity: newQuantity };
         }
@@ -821,6 +923,33 @@ export default function KasirTransaksiPage() {
           </div>
         </div>
       )}
+
+      {/* Unpaid Payment Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isUnpaidConfirmModalOpen}
+        onClose={() => setIsUnpaidConfirmModalOpen(false)}
+        onConfirm={handleUnpaidPayment}
+        title="Konfirmasi Transaksi Hutang"
+        message={
+          <div>
+            <p className="mb-2">Anda akan menyimpan transaksi ini sebagai hutang untuk:</p>
+            <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-md text-left">
+              <p className="font-semibold">{selectedMember?.name}</p>
+              <p className="text-sm">Total: {new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0,
+              }).format(calculation?.grandTotal || 0)}</p>
+              <p className="text-sm">Pelayan: {selectedAttendant?.name}</p>
+            </div>
+            <p className="mt-3">Transaksi ini akan dicatat sebagai hutang dan stok produk akan berkurang. Apakah Anda yakin ingin melanjutkan?</p>
+          </div>
+        }
+        confirmText="Simpan sebagai Hutang"
+        cancelText="Batal"
+        isLoading={loading}
+        variant="warning"
+      />
 
       {/* Lock Overlay - Muncul ketika mode lock aktif */}
       {isLocked && (

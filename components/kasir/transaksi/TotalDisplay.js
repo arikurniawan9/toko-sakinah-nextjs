@@ -18,7 +18,32 @@ const TotalDisplay = memo(({ total, darkMode }) => {
     return s.charAt(0).toUpperCase() + s.slice(1);
   };
 
-  const terbilangText = capitalize(terbilang(total)) + ' Rupiah';
+  // Fungsi untuk mengonversi angka ke teks rupiah, dengan penanganan error
+  const getTerbilangText = (amount) => {
+    if (typeof amount !== 'number' || isNaN(amount)) {
+      return 'Nol Rupiah';
+    }
+    
+    if (amount < 0) {
+      return 'Angka negatif tidak valid';
+    }
+    
+    try {
+      // Untuk jumlah besar, terbilang bisa gagal, jadi kita gunakan try-catch
+      const result = terbilang(amount);
+      if (typeof result === 'string') {
+        return capitalize(result) + ' Rupiah';
+      } else {
+        return capitalize(terbilang(Math.round(amount))) + ' Rupiah';
+      }
+    } catch (error) {
+      console.error('Error converting number to terbilang:', error);
+      // Fallback jika terbilang gagal
+      return `Jumlah: ${formatCurrency(amount)}`;
+    }
+  };
+
+  const terbilangText = getTerbilangText(total);
 
   return (
     <div className={`rounded-lg shadow p-6 text-center ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>

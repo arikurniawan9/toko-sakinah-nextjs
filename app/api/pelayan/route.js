@@ -9,6 +9,7 @@ export async function GET(request) {
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '10');
   const search = searchParams.get('search') || '';
+  const simple = searchParams.get('simple'); // Parameter untuk format sederhana
 
   const skip = (page - 1) * limit;
 
@@ -39,14 +40,20 @@ export async function GET(request) {
           phone: true,
           address: true,
           status: true,
+          employeeNumber: true, // tambahkan employeeNumber jika ada
           createdAt: true,
           updatedAt: true,
         }
       }),
       prisma.user.count({ where: whereClause })
     ]);
-    
-    return NextResponse.json({ 
+
+    // Jika parameter simple ada, kembalikan hanya array attendants
+    if (simple) {
+      return NextResponse.json(attendants);
+    }
+
+    return NextResponse.json({
       users: attendants,
       pagination: {
         total: total,
@@ -58,7 +65,7 @@ export async function GET(request) {
   } catch (error) {
     console.error('Error fetching attendants:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch attendants' }, 
+      { error: 'Failed to fetch attendants' },
       { status: 500 }
     );
   }

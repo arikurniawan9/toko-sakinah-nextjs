@@ -73,6 +73,7 @@ export async function POST(request) {
     memberId,
     attendantId,
     paymentMethod, // Add payment method
+    status // Tambahkan status transaksi
   } = body;
 
   if (!items || items.length === 0) {
@@ -81,6 +82,33 @@ export async function POST(request) {
 
   if (!attendantId) {
     return NextResponse.json({ error: 'Attendant must be selected' }, { status: 400 });
+  }
+
+  // Untuk transaksi hutang, memberId wajib
+  if (!memberId && status === 'UNPAID') {
+    return NextResponse.json({ error: 'Member must be selected for unpaid transactions' }, { status: 400 });
+  }
+
+  // Validasi stok sebelum membuat transaksi
+  try {
+    for (const item of items) {
+      const product = await prisma.product.findUnique({
+        where: { id: item.productId },
+      });
+      
+      if (!product) {
+        return NextResponse.json({ error: `Produk dengan ID ${item.productId} tidak ditemukan.` }, { status: 400 });
+      }
+      
+      if (product.stock < item.quantity) {
+        return NextResponse.json({ 
+          error: `Stok tidak cukup untuk produk "${product.name}". Stok tersedia: ${product.stock}, permintaan: ${item.quantity}.` 
+        }, { status: 400 });
+      }
+    }
+  } catch (error) {
+    console.error('Error validating stock:', error);
+    return NextResponse.json({ error: 'Gagal memvalidasi stok produk.' }, { status: 500 });
   }
 
   try {
@@ -101,7 +129,7 @@ export async function POST(request) {
           tax: tax,
           payment: payment,
           change: change,
-          status: 'PAID',
+          status: status || 'PAID', // Gunakan status yang dikirim, default ke 'PAID'
           saleDetails: {
             create: items.map(item => ({
               productId: item.productId,
@@ -121,15 +149,33 @@ export async function POST(request) {
         }
       });
 
-      // 2. Update product stock
+      // 2. Update product stock - dilakukan untuk semua transaksi karena produk telah diberikan ke pelanggan
       for (const item of items) {
-        await tx.product.update({
+        const updatedProduct = await tx.product.update({
           where: { id: item.productId },
           data: {
             stock: {
               decrement: item.quantity,
             },
           },
+        });
+        
+        // Tambahkan validasi tambahan bahwa stok tidak negatif
+        if (updatedProduct.stock < 0) {
+          throw new Error(`Stok produk ${updatedProduct.name} menjadi negatif setelah transaksi.`);
+        }
+      }
+
+      // 3. Jika status UNPAID, buat juga entri di Receivable
+      if (status === 'UNPAID' && memberId) {
+        await tx.receivable.create({
+          data: {
+            saleId: newSale.id,
+            memberId: memberId,
+            amountDue: total, // Total hutang
+            amountPaid: 0, // Belum dibayar
+            status: 'UNPAID', // Status hutang
+          }
         });
       }
 
@@ -141,7 +187,8 @@ export async function POST(request) {
       id: sale.id,
       invoiceNumber: sale.invoiceNumber,
       total: sale.total,
-      paymentMethod: sale.paymentMethod
+      paymentMethod: sale.paymentMethod,
+      status: sale.status
     });
 
     // Return the complete sale object including invoice number, which now includes saleDetails and product info
@@ -154,10 +201,19 @@ export async function POST(request) {
     }, { status: 201 });
   } catch (error) {
     console.error('Failed to create sale:', error);
+    
+    // Penanganan error yang lebih spesifik
+    if (error.message && error.message.includes('stok menjadi negatif')) {
+      return NextResponse.json({ 
+        error: 'Gagal membuat transaksi: Stok produk tidak mencukupi karena transaksi lain sedang berlangsung.' 
+      }, { status: 400 });
+    }
+    
     // Check for specific Prisma error for insufficient stock
     if (error.code === 'P2025' || (error.meta && error.meta.cause === 'Record to update not found.')) {
-       return NextResponse.json({ error: 'Failed to create sale: Insufficient stock for one or more items.' }, { status: 400 });
+       return NextResponse.json({ error: 'Gagal membuat transaksi: Stok produk tidak mencukupi.' }, { status: 400 });
     }
-    return NextResponse.json({ error: 'Failed to create sale' }, { status: 500 });
+    
+    return NextResponse.json({ error: 'Gagal membuat transaksi: ' + error.message || 'Terjadi kesalahan internal.' }, { status: 500 });
   }
 }

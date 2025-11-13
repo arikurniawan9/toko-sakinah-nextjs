@@ -39,6 +39,14 @@ export async function GET(request) {
       prisma.member.count({ where: whereClause }),
     ]);
 
+    // Periksa apakah permintaan datang dari komponen pemilihan member
+    const url = new URL(request.url);
+    const isSimple = url.searchParams.get('simple'); // Jika ada parameter simple, kembalikan hanya array members
+
+    if (isSimple) {
+      return NextResponse.json(members);
+    }
+
     return NextResponse.json({
       members,
       total,
