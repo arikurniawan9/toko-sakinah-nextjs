@@ -48,6 +48,16 @@ const PelayanTable = ({
             <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
               darkMode ? 'text-gray-300' : 'text-pastel-purple-700'
             }`}>
+              Phone
+            </th>
+            <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+              darkMode ? 'text-gray-300' : 'text-pastel-purple-700'
+            }`}>
+              Status
+            </th>
+            <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+              darkMode ? 'text-gray-300' : 'text-pastel-purple-700'
+            }`}>
               Role
             </th>
             <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
@@ -105,6 +115,22 @@ const PelayanTable = ({
                   darkMode ? 'text-gray-300' : 'text-gray-600'
                 }`}>
                   {attendant.username}
+                </td>
+                <td className={`px-6 py-4 text-sm ${
+                  darkMode ? 'text-gray-300' : 'text-gray-600'
+                }`}>
+                  {attendant.phone || '-'}
+                </td>
+                <td className={`px-6 py-4 text-sm ${
+                  darkMode ? 'text-gray-300' : 'text-gray-600'
+                }`}>
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    attendant.status === 'AKTIF' 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {attendant.status}
+                  </span>
                 </td>
                 <td className={`px-6 py-4 text-sm ${
                   darkMode ? 'text-gray-300' : 'text-gray-600'

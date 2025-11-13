@@ -10,17 +10,21 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  name         String
-  username     String   @unique
+  id             String   @id @default(cuid())
+  name           String
+  username       String   @unique
   employeeNumber String?  @unique // Nomor pegawai
-  password     String   // hashed password
-  role         String   // ADMIN, CASHIER, ATTENDANT
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt()
+  gender         String?  // LAKI_LAKI, PEREMPUAN
+  address        String?
+  phone          String?
+  status         String   @default("AKTIF") // AKTIF, TIDAK_AKTIF
+  password       String   // hashed password
+  role           String   // ADMIN, CASHIER, ATTENDANT
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt()
 
-  cashierSales   Sale[] @relation("CashierSales")
-  attendantSales Sale[] @relation("AttendantSales")
+  cashierSales   Sale[]     @relation("CashierSales")
+  attendantSales Sale[]     @relation("AttendantSales")
   tempCarts      TempCart[] @relation("AttendantTempCarts")
   purchases      Purchase[] @relation("PurchaseUser")
 }

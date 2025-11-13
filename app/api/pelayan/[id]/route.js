@@ -1,63 +1,40 @@
-// app/api/pelayan/[id]/route.js
 import { NextResponse } from 'next/server';
 import prisma from '../../../../lib/prisma';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '../../../../lib/authOptions';
 
+// GET /api/pelayan/[id]
 export async function GET(request, { params }) {
-  const session = await getServerSession(authOptions);
-
-  if (!session || session.user.role !== 'ADMIN') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
-
   const { id } = params;
 
-  if (!id) {
-    return NextResponse.json({ error: 'Attendant ID is required' }, { status: 400 });
-  }
-
   try {
-    // 1. Fetch attendant details
-    const attendant = await prisma.user.findUnique({
-      where: { id },
-    });
-
-    if (!attendant) {
-      return NextResponse.json({ error: 'Attendant not found' }, { status: 404 });
-    }
-
-    // 2. Fetch all sales served by this attendant
-    const sales = await prisma.sale.findMany({
-      where: { attendantId: id },
-      orderBy: { date: 'desc' },
+    const pelayan = await prisma.user.findUnique({
+      where: { id: id },
       include: {
-        cashier: { select: { name: true } },
-        member: { select: { name: true } },
+        attendantSales: {
+          orderBy: {
+            date: 'desc',
+          },
+          include: {
+            member: true, // Include member details in the sales
+          },
+        },
       },
     });
 
-    // 3. Calculate total sales for today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    if (!pelayan) {
+      return NextResponse.json({ error: 'Pelayan not found' }, { status: 404 });
+    }
 
-    const todaysSales = sales.filter(sale => {
-      const saleDate = new Date(sale.date);
-      return saleDate >= today && saleDate < tomorrow;
-    });
+    // Calculate total sales
+    const totalSales = pelayan.attendantSales.reduce((acc, sale) => acc + sale.total, 0);
 
-    const totalSalesToday = todaysSales.reduce((sum, sale) => sum + sale.total, 0);
+    const responseData = {
+      ...pelayan,
+      totalSales,
+    };
 
-    return NextResponse.json({
-      attendant,
-      sales,
-      totalSalesToday,
-    });
-
+    return NextResponse.json(responseData);
   } catch (error) {
-    console.error(`Error fetching details for attendant ${id}:`, error);
+    console.error('Error fetching pelayan details:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

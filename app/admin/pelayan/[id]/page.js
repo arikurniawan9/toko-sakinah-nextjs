@@ -1,199 +1,185 @@
-// app/admin/pelayan/[id]/page.js
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import ProtectedRoute from '../../../../components/ProtectedRoute';
+import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
 import { useDarkMode } from '../../../../components/DarkModeContext';
-import { User, ArrowLeft, DollarSign, ShoppingCart, Calendar } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowLeft, User, Phone, MapPin, TrendingUp, Calendar } from 'lucide-react';
+
+// A simple component for displaying a piece of profile info
+const InfoPill = ({ icon: Icon, label, value, darkMode }) => (
+  <div className={`flex items-center p-3 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+    <Icon className={`h-5 w-5 mr-3 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+    <div>
+      <p className={`text-xs font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{label}</p>
+      <p className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>{value || '-'}</p>
+    </div>
+  </div>
+);
 
 export default function PelayanDetailPage() {
+  const { id } = useParams();
   const { darkMode } = useDarkMode();
-  const params = useParams();
-  const router = useRouter();
-  const { id } = params;
-
-  const [data, setData] = useState(null);
+  const [pelayan, setPelayan] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
+
+  // State for transaction table
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     if (id) {
-      const fetchData = async () => {
-        setLoading(true);
+      const fetchPelayanDetails = async () => {
         try {
+          setLoading(true);
           const response = await fetch(`/api/pelayan/${id}`);
           if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Gagal memuat data detail pelayan');
+            throw new Error('Failed to fetch pelayan details');
           }
-          const result = await response.json();
-          setData(result);
+          const data = await response.json();
+          setPelayan(data);
         } catch (err) {
           setError(err.message);
         } finally {
           setLoading(false);
         }
       };
-      fetchData();
+      fetchPelayanDetails();
     }
   }, [id]);
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   if (loading) {
-    return (
-      <ProtectedRoute requiredRole="ADMIN">
-        <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center">Memuat data...</div>
-        </main>
-      </ProtectedRoute>
-    );
+    return <div className={`p-8 ${darkMode ? 'text-white' : 'text-black'}`}>Loading...</div>;
   }
 
   if (error) {
-    return (
-      <ProtectedRoute requiredRole="ADMIN">
-        <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center text-red-500">Error: {error}</div>
-        </main>
-      </ProtectedRoute>
-    );
+    return <div className="p-8 text-red-500">Error: {error}</div>;
   }
 
-  if (!data) {
-    return null;
+  if (!pelayan) {
+    return <div className={`p-8 ${darkMode ? 'text-white' : 'text-black'}`}>Pelayan not found.</div>;
   }
 
-  const { attendant, sales, totalSalesToday } = data;
+  // Logic for filtering and paginating transactions
+  const filteredTransactions = pelayan.attendantSales.filter(sale => {
+    const saleDate = new Date(sale.date).toLocaleDateString('id-ID');
+    const memberName = sale.member?.name.toLowerCase() || '';
+    return saleDate.includes(searchTerm) || memberName.includes(searchTerm.toLowerCase());
+  });
+
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentTransactions = filteredTransactions.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
 
   return (
-    <ProtectedRoute requiredRole="ADMIN">
-      <main className={`w-full px-4 sm:px-6 lg:px-8 py-8 ${darkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-50'}`}>
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-6">
-            <button
-              onClick={() => router.back()}
-              className={`flex items-center text-sm font-medium ${darkMode ? 'text-purple-400 hover:text-purple-300' : 'text-purple-600 hover:text-purple-800'}`}
-            >
-              <ArrowLeft size={16} className="mr-1" />
-              Kembali ke Manajemen Pelayan
-            </button>
-          </div>
+    <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <Link href="/admin/pelayan" className={`flex items-center text-sm font-medium ${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'}`}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Kembali ke Daftar Pelayan
+          </Link>
+          <h1 className={`text-3xl font-bold mt-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{pelayan.name}</h1>
+          <p className={`mt-1 text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Detail performa dan informasi pelayan.</p>
+        </div>
+      </div>
 
-          {/* Header */}
-          <div className={`p-6 rounded-xl shadow-lg border mb-8 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+      {/* Profile Info Section */}
+      <div className="mb-8">
+        <h2 className={`text-xl font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'}`}>Informasi Profil</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <InfoPill icon={User} label="Gender" value={pelayan.gender} darkMode={darkMode} />
+          <InfoPill icon={Phone} label="No. Telepon" value={pelayan.phone} darkMode={darkMode} />
+          <InfoPill icon={MapPin} label="Alamat" value={pelayan.address} darkMode={darkMode} />
+          <InfoPill icon={Calendar} label="Status" value={pelayan.status} darkMode={darkMode} />
+        </div>
+      </div>
+
+      {/* Performance Summary */}
+      <div className="mb-8">
+        <h2 className={`text-xl font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'}`}>Ringkasan Performa</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className={`p-6 rounded-xl shadow ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
             <div className="flex items-center">
-              <div className={`p-3 rounded-full mr-4 ${darkMode ? 'bg-purple-900/50' : 'bg-purple-100'}`}>
-                <User className={`h-8 w-8 ${darkMode ? 'text-purple-300' : 'text-purple-600'}`} />
+              <div className={`p-3 rounded-lg ${darkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-600'}`}>
+                <TrendingUp className="h-6 w-6" />
               </div>
-              <div>
-                <h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{attendant.name}</h1>
-                <p className={`mt-1 text-md ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{attendant.username} | {attendant.employeeNumber}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className={`p-5 rounded-xl shadow border ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'}`}>
-              <div className="flex items-center">
-                <div className={`p-3 rounded-full mr-4 ${darkMode ? 'bg-green-900/50' : 'bg-green-100'}`}>
-                  <DollarSign className={`h-6 w-6 ${darkMode ? 'text-green-300' : 'text-green-600'}`} />
-                </div>
-                <div>
-                  <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Total Penjualan (Hari Ini)</p>
-                  <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(totalSalesToday)}</p>
-                </div>
-              </div>
-            </div>
-            <div className={`p-5 rounded-xl shadow border ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'}`}>
-              <div className="flex items-center">
-                <div className={`p-3 rounded-full mr-4 ${darkMode ? 'bg-blue-900/50' : 'bg-blue-100'}`}>
-                  <ShoppingCart className={`h-6 w-6 ${darkMode ? 'text-blue-300' : 'text-blue-600'}`} />
-                </div>
-                <div>
-                  <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Total Transaksi (Hari Ini)</p>
-                  <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{sales.filter(s => new Date(s.date) >= new Date().setHours(0,0,0,0)).length}</p>
-                </div>
-              </div>
-            </div>
-            <div className={`p-5 rounded-xl shadow border ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'}`}>
-              <div className="flex items-center">
-                <div className={`p-3 rounded-full mr-4 ${darkMode ? 'bg-yellow-900/50' : 'bg-yellow-100'}`}>
-                  <Calendar className={`h-6 w-6 ${darkMode ? 'text-yellow-300' : 'text-yellow-600'}`} />
-                </div>
-                <div>
-                  <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Total Transaksi (Semua)</p>
-                  <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{sales.length}</p>
-                </div>
+              <div className="ml-4">
+                <h3 className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total Penjualan Dilayani</h3>
+                <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                  Rp {pelayan.totalSales.toLocaleString('id-ID')}
+                </p>
               </div>
             </div>
           </div>
-
-          {/* Sales History Table */}
-          <div className={`rounded-xl shadow-lg overflow-hidden ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
-            <h2 className={`text-xl font-bold p-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Riwayat Transaksi Dilayani</h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className={`${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                  <tr>
-                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>Invoice</th>
-                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>Tanggal</th>
-                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>Total</th>
-                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>Kasir</th>
-                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>Pelanggan</th>
-                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>Status</th>
-                  </tr>
-                </thead>
-                <tbody className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
-                  {sales.length === 0 ? (
-                    <tr>
-                      <td colSpan="6" className="px-6 py-4 text-center">Tidak ada riwayat transaksi.</td>
-                    </tr>
-                  ) : (
-                    sales.map(sale => (
-                      <tr key={sale.id} className={darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{sale.invoiceNumber}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">{formatDate(sale.date)}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">{formatCurrency(sale.total)}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">{sale.cashier?.name || 'N/A'}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">{sale.member?.name || 'Umum'}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            sale.status === 'PAID'
-                              ? (darkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-800')
-                              : (darkMode ? 'bg-yellow-900/30 text-yellow-400' : 'bg-yellow-100 text-yellow-800')
-                          }`}>
-                            {sale.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+          <div className={`p-6 rounded-xl shadow ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+            <div className="flex items-center">
+              <div className={`p-3 rounded-lg ${darkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
+                <User className="h-6 w-6" />
+              </div>
+              <div className="ml-4">
+                <h3 className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total Transaksi Dilayani</h3>
+                <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                  {pelayan.attendantSales.length} Transaksi
+                </p>
+              </div>
             </div>
           </div>
         </div>
-      </main>
-    </ProtectedRoute>
+      </div>
+
+      {/* Transaction History Section */}
+      <div>
+        <h2 className={`text-xl font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'}`}>Riwayat Transaksi</h2>
+        <input
+          type="text"
+          placeholder="Cari berdasarkan tanggal atau nama member..."
+          className={`w-full p-2 mb-4 rounded-md border ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+          value={searchTerm}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setCurrentPage(1);
+          }}
+        />
+        <div className={`rounded-xl shadow overflow-hidden ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
+          <table className="min-w-full divide-y divide-gray-200">
+            {/* Table Head */}
+            <thead className={darkMode ? 'bg-gray-700' : 'bg-gray-50'}>
+              <tr>
+                <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>Tanggal</th>
+                <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>Invoice</th>
+                <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>Member</th>
+                <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>Total Belanja</th>
+              </tr>
+            </thead>
+            {/* Table Body */}
+            <tbody className={darkMode ? 'divide-gray-700 bg-gray-800' : 'divide-gray-200 bg-white'}>
+              {currentTransactions.length > 0 ? currentTransactions.map(sale => (
+                <tr key={sale.id}>
+                  <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>{new Date(sale.date).toLocaleString('id-ID')}</td>
+                  <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{sale.invoiceNumber}</td>
+                  <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{sale.member?.name || 'Non-Member'}</td>
+                  <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Rp {sale.total.toLocaleString('id-ID')}</td>
+                </tr>
+              )) : (
+                <tr>
+                  <td colSpan="4" className={`px-6 py-4 text-center text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Tidak ada transaksi ditemukan.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex justify-center mt-4">
+            {/* Pagination implementation would go here */}
+          </div>
+        )}
+      </div>
+    </main>
   );
 }

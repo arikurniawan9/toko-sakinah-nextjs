@@ -86,6 +86,91 @@ const PelayanModal = ({
                       placeholder="Masukkan username"
                     />
                   </div>
+
+                  {/* New Fields Start */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label htmlFor="gender" className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+                        Jenis Kelamin
+                      </label>
+                      <select
+                        name="gender"
+                        id="gender"
+                        value={formData.gender || ''}
+                        onChange={handleInputChange}
+                        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-pastel-purple-500 focus:border-pastel-purple-500 sm:text-sm ${
+                          darkMode 
+                            ? 'bg-gray-700 border-gray-600 text-white' 
+                            : 'border-pastel-purple-300 text-gray-900'
+                        }`}
+                      >
+                        <option value="">Pilih Jenis Kelamin</option>
+                        <option value="LAKI_LAKI">Laki-laki</option>
+                        <option value="PEREMPUAN">Perempuan</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor="phone" className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+                        No. Telepon
+                      </label>
+                      <input
+                        type="text"
+                        name="phone"
+                        id="phone"
+                        value={formData.phone || ''}
+                        onChange={handleInputChange}
+                        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-pastel-purple-500 focus:border-pastel-purple-500 sm:text-sm ${
+                          darkMode 
+                            ? 'bg-gray-700 border-gray-600 text-white' 
+                            : 'border-pastel-purple-300 text-gray-900'
+                        }`}
+                        placeholder="Masukkan nomor telepon"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mb-4">
+                    <label htmlFor="address" className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+                      Alamat
+                    </label>
+                    <textarea
+                      name="address"
+                      id="address"
+                      rows="3"
+                      value={formData.address || ''}
+                      onChange={handleInputChange}
+                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-pastel-purple-500 focus:border-pastel-purple-500 sm:text-sm ${
+                        darkMode 
+                          ? 'bg-gray-700 border-gray-600 text-white' 
+                          : 'border-pastel-purple-300 text-gray-900'
+                      }`}
+                      placeholder="Masukkan alamat"
+                    ></textarea>
+                  </div>
+
+                  {editingAttendant && (
+                    <div className="mb-4">
+                      <label htmlFor="status" className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
+                        Status
+                      </label>
+                      <select
+                        name="status"
+                        id="status"
+                        value={formData.status || 'AKTIF'}
+                        onChange={handleInputChange}
+                        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-pastel-purple-500 focus:border-pastel-purple-500 sm:text-sm ${
+                          darkMode 
+                            ? 'bg-gray-700 border-gray-600 text-white' 
+                            : 'border-pastel-purple-300 text-gray-900'
+                        }`}
+                      >
+                        <option value="AKTIF">Aktif</option>
+                        <option value="TIDAK_AKTIF">Tidak Aktif</option>
+                      </select>
+                    </div>
+                  )}
+                  {/* New Fields End */}
+
                   <div className={editingAttendant ? "" : "mb-4"}> {/* Add mb-4 only if not editing */}
                     <label htmlFor="password" className={`block text-sm font-medium ${
                       darkMode ? 'text-gray-300' : 'text-gray-700'

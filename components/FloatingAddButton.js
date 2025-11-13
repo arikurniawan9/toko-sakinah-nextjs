@@ -8,7 +8,7 @@ export default function FloatingAddButton({ onClick, darkMode }) {
     <button
       onClick={onClick}
       className={`
-        fixed bottom-8 right-8 z-50
+        fixed top-24 right-8 z-50
         w-16 h-16 rounded-full shadow-lg
         flex items-center justify-center
         text-white

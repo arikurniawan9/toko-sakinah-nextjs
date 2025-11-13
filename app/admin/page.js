@@ -10,127 +10,75 @@ import Link from 'next/link';
 import SalesChart from '../../components/SalesChart';
 
 import { useDarkMode } from '../../components/DarkModeContext';
-
-import { useEffect, useState } from 'react';
-
+import useDashboardData from '../../lib/hooks/useDashboardData';
+import StatCard from '../../components/admin/StatCard';
+import RecentActivityTable from '../../components/admin/RecentActivityTable';
+import SalesChartSection from '../../components/admin/SalesChartSection';
 import { 
-
   ShoppingBag, 
-
   Tag, 
-
   Truck, 
-
   Users, 
-
   CreditCard, 
-
   UserRound, 
-
   BarChart3 
-
 } from 'lucide-react';
-
+import { useState } from 'react';
 
 
 export default function AdminDashboard() {
-
   const { data: session } = useSession();
-
   const { darkMode } = useDarkMode();
+  const [dateRange, setDateRange] = useState('7_days'); // Default to last 7 days
 
-
-
-  const [totalProductsCount, setTotalProductsCount] = useState(0);
-
-  const [totalMembersCount, setTotalMembersCount] = useState(0);
-
-  const [transactionsTodayCount, setTransactionsTodayCount] = useState(0);
-
-  const [activeEmployeesCount, setActiveEmployeesCount] = useState(0);
-
-  const [dashboardSalesChartData, setDashboardSalesChartData] = useState([]);
-
-  const [recentActivitiesData, setRecentActivitiesData] = useState([]);
-
-  const [loading, setLoading] = useState(true);
-
-  const [error, setError] = useState('');
-
-
-
-  useEffect(() => {
-
-    const fetchDashboardData = async () => {
-
-      try {
-
-        setLoading(true);
-
-        const response = await fetch('/api/dashboard');
-
-        if (!response.ok) {
-
-          throw new Error('Failed to fetch dashboard data');
-
-        }
-
-        const data = await response.json();
-
-        
-
-        setTotalProductsCount(data.totalProducts);
-
-        setTotalMembersCount(data.totalMembers);
-
-        setTransactionsTodayCount(data.transactionsToday);
-
-        setActiveEmployeesCount(data.activeEmployees);
-
-        setDashboardSalesChartData(data.dailySalesChartData);
-
-        setRecentActivitiesData(data.recentTransactions);
-
-      } catch (err) {
-
-        console.error('Error fetching dashboard data:', err);
-
-        setError('Failed to load dashboard data: ' + err.message);
-
-      } finally {
-
-        setLoading(false);
-
-      }
-
-    };
-
-
-
-    fetchDashboardData();
-
-  }, []); // Run once on component mount
+  const {
+    totalProductsCount,
+    totalMembersCount,
+    transactionsTodayCount,
+    activeEmployeesCount,
+    dashboardSalesChartData,
+    recentActivitiesData,
+    loading,
+    error,
+  } = useDashboardData();
 
 
 
   if (loading) {
-
-        return (
-
-          <ProtectedRoute requiredRole="ADMIN">
-
-            <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
-
-              <h2 className={`text-2xl font-semibold ${darkMode ? 'text-white' : 'text-gray-800'} mb-6`}>Loading Ringkasan Sistem...</h2>
-
-              {/* You could add a skeleton loader here */}
-
-            </main>
-
-          </ProtectedRoute>
-
-        );    
-
+    return (
+      <ProtectedRoute requiredRole="ADMIN">
+        <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
+          <h2 className={`text-2xl font-semibold ${darkMode ? 'text-white' : 'text-gray-800'} mb-6`}>Loading Ringkasan Sistem...</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className={`p-6 rounded-xl shadow ${
+                darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+              } border animate-pulse`}>
+                <div className="flex items-center">
+                  <div className={`p-3 rounded-lg ${
+                    darkMode ? 'bg-gray-700' : 'bg-gray-200'
+                  } h-12 w-12`}></div>
+                  <div className="ml-4">
+                    <div className={`h-4 w-24 rounded ${
+                      darkMode ? 'bg-gray-700' : 'bg-gray-200'
+                    } mb-2`}></div>
+                    <div className={`h-6 w-16 rounded ${
+                      darkMode ? 'bg-gray-700' : 'bg-gray-200'
+                    }`}></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className={`rounded-xl shadow ${
+            darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+          } border h-80 animate-pulse mb-8`}></div>
+          <div className={`rounded-xl shadow ${
+            darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+          } border h-64 animate-pulse`}></div>
+        </main>
+      </ProtectedRoute>
+    );    
   }
 
 
@@ -203,319 +151,159 @@ export default function AdminDashboard() {
 
 
 
-              <div className={`p-6 rounded-xl shadow ${
+                                                        <StatCard
 
 
 
-                darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                                                          title="Total Produk"
 
 
 
-              } border`}>
+                                                          value={totalProductsCount}
 
 
 
-                <div className="flex items-center">
+                                                          icon={ShoppingBag}
 
 
 
-                  <div className={`p-3 rounded-lg ${
+                                                          bgColorClass={darkMode ? 'bg-purple-900/30' : 'bg-purple-100'}
 
 
 
-                    darkMode ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-100 text-purple-600'
+                                                          textColorClass={darkMode ? 'text-purple-400' : 'text-purple-600'}
 
 
 
-                  }`}>
+                                                          darkMode={darkMode}
 
 
 
-                    <ShoppingBag className="h-6 w-6" />
+                                                          href="/admin/produk"
 
 
 
-                  </div>
+                                                        />
 
 
 
-                  <div className="ml-4">
+                                          
 
 
 
-                    <h3 className={`text-sm font-medium ${
+                                                        <StatCard
 
 
 
-                      darkMode ? 'text-gray-400' : 'text-gray-600'
+                                                          title="Total Member"
 
 
 
-                    }`}>Total Produk</h3>
+                                                          value={totalMembersCount}
 
 
 
-                    <p className={`text-2xl font-bold ${
+                                                          icon={UserRound}
 
 
 
-                      darkMode ? 'text-white' : 'text-gray-900'
+                                                          bgColorClass={darkMode ? 'bg-blue-900/30' : 'bg-blue-100'}
 
 
 
-                    }`}>{totalProductsCount}</p>
+                                                          textColorClass={darkMode ? 'text-blue-400' : 'text-blue-600'}
 
 
 
-                  </div>
+                                                          darkMode={darkMode}
 
 
 
-                </div>
+                                                          href="/admin/member"
 
 
 
-              </div>
+                                                        />
 
 
 
-              
+                                          
 
 
 
-              <div className={`p-6 rounded-xl shadow ${
+                                                        <StatCard
 
 
 
-                darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                                                          title="Transaksi Hari Ini"
 
 
 
-              } border`}>
+                                                          value={transactionsTodayCount}
 
 
 
-                <div className="flex items-center">
+                                                          icon={CreditCard}
 
 
 
-                  <div className={`p-3 rounded-lg ${
+                                                          bgColorClass={darkMode ? 'bg-green-900/30' : 'bg-green-100'}
 
 
 
-                    darkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-600'
+                                                          textColorClass={darkMode ? 'text-green-400' : 'text-green-600'}
 
 
 
-                  }`}>
+                                                          darkMode={darkMode}
 
 
 
-                    <UserRound className="h-6 w-6" />
+                                                          href="/admin/transaksi"
 
 
 
-                  </div>
+                                                        />
 
 
 
-                  <div className="ml-4">
+                                          
 
 
 
-                    <h3 className={`text-sm font-medium ${
+                                                        <StatCard
 
 
 
-                      darkMode ? 'text-gray-400' : 'text-gray-600'
+                                                          title="Karyawan Aktif"
 
 
 
-                    }`}>Total Member</h3>
+                                                          value={activeEmployeesCount}
 
 
 
-                    <p className={`text-2xl font-bold ${
+                                                          icon={Users}
 
 
 
-                      darkMode ? 'text-white' : 'text-gray-900'
+                                                          bgColorClass={darkMode ? 'bg-yellow-900/30' : 'bg-yellow-100'}
 
 
 
-                    }`}>{totalMembersCount}</p>
+                                                          textColorClass={darkMode ? 'text-yellow-400' : 'text-yellow-600'}
 
 
 
-                  </div>
+                                                          darkMode={darkMode}
 
 
 
-                </div>
+                                                          href="/admin/pelayan"
 
 
 
-              </div>
-
-
-
-              
-
-
-
-              <div className={`p-6 rounded-xl shadow ${
-
-
-
-                darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-
-
-
-              } border`}>
-
-
-
-                <div className="flex items-center">
-
-
-
-                  <div className={`p-3 rounded-lg ${
-
-
-
-                    darkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-600'
-
-
-
-                  }`}>
-
-
-
-                    <CreditCard className="h-6 w-6" />
-
-
-
-                  </div>
-
-
-
-                  <div className="ml-4">
-
-
-
-                    <h3 className={`text-sm font-medium ${
-
-
-
-                      darkMode ? 'text-gray-400' : 'text-gray-600'
-
-
-
-                    }`}>Transaksi Hari Ini</h3>
-
-
-
-                    <p className={`text-2xl font-bold ${
-
-
-
-                      darkMode ? 'text-white' : 'text-gray-900'
-
-
-
-                    }`}>{transactionsTodayCount}</p>
-
-
-
-                  </div>
-
-
-
-                </div>
-
-
-
-              </div>
-
-
-
-              
-
-
-
-              <div className={`p-6 rounded-xl shadow ${
-
-
-
-                darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-
-
-
-              } border`}>
-
-
-
-                <div className="flex items-center">
-
-
-
-                  <div className={`p-3 rounded-lg ${
-
-
-
-                    darkMode ? 'bg-yellow-900/30 text-yellow-400' : 'bg-yellow-100 text-yellow-600'
-
-
-
-                  }`}>
-
-
-
-                    <Users className="h-6 w-6" />
-
-
-
-                  </div>
-
-
-
-                  <div className="ml-4">
-
-
-
-                    <h3 className={`text-sm font-medium ${
-
-
-
-                      darkMode ? 'text-gray-400' : 'text-gray-600'
-
-
-
-                    }`}>Karyawan Aktif</h3>
-
-
-
-                    <p className={`text-2xl font-bold ${
-
-
-
-                      darkMode ? 'text-white' : 'text-gray-900'
-
-
-
-                    }`}>{activeEmployeesCount}</p>
-
-
-
-                  </div>
-
-
-
-                </div>
-
-
-
-              </div>
+                                                        />
 
 
 
@@ -528,49 +316,25 @@ export default function AdminDashboard() {
 
 
   
-
-
-
-          {/* Chart Section */}
 
 
 
           <div className="mb-8">
-
-
-
             <h2 className={`text-2xl font-semibold ${darkMode ? 'text-white' : 'text-gray-800'} mb-6`}>Grafik Penjualan</h2>
-
-
-
-            <div className={`rounded-xl shadow ${
-
-
-
-              darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-
-
-
-            } border`}>
-
-
-
-              <div className="p-6">
-
-
-
-                <SalesChart darkMode={darkMode} salesData={dashboardSalesChartData} />
-
-
-
-              </div>
-
-
-
+            <div className="flex justify-end mb-4">
+              <select
+                value={dateRange}
+                onChange={(e) => setDateRange(e.target.value)}
+                className={`p-2 rounded-md border ${
+                  darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                }`}
+              >
+                <option value="7_days">7 Hari Terakhir</option>
+                <option value="30_days">30 Hari Terakhir</option>
+                <option value="all_time">Semua Waktu</option>
+              </select>
             </div>
-
-
-
+            <SalesChartSection darkMode={darkMode} dashboardSalesChartData={dashboardSalesChartData} dateRange={dateRange} />
           </div>
 
 
@@ -579,283 +343,7 @@ export default function AdminDashboard() {
 
 
 
-          {/* Recent Activity Log */}
-
-
-
-          <div>
-
-
-
-            <h2 className={`text-2xl font-semibold ${darkMode ? 'text-white' : 'text-gray-800'} mb-6`}>Log Aktivitas Kasir</h2>
-
-
-
-            <div className={`rounded-xl shadow ${
-
-
-
-              darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-
-
-
-            } border overflow-hidden`}>
-
-
-
-              <table className="min-w-full divide-y divide-gray-200">
-
-
-
-                <thead className={darkMode ? 'bg-gray-700' : 'bg-gray-50'}>
-
-
-
-                  <tr>
-
-
-
-                    <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-
-
-
-                      darkMode ? 'text-gray-300' : 'text-gray-500'
-
-
-
-                    }`}>
-
-
-
-                      Waktu
-
-
-
-                    </th>
-
-
-
-                    <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-
-
-
-                      darkMode ? 'text-gray-300' : 'text-gray-500'
-
-
-
-                    }`}>
-
-
-
-                      Kasir
-
-
-
-                    </th>
-
-
-
-                    <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-
-
-
-                      darkMode ? 'text-gray-300' : 'text-gray-500'
-
-
-
-                    }`}>
-
-
-
-                      Transaksi
-
-
-
-                    </th>
-
-
-
-                    <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-
-
-
-                      darkMode ? 'text-gray-300' : 'text-gray-500'
-
-
-
-                    }`}>
-
-
-
-                      Jumlah
-
-
-
-                    </th>
-
-
-
-                  </tr>
-
-
-
-                </thead>
-
-
-
-                <tbody className={darkMode ? 'divide-gray-700 bg-gray-800' : 'divide-gray-200 bg-white'}>
-
-
-
-                  {recentActivitiesData.length === 0 ? (
-
-
-
-                    <tr>
-
-
-
-                      <td colSpan="4" className={`px-6 py-4 text-center text-sm ${
-
-
-
-                        darkMode ? 'text-gray-400' : 'text-gray-500'
-
-
-
-                      }`}>
-
-
-
-                        Tidak ada aktivitas terbaru.
-
-
-
-                      </td>
-
-
-
-                    </tr>
-
-
-
-                  ) : (
-
-
-
-                    recentActivitiesData.map((activity) => (
-
-
-
-                      <tr key={activity.id} className={darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}>
-
-
-
-                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${
-
-
-
-                          darkMode ? 'text-gray-300' : 'text-gray-500'
-
-
-
-                        }`}>
-
-
-
-                          {new Date(activity.date).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-
-
-
-                        </td>
-
-
-
-                        <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
-
-
-
-                          darkMode ? 'text-white' : 'text-gray-900'
-
-
-
-                        }`}>
-
-
-
-                          {activity.cashierName}
-
-
-
-                        </td>
-
-
-
-                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${
-
-
-
-                          darkMode ? 'text-gray-400' : 'text-gray-500'
-
-
-
-                        }`}>
-
-
-
-                          #{activity.id.substring(0, 8)}
-
-
-
-                        </td>
-
-
-
-                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${
-
-
-
-                          darkMode ? 'text-white' : 'text-gray-900'
-
-
-
-                        }`}>
-
-
-
-                          Rp {activity.totalAmount ? activity.totalAmount.toLocaleString('id-ID') : '0'}
-
-
-
-                        </td>
-
-
-
-                      </tr>
-
-
-
-                    ))
-
-
-
-                  )}
-
-
-
-                </tbody>
-
-
-
-              </table>
-
-
-
-            </div>
-
-
-
-          </div>
+          <RecentActivityTable recentActivitiesData={recentActivitiesData} darkMode={darkMode} />
 
 
 
