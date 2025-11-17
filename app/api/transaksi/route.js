@@ -203,24 +203,24 @@ export async function POST(request) {
     });
 
     // Log audit untuk pembuatan transaksi penjualan
-    await logCreate(session.user.id, 'Sale', newSale.id, newSale, request);
+    await logCreate(session.user.id, 'Sale', sale.id, sale, request);
 
     // Debug log untuk melihat invoice number yang dihasilkan
     console.log("Sale object created:", {
-      id: newSale.id,
-      invoiceNumber: newSale.invoiceNumber,
-      total: newSale.total,
-      paymentMethod: newSale.paymentMethod,
-      status: newSale.status
+      id: sale.id,
+      invoiceNumber: sale.invoiceNumber,
+      total: sale.total,
+      paymentMethod: sale.paymentMethod,
+      status: sale.status
     });
 
     // Return the complete sale object including invoice number, which now includes saleDetails and product info
     // Make sure invoiceNumber is explicitly included in the response
     // Extract and return only the fields we need to ensure they are included
     return NextResponse.json({
-      ...newSale,
+      ...sale,
       // Explicitly include important fields
-      invoiceNumber: newSale.invoiceNumber,
+      invoiceNumber: sale.invoiceNumber,
     }, { status: 201 });
   } catch (error) {
     console.error('Failed to create sale:', error);
