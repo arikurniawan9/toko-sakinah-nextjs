@@ -2,10 +2,11 @@
 'use client';
 
 import { SessionProvider } from 'next-auth/react';
-import { DarkModeProvider } from '@/components/DarkModeContext'; // Import DarkModeProvider
+import { DarkModeProvider } from '@/components/DarkModeContext';
 import { ThemeProvider } from '@/components/ThemeContext';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import NotificationProvider from '@/components/NotificationProvider';
+import AutoLogoutProvider from '@/components/AutoLogoutProvider';
 
 export function Providers({ children }) {
   return (
@@ -13,7 +14,11 @@ export function Providers({ children }) {
       <DarkModeProvider>
         <ThemeProvider>
           <NotificationProvider>
-            <SessionProvider>{children}</SessionProvider>
+            <SessionProvider>
+              <AutoLogoutProvider>
+                {children}
+              </AutoLogoutProvider>
+            </SessionProvider>
           </NotificationProvider>
         </ThemeProvider>
       </DarkModeProvider>

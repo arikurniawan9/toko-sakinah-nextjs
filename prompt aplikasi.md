@@ -67,3 +67,7 @@ Instruksi penutup untuk AI:
 - Buat README yang jelas: cara setup dev (install, prisma migrate dev, npm run dev), cara migrasi ke PostgreSQL (ubah DATABASE_URL dan prisma migrate deploy), dan cara generate seed data.
 
 Selesaikan tugas ini sekarang dan tampilkan struktur file, file-file utama (schema.prisma, .env.example, tailwind.config.js, package.json scripts), dan contoh kode untuk: auth, product model CRUD, transaksi perhitungan potongan harga, dan seed.
+
+password supabase :
+bGHbTPAZ/S/Y4tk
+postgresql://postgres:[bGHbTPAZ/S/Y4tk]@db.eqtaiewjcdvmqrixevfz.supabase.co:5432/postgres

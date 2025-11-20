@@ -104,24 +104,24 @@ html.dark body {
 }
 
 /* Custom styles for pastel purple theme */
-.bg-pastel-purple-gradient {
+.bg-theme-purple-gradient {
   background: linear-gradient(135deg, #c084fc, #a78bfa);
 }
 
-.text-pastel-purple {
+.text-theme-purple {
   color: #c084fc;
 }
 
-.border-pastel-purple {
+.border-theme-purple {
   border-color: #c084fc;
 }
 
-.btn-pastel-purple {
-  @apply bg-pastel-purple-400 hover:bg-pastel-purple-500 text-white font-medium py-2 px-4 rounded-lg transition-colors;
+.btn-theme-purple {
+  @apply bg-theme-purple-400 hover:bg-theme-purple-500 text-white font-medium py-2 px-4 rounded-lg transition-colors;
 }
 
-.card-pastel-purple {
-  @apply bg-white shadow-lg rounded-lg p-6 border border-pastel-purple-200;
+.card-theme-purple {
+  @apply bg-white shadow-lg rounded-lg p-6 border border-theme-purple-200;
 }
 
 /* Custom Scrollbar Styles */
@@ -267,4 +267,58 @@ html {
   position: absolute;
   left: -9999px;
   top: -9999px;
+}
+
+/* From Uiverse.io by adamgiebl */ 
+.dots-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+}
+
+.dot {
+  height: 20px;
+  width: 20px;
+  margin-right: 10px;
+  border-radius: 10px;
+  background-color: #b3d4fc;
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+.dot:last-child {
+  margin-right: 0;
+}
+
+.dot:nth-child(1) {
+  animation-delay: -0.3s;
+}
+
+.dot:nth-child(2) {
+  animation-delay: -0.1s;
+}
+
+.dot:nth-child(3) {
+  animation-delay: 0.1s;
+}
+
+ @keyframes pulse {
+  0% {
+    transform: scale(0.8);
+    background-color: #b3d4fc;
+    box-shadow: 0 0 0 0 rgba(178, 212, 252, 0.7);
+  }
+
+  50% {
+    transform: scale(1.2);
+    background-color: #6793fb;
+    box-shadow: 0 0 0 10px rgba(178, 212, 252, 0);
+  }
+
+  100% {
+    transform: scale(0.8);
+    background-color: #b3d4fc;
+    box-shadow: 0 0 0 0 rgba(178, 212, 252, 0.7);
+  }
 }

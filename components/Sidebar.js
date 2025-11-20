@@ -30,7 +30,9 @@ import {
   History,       // Added for Riwayat Penjualan
   Settings,       // Added for Pengaturan Toko
   Package,        // Added for Riwayat Pembelian
-  Folder          // Added for Kategori Pengeluaran
+  Folder,          // Added for Kategori Pengeluaran
+  Building,
+  Monitor
 } from 'lucide-react';
 import { useDarkMode } from './DarkModeContext';
 import { useSidebar } from './SidebarContext';
@@ -102,6 +104,12 @@ const Sidebar = ({ children }) => {
 
   // Define all menu items
   const allMenuItems = [
+    // MANAGER menus
+    { title: "Dashboard", href: "/manager", icon: Home, type: 'item', roles: ['MANAGER'] },
+    { title: "Manajemen Toko", type: 'heading', roles: ['MANAGER'] },
+    { title: "Buat Toko", href: "/manager/create-store", icon: Building, type: 'item', roles: ['MANAGER'] },
+    { title: "Monitor Toko", href: "/manager/monitor-all", icon: Monitor, type: 'item', roles: ['MANAGER'] },
+
     // ADMIN menus
     { title: "Dashboard", href: "/admin", icon: Home, type: 'item', roles: ['ADMIN'] },
     { title: "Master", type: 'heading', roles: ['ADMIN'] },
@@ -325,7 +333,13 @@ const Sidebar = ({ children }) => {
                 <div className={`absolute top-full right-0 mt-2 w-52 ${darkMode ? 'bg-gray-700' : 'bg-white'} rounded-md shadow-lg ring-1 ring-black ring-opacity-5`}>
                   <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
                     <Link
-                      href={session?.user?.role === 'ADMIN' ? "/admin/profile" : "/kasir/profile"} // Conditional profile link
+                      href={
+                        session?.user?.role === 'ADMIN'
+                          ? '/admin/profile'
+                          : session?.user?.role === 'MANAGER'
+                          ? '/manager/profile'
+                          : '/kasir/profile'
+                      }
                       onClick={() => setIsUserMenuOpen(false)}
                       className={`w-full text-left flex items-center px-4 py-2 text-sm ${darkMode ? 'text-gray-300 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-100'}`}
                       role="menuitem"

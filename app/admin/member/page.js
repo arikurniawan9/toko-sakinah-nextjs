@@ -198,7 +198,10 @@ export default function MemberManagement() {
   // Enhanced data with action handlers
   const enhancedMembers = members.map(member => ({
     ...member,
-    onViewDetails: (m) => console.log('View details', m), // Placeholder for now
+    onViewDetails: (m) => {
+      // Redirect ke halaman detail member
+      window.location.href = `/admin/member/${m.id}`;
+    },
     onEdit: () => openModalForEdit(member),
     onDelete: () => handleDelete(member.id)
   }));

@@ -1,47 +1,60 @@
 'use client';
 
-import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import HomeHeader from '@/components/HomeHeader';
+import HomeContent from '@/components/HomeContent';
+import { ROLES } from '@/lib/constants';
 
 export default function Home() {
-  // Redirect if already logged in
-  useEffect(() => {
-    // This logic will be handled by middleware or server-side checks in Next-Auth v5
-    // For now, we'll keep it simple and assume unauthenticated users land here.
-  }, []);
+  const { data: session, status } = useSession();
+  const router = useRouter();
 
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-pastel-purple-100 to-pastel-purple-300 p-4">
-      <div className="max-w-md w-full space-y-8">
+  useEffect(() => {
+    if (status === 'authenticated') {
+      // Jika role adalah role per toko, arahkan ke select-store
+      if ([ROLES.ADMIN, ROLES.CASHIER, ROLES.ATTENDANT].includes(session.user.role)) {
+        router.push('/select-store');
+        return;
+      }
+
+      // Jika role adalah MANAGER, tampilkan halaman manager
+      if (session.user.role === ROLES.MANAGER) {
+        router.push('/manager');
+        return;
+      }
+
+      // Jika role adalah WAREHOUSE, arahkan ke warehouse dashboard
+      if (session.user.role === ROLES.WAREHOUSE) {
+        router.push('/warehouse');
+        return;
+      }
+    }
+  }, [status, session, router]);
+
+  // Jika sedang loading, tampilkan loading
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pastel-purple-100 to-pastel-purple-300 p-4">
         <div className="text-center">
-          <h1 className="text-4xl font-bold text-pastel-purple-700 mb-2 font-poppins">Toko Sakinah</h1>
-          <p className="text-lg text-pastel-purple-600">Aplikasi Kasir untuk Toko Pakaian</p>
-        </div>
-        
-        <div className="mt-8 space-y-4">
-          <Link href="/login/admin" className="block w-full py-4 px-6 bg-pastel-purple-400 hover:bg-pastel-purple-500 text-white font-semibold rounded-lg shadow-md transition duration-300 transform hover:scale-105 text-center">
-            Login Admin
-          </Link>
-          
-          <Link href="/login/kasir" className="block w-full py-4 px-6 bg-pastel-purple-500 hover:bg-pastel-purple-600 text-white font-semibold rounded-lg shadow-md transition duration-300 transform hover:scale-105 text-center">
-            Login Kasir
-          </Link>
-          
-          <Link href="/login/pelayan" className="block w-full py-4 px-6 bg-pastel-purple-600 hover:bg-pastel-purple-700 text-white font-semibold rounded-lg shadow-md transition duration-300 transform hover:scale-105 text-center">
-            Login Pelayan
-          </Link>
-        </div>
-        
-        <div className="mt-6 text-center">
-          <Link href="/login" className="text-pastel-purple-600 hover:text-pastel-purple-800 text-sm">
-            Login dengan role khusus
-          </Link>
-        </div>
-        
-        <div className="mt-12 text-center text-pastel-purple-700 text-sm">
-          <p>Sistem Informasi Penjualan &amp; Inventaris</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pastel-purple-600 mx-auto"></div>
+          <p className="mt-4 text-pastel-purple-700">Memuat...</p>
         </div>
       </div>
+    );
+  }
+
+  // Jika sudah login, arahkan ke halaman sesuai role
+  if (status === 'authenticated') {
+    return null; // Redirect akan terjadi di useEffect
+  }
+
+  // Jika belum login, tampilkan halaman utama dengan header dan konten
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-pastel-purple-100 to-pastel-purple-300">
+      <HomeHeader />
+      <HomeContent />
     </div>
   );
 }

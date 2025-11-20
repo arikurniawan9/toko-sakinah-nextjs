@@ -110,11 +110,11 @@ export default function LoginForm({ role: forcedRole = null }) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pastel-purple-50 to-pastel-purple-100 p-4">
-      <div className="max-w-md w-full space-y-8 card-pastel-purple">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-theme-purple-50 to-theme-purple-100 p-4">
+      <div className="max-w-md w-full space-y-8 card-theme-purple">
         <div className="text-center">
-          <h2 className="mt-6 text-3xl font-bold text-pastel-purple-700">{getTitle()}</h2>
-          <p className="mt-2 text-pastel-purple-600">{getSubtitle()}</p>
+          <h2 className="mt-6 text-3xl font-bold text-theme-purple-700">{getTitle()}</h2>
+          <p className="mt-2 text-theme-purple-600">{getSubtitle()}</p>
         </div>
 
         {error && (
@@ -137,7 +137,7 @@ export default function LoginForm({ role: forcedRole = null }) {
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-pastel-purple-500 focus:border-pastel-purple-500 focus:z-10 sm:text-sm"
+                className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-theme-purple-500 focus:border-theme-purple-500 focus:z-10 sm:text-sm"
                 placeholder="Username"
                 disabled={loading || status === 'authenticated'}
               />
@@ -154,7 +154,7 @@ export default function LoginForm({ role: forcedRole = null }) {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-pastel-purple-500 focus:border-pastel-purple-500 focus:z-10 sm:text-sm"
+                className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-theme-purple-500 focus:border-theme-purple-500 focus:z-10 sm:text-sm"
                 placeholder="Password"
                 disabled={loading || status === 'authenticated'}
               />
@@ -165,7 +165,7 @@ export default function LoginForm({ role: forcedRole = null }) {
             <button
               type="submit"
               disabled={loading || status === 'authenticated'}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-pastel-purple-500 hover:bg-pastel-purple-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pastel-purple-500 disabled:bg-gray-400"
+              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-theme-purple-500 hover:bg-theme-purple-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-theme-purple-500 disabled:bg-gray-400"
             >
               {loading || status === 'authenticated' ? 'Mengalihkan...' : 'Sign in'}
             </button>
@@ -175,12 +175,12 @@ export default function LoginForm({ role: forcedRole = null }) {
             {showRegisterManager && (
               <p className="mb-2">
                 Belum ada Akun Manager?{' '}
-                <Link href="/register-manager" className="font-medium text-pastel-purple-600 hover:text-pastel-purple-800">
+                <Link href="/register-manager" className="font-medium text-theme-purple-600 hover:text-theme-purple-800">
                   Daftar di sini
                 </Link>
               </p>
             )}
-            <Link href="/" className="text-pastel-purple-600 hover:text-pastel-purple-800">
+            <Link href="/" className="text-theme-purple-600 hover:text-theme-purple-800">
               Kembali ke halaman utama
             </Link>
           </div>

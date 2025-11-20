@@ -197,7 +197,7 @@ export default function AttendantDashboard() {
                 {selectedCustomer ? (
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">{selectedCustomer.name} ({selectedCustomer.membershipType})</span>
-                    <button 
+                    <button
                       onClick={() => setSelectedCustomer(null)}
                       className="text-red-600 hover:text-red-800 text-sm"
                     >
@@ -294,7 +294,7 @@ export default function AttendantDashboard() {
               <div className="mt-3">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold text-gray-900">Pilih Pelanggan</h3>
-                  <button 
+                  <button
                     onClick={() => setShowCustomerModal(false)}
                     className="text-gray-500 hover:text-gray-700"
                   >
@@ -305,8 +305,8 @@ export default function AttendantDashboard() {
                 </div>
                 <div className="max-h-60 overflow-y-auto">
                   {customers.map(customer => (
-                    <div 
-                      key={customer.id} 
+                    <div
+                      key={customer.id}
                       className="p-3 border-b border-gray-200 hover:bg-gray-50 cursor-pointer"
                       onClick={() => {
                         setSelectedCustomer(customer);

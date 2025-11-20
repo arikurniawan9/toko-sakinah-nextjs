@@ -5,6 +5,86 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../../../lib/authOptions';
 import { logCreate } from '@/lib/auditLogger';
 
+export async function GET(request) {
+  const session = await getServerSession(authOptions);
+
+  if (!session || !['CASHIER', 'ADMIN'].includes(session.user.role)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
+    // Ambil query parameter
+    const { searchParams } = new URL(request.url);
+    const memberId = searchParams.get('memberId');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const page = parseInt(searchParams.get('page') || '1');
+
+    // Buat filter berdasarkan memberId jika disediakan
+    const filter = {};
+    if (memberId) {
+      filter.memberId = memberId;
+    }
+
+    // Ambil transaksi dengan filter dan pagination
+    const transactions = await prisma.sale.findMany({
+      where: filter,
+      include: {
+        cashier: {
+          select: {
+            name: true,
+            username: true,
+          }
+        },
+        attendant: {
+          select: {
+            name: true,
+            username: true,
+          }
+        },
+        member: {
+          select: {
+            name: true,
+            phone: true,
+            membershipType: true,
+          }
+        },
+        saleDetails: {
+          include: {
+            product: {
+              select: {
+                name: true,
+              }
+            }
+          }
+        },
+      },
+      orderBy: {
+        date: 'desc',
+      },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    // Ambil total count untuk pagination
+    const totalCount = await prisma.sale.count({
+      where: filter,
+    });
+
+    return NextResponse.json({
+      transactions,
+      pagination: {
+        page,
+        limit,
+        total: totalCount,
+        pages: Math.ceil(totalCount / limit),
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching transactions:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
 // Function to generate a unique invoice number with format: YYYYMMDDXXXXX (year-month-date-5digit_urut)
 async function generateInvoiceNumber() {
   const date = new Date();

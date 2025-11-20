@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
 import globalPrisma from '@/lib/prisma';
 import { ROLES, WAREHOUSE_STORE_ID } from '@/lib/constants';
+import { getTenantPrismaClient } from '@/utils/tenantUtils';
 
 export async function GET(request) {
   try {

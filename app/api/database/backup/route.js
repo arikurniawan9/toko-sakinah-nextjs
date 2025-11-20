@@ -41,7 +41,7 @@ export async function POST() {
         // to avoid it being visible in the command line history.
         const env = { ...process.env, PGPASSWORD: password };
 
-        const command = `pg_dump --host=${host} --port=${port} --username=${user} --dbname=${database} --format=c --blobs --file=${backupFilePath}`;
+        const command = `pg_dump --host=${host} --port=${port} --username=${user} --dbname=${database} --format=p --file=${backupFilePath}`;
 
         await execAsync(command, { env });
 

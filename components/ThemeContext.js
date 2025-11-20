@@ -5,7 +5,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-  const [themeColor, setThemeColor] = useState('#3c8dbc'); // Default color - will be fixed
+  const [themeColor, setThemeColor] = useState('#8B5CF6'); // New default purple color
   const [shopName, setShopName] = useState('Toko Sakinah');
 
   const fetchSettings = useCallback(async () => {
@@ -13,10 +13,9 @@ export const ThemeProvider = ({ children }) => {
       const response = await fetch('/api/pengaturan');
       if (response.ok) {
         const data = await response.json();
-        // Gunakan warna default karena fitur penggantian warna dihapus
-        const defaultThemeColor = '#3c8dbc';
-        setThemeColor(defaultThemeColor);
-        document.documentElement.style.setProperty('--theme-color', defaultThemeColor);
+        const newThemeColor = data.themeColor || '#8B5CF6'; // Use fetched color or default purple
+        setThemeColor(newThemeColor);
+        document.documentElement.style.setProperty('--theme-color', newThemeColor);
 
         if (data.shopName) {
             setShopName(data.shopName);
@@ -24,6 +23,9 @@ export const ThemeProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Failed to fetch theme settings:', error);
+      // fallback to default color in case of error
+      setThemeColor('#8B5CF6');
+      document.documentElement.style.setProperty('--theme-color', '#8B5CF6');
     }
   }, []);
 
@@ -34,8 +36,6 @@ export const ThemeProvider = ({ children }) => {
   const updateShopName = (newName) => {
     setShopName(newName);
   };
-
-  // Fungsi updateThemeColor dihapus karena fitur penggantian warna dihapus
 
 
   return (

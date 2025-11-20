@@ -1,6 +1,7 @@
 // components/DataTable.js
 import { useState, useEffect } from 'react';
-import { Search, Plus, Download, Trash2, Edit, Eye, Filter, SortAsc, SortDesc, MinusCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, Plus, Download, Trash2, Edit, Eye, Filter, SortAsc, SortDesc, MinusCircle, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import LoadingSpinner from '@/components/LoadingSpinner'; // Import LoadingSpinner
 
 export default function DataTable({
   data,
@@ -26,13 +27,15 @@ export default function DataTable({
   onItemsPerPageChange = null,
   onDeleteMultiple = null,
   selectedRowsCount = 0,
-  mobileColumns = [] // New prop to specify which columns to show on mobile
+  mobileColumns = []
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [isMobile, setIsMobile] = useState(false);
+  const [mounted, setMounted] = useState(false); // New state to track if component is mounted
 
   // Check screen size to determine mobile view
   useEffect(() => {
+    setMounted(true); // Component is mounted on client
     const checkScreenSize = () => {
       setIsMobile(window.innerWidth < 768);
     };
@@ -42,6 +45,9 @@ export default function DataTable({
 
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
+
+  // Render desktop view by default on server, switch to mobile only after mounted on client
+  const renderMobileView = mounted && isMobile;
 
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
@@ -157,9 +163,8 @@ export default function DataTable({
       {isMobile && (
         <div className="p-4">
           {loading ? (
-            <div className="flex justify-center items-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-600"></div>
-              <span className="ml-2 text-gray-500">Memuat data...</span>
+            <div className="flex justify-center items-center py-8 h-32">
+              <LoadingSpinner />
             </div>
           ) : data && data.length > 0 ? (
             data.map((row, index) => (
@@ -180,36 +185,10 @@ export default function DataTable({
                     />
                   )}
                   <div className="flex gap-1 ml-2">
-                    {actions && (
-                      <>
-                        {row.onViewDetails && (
-                          <button
-                            onClick={() => row.onViewDetails(row)}
-                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-                            title="Lihat Detail"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
-                        )}
-                        {row.onEdit && (
-                          <button
-                            onClick={() => row.onEdit(row)}
-                            className="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-                            title="Edit"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                        )}
-                        {row.onDelete && (
-                          <button
-                            onClick={() => row.onDelete(row.id)}
-                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-                            title="Hapus"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        )}
-                      </>
+                    {actions && rowActions && (
+                      <div className="flex justify-end space-x-2"> {/* Match desktop wrapper for consistency */}
+                        {rowActions(row)}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -280,18 +259,16 @@ export default function DataTable({
                 )}
               </tr>
             </thead>
-            <tbody className={`divide-y ${darkMode ? 'divide-gray-700 bg-gray-800' : 'divide-gray-200 bg-white'}`}>
-              {loading ? (
-                <tr>
-                  <td colSpan={columns.length + (actions ? 2 : (onSelectAll ? 1 : 0))} className="px-6 py-4 text-center">
-                    <div className="flex justify-center items-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-600"></div>
-                      <span className="ml-2 text-gray-500">Memuat data...</span>
-                    </div>
-                  </td>
-                </tr>
-              ) : data && data.length > 0 ? (
-                data.map((row, index) => (
+                          <tbody className={`divide-y ${darkMode ? 'divide-gray-700 bg-gray-800' : 'divide-gray-200 bg-white'}`}>
+                          {loading ? (
+                            <tr>
+                              <td colSpan={columns.length + (actions ? 2 : (onSelectAll ? 1 : 0))} className="px-6 py-4 text-center">
+                                <div className="flex justify-center items-center py-8 h-32">
+                                  <LoadingSpinner />
+                                </div>
+                              </td>
+                            </tr>
+                          ) : data && data.length > 0 ? (                data.map((row, index) => (
                   <tr
                     key={row.id || index}
                     className={`group ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} ${
@@ -315,7 +292,7 @@ export default function DataTable({
                           darkMode ? 'text-gray-300' : 'text-gray-900'
                         }`}
                       >
-                        {column.render ? column.render(row[column.key], row) :
+                        {column.render ? column.render(row[column.key], row, index) :
                           (row[column.key] !== undefined && row[column.key] !== null ? row[column.key] : '-')}
                       </td>
                     ))}
@@ -382,29 +359,42 @@ export default function DataTable({
               <button
                 onClick={() => pagination.onPageChange(pagination.currentPage - 1)}
                 disabled={pagination.currentPage === 1}
-                className={`px-3 py-1 rounded ${
+                className={`flex items-center px-3 py-1 rounded-md transition-colors duration-200 ${
                   pagination.currentPage === 1
-                    ? 'bg-gray-200 text-gray-400 dark:bg-gray-700 dark:text-gray-500 cursor-not-allowed'
+                    ? 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500 cursor-not-allowed'
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                 }`}
               >
-                Sebelumnya
+                <ChevronLeft className="h-4 w-4" />
+                <span className="ml-1">Sebelumnya</span>
               </button>
-              <span className={`px-3 py-1 ${
-                darkMode ? 'text-white' : 'text-gray-900'
-              }`}>
-                {pagination.currentPage} dari {pagination.totalPages}
-              </span>
+
+              {/* Page Number Buttons */}
+              {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => pagination.onPageChange(page)}
+                  className={`px-3 py-1 rounded-md transition-colors duration-200 ${
+                    pagination.currentPage === page
+                      ? 'bg-blue-600 text-white dark:bg-blue-500'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+
               <button
                 onClick={() => pagination.onPageChange(pagination.currentPage + 1)}
                 disabled={pagination.currentPage === pagination.totalPages}
-                className={`px-3 py-1 rounded ${
+                className={`flex items-center px-3 py-1 rounded-md transition-colors duration-200 ${
                   pagination.currentPage === pagination.totalPages
-                    ? 'bg-gray-200 text-gray-400 dark:bg-gray-700 dark:text-gray-500 cursor-not-allowed'
+                    ? 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500 cursor-not-allowed'
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                 }`}
               >
-                Berikutnya
+                <span className="mr-1">Berikutnya</span>
+                <ChevronRight className="h-4 w-4" />
               </button>
             </div>
           </div>

@@ -1,42 +1,6 @@
-// middleware.js
-import { withAuth } from 'next-auth/middleware';
-import { NextResponse } from 'next/server';
-import { ROLES } from './lib/constants';
+// middleware.js (main middleware file for multi-tenant system)
+import multiTenantMiddleware from './middleware-multi-tenant';
 
-const rolePermissions = {
-  '/admin': [ROLES.ADMIN],
-  '/kasir': [ROLES.CASHIER, ROLES.ADMIN],
-  '/pelayan': [ROLES.ATTENDANT, ROLES.ADMIN],
-};
+export default multiTenantMiddleware;
 
-export default withAuth(
-  function middleware(req) {
-    const { pathname } = req.nextUrl;
-    const { token } = req.nextauth;
-
-    for (const path in rolePermissions) {
-      if (pathname.startsWith(path)) {
-        const allowedRoles = rolePermissions[path];
-        if (!token || !allowedRoles.includes(token.role)) {
-          const url = req.nextUrl.clone();
-          url.pathname = '/unauthorized'; // Redirect to unauthorized page
-          return NextResponse.redirect(url);
-        }
-        break; // No need to check other paths if a match is found
-      }
-    }
-
-    return NextResponse.next();
-  },
-  {
-    pages: {
-      signIn: '/login',
-    },
-  }
-);
-
-export const config = {
-  matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|login|unauthorized).*)',
-  ],
-};
+// Konfigurasi matcher diatur di middleware-multi-tenant.js

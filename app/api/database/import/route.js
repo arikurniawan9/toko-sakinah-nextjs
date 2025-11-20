@@ -59,10 +59,18 @@ export async function POST(request) {
 
         const env = { ...process.env, PGPASSWORD: password };
 
-        // The command to restore the database.
-        // --clean: drops database objects before recreating them.
-        // --if-exists: avoids errors if objects don't exist.
-        const command = `pg_restore --host=${host} --port=${port} --username=${user} --dbname=${database} --clean --if-exists ${filePath}`;
+        // The command to restore the database using psql.
+        // psql -f <file> is an alternative, but piping is often more robust.
+        // We need to drop the existing database and recreate it to ensure a clean restore.
+        // This is a destructive operation.
+        // First, drop all connections to the database
+        await execAsync(`PGPASSWORD="${password}" psql -h ${host} -p ${port} -U ${user} -d postgres -c "SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = '${database}' AND pid <> pg_backend_pid();"`, { env });
+        // Then drop and recreate the database
+        await execAsync(`PGPASSWORD="${password}" psql -h ${host} -p ${port} -U ${user} -d postgres -c "DROP DATABASE IF EXISTS \\"${database}\\";"`, { env });
+        await execAsync(`PGPASSWORD="${password}" psql -h ${host} -p ${port} -U ${user} -d postgres -c "CREATE DATABASE \\"${database}\\";"`, { env });
+
+        // Now restore the database
+        const command = `PGPASSWORD="${password}" psql -h ${host} -p ${port} -U ${user} -d ${database} < ${filePath}`;
 
         await execAsync(command, { env });
 

@@ -1,13 +1,18 @@
-POSTGRES_URL="postgres://postgres.vcbvntgxtjgnccyekmei:XWDqFZxGUNGwW1Od@aws-1-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require&supa=base-pooler.x"
-POSTGRES_USER="postgres"
+koneksi orm supabase :
+
+postgresql://postgres:[oXn7NUUtiJYlAYTM]@db.eqtaiewjcdvmqrixevfz.supabase.co:5432/postgres
+
+.env.local :
 NEXT_PUBLIC_TOKOSUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZjYnZudGd4dGpnbmNjeWVrbWVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3OTQ4OTIsImV4cCI6MjA3NTM3MDg5Mn0.Un8-YmS5kKtIjGKj2ULZAhSHGmyH5IJ-g-ApDQJcnmY"
-POSTGRES_HOST="db.vcbvntgxtjgnccyekmei.supabase.co"
-SUPABASE_JWT_SECRET="duptkx+esfAiLkKejUrF11nJrq53Q7NVrtCot0ICYrCxml8MrpxMr23rd1VIE/lpbw6m1KrDr8cgV4nSX+32Ag=="
-POSTGRES_PRISMA_URL="postgres://postgres.vcbvntgxtjgnccyekmei:XWDqFZxGUNGwW1Od@aws-1-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require&pgbouncer=true"
-POSTGRES_PASSWORD="XWDqFZxGUNGwW1Od"
-POSTGRES_DATABASE="postgres"
-SUPABASE_URL="https://vcbvntgxtjgnccyekmei.supabase.co"
-SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZjYnZudGd4dGpnbmNjeWVrbWVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3OTQ4OTIsImV4cCI6MjA3NTM3MDg5Mn0.Un8-YmS5kKtIjGKj2ULZAhSHGmyH5IJ-g-ApDQJcnmY"
 NEXT_PUBLIC_TOKOSUPABASE_URL="https://vcbvntgxtjgnccyekmei.supabase.co"
-SUPABASE_SERVICE_ROLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZjYnZudGd4dGpnbmNjeWVrbWVpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTc5NDg5MiwiZXhwIjoyMDc1MzcwODkyfQ.jhPuVtIvvifOrgwK2kJHfm6CpxSMu-YNcbSbEJJT3aU"
+POSTGRES_DATABASE="postgres"
+POSTGRES_HOST="db.vcbvntgxtjgnccyekmei.supabase.co"
+POSTGRES_PASSWORD="XWDqFZxGUNGwW1Od"
+POSTGRES_PRISMA_URL="postgres://postgres.vcbvntgxtjgnccyekmei:XWDqFZxGUNGwW1Od@aws-1-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require&pgbouncer=true"
+POSTGRES_URL="postgres://postgres.vcbvntgxtjgnccyekmei:XWDqFZxGUNGwW1Od@aws-1-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require&supa=base-pooler.x"
 POSTGRES_URL_NON_POOLING="postgres://postgres.vcbvntgxtjgnccyekmei:XWDqFZxGUNGwW1Od@aws-1-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require"
+POSTGRES_USER="postgres"
+SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZjYnZudGd4dGpnbmNjeWVrbWVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3OTQ4OTIsImV4cCI6MjA3NTM3MDg5Mn0.Un8-YmS5kKtIjGKj2ULZAhSHGmyH5IJ-g-ApDQJcnmY"
+SUPABASE_JWT_SECRET="duptkx+esfAiLkKejUrF11nJrq53Q7NVrtCot0ICYrCxml8MrpxMr23rd1VIE/lpbw6m1KrDr8cgV4nSX+32Ag=="
+SUPABASE_SERVICE_ROLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZjYnZudGd4dGpnbmNjeWVrbWVpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTc5NDg5MiwiZXhwIjoyMDc1MzcwODkyfQ.jhPuVtIvvifOrgwK2kJHfm6CpxSMu-YNcbSbEJJT3aU"
+SUPABASE_URL="https://vcbvntgxtjgnccyekmei.supabase.co"

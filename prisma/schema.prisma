@@ -1,11 +1,10 @@
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["dataProxy"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 model User {
@@ -21,29 +20,37 @@ model User {
   role           String
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
+  storeUsers     StoreUser[]
   auditLogs      AuditLog[]
   expenses       Expense[]
   purchases      Purchase[] @relation("PurchaseUser")
   attendantSales Sale[]     @relation("AttendantSales")
   cashierSales   Sale[]     @relation("CashierSales")
   tempCarts      TempCart[] @relation("AttendantTempCarts")
+  warehouseDistributions WarehouseDistribution[] @relation("DistributionUser")
 }
 
 model Category {
   id          String    @id @default(cuid())
-  name        String    @unique
+  storeId     String
+  name        String
   description String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   icon        String?
   products    Product[]
+  store       Store     @relation(fields: [storeId], references: [id])
+
+  @@unique([name, storeId])
+  @@index([storeId])
 }
 
 model Product {
   id            String         @id @default(cuid())
+  storeId       String
   categoryId    String
   name          String
-  productCode   String         @unique
+  productCode   String
   stock         Int            @default(0)
   purchasePrice Int
   supplierId    String
@@ -52,14 +59,19 @@ model Product {
   updatedAt     DateTime       @updatedAt
   description   String?
   priceTiers    PriceTier[]
+  store         Store          @relation(fields: [storeId], references: [id])
   category      Category       @relation(fields: [categoryId], references: [id])
   supplier      Supplier       @relation(fields: [supplierId], references: [id])
   purchaseItems PurchaseItem[]
   salesDetails  SaleDetail[]
   tempCarts     TempCart[]
+  warehouseProducts WarehouseProduct[]
+  warehouseDistributions WarehouseDistribution[]
 
+  @@index([storeId])
   @@index([categoryId])
   @@index([supplierId])
+  @@unique([productCode, storeId])
 }
 
 model PriceTier {
@@ -76,7 +88,8 @@ model PriceTier {
 
 model Supplier {
   id        String     @id @default(cuid())
-  name      String     @unique
+  storeId   String
+  name      String
   address   String?
   phone     String?
   email     String?
@@ -84,12 +97,17 @@ model Supplier {
   updatedAt DateTime   @updatedAt
   products  Product[]
   purchases Purchase[]
+  store     Store      @relation(fields: [storeId], references: [id])
+
+  @@index([storeId])
+  @@unique([name, storeId])
 }
 
 model Member {
   id             String       @id @default(cuid())
+  storeId        String
   name           String
-  phone          String       @unique
+  phone          String
   address        String?
   membershipType String
   discount       Int
@@ -97,11 +115,16 @@ model Member {
   updatedAt      DateTime     @updatedAt
   receivables    Receivable[]
   sales          Sale[]
+  store          Store        @relation(fields: [storeId], references: [id])
+
+  @@index([storeId])
+  @@unique([phone, storeId])
 }
 
 model Sale {
   id                 String       @id @default(cuid())
-  invoiceNumber      String       @unique
+  storeId            String
+  invoiceNumber      String
   cashierId          String
   attendantId        String?
   memberId           String?
@@ -116,19 +139,23 @@ model Sale {
   createdAt          DateTime     @default(now())
   paymentMethod      String       @default("CASH")
   receivable         Receivable?
+  store              Store        @relation(fields: [storeId], references: [id])
   attendant          User?        @relation("AttendantSales", fields: [attendantId], references: [id], onDelete: Restrict)
   cashier            User         @relation("CashierSales", fields: [cashierId], references: [id])
   member             Member?      @relation(fields: [memberId], references: [id], onDelete: Restrict)
   saleDetails        SaleDetail[]
 
+  @@index([storeId])
   @@index([cashierId])
   @@index([attendantId])
   @@index([memberId])
   @@index([date])
+  @@unique([invoiceNumber, storeId])
 }
 
 model Receivable {
   id         String    @id @default(cuid())
+  storeId    String
   saleId     String    @unique
   memberId   String
   amountDue  Int
@@ -137,43 +164,52 @@ model Receivable {
   dueDate    DateTime?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
+  store      Store     @relation(fields: [storeId], references: [id])
   member     Member    @relation(fields: [memberId], references: [id])
   sale       Sale      @relation(fields: [saleId], references: [id], onDelete: Cascade)
 
+  @@index([storeId])
   @@index([memberId])
   @@index([saleId])
 }
 
 model SaleDetail {
   id        String  @id @default(cuid())
+  storeId   String
   saleId    String
   productId String
   quantity  Int
   price     Int
   discount  Int
   subtotal  Int
+  store     Store   @relation(fields: [storeId], references: [id])
   product   Product @relation(fields: [productId], references: [id])
   sale      Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
 
+  @@index([storeId])
   @@index([saleId])
   @@index([productId])
 }
 
 model TempCart {
   id          String   @id @default(cuid())
+  storeId     String
   attendantId String
   productId   String
   quantity    Int      @default(1)
   createdAt   DateTime @default(now())
+  store       Store    @relation(fields: [storeId], references: [id])
   attendant   User     @relation("AttendantTempCarts", fields: [attendantId], references: [id], onDelete: Cascade)
   product     Product  @relation(fields: [productId], references: [id])
 
+  @@index([storeId])
   @@index([attendantId])
   @@index([productId])
 }
 
 model Purchase {
   id           String         @id @default(cuid())
+  storeId      String
   supplierId   String
   userId       String
   purchaseDate DateTime       @default(now())
@@ -181,10 +217,12 @@ model Purchase {
   status       String         @default("COMPLETED")
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
+  store        Store          @relation(fields: [storeId], references: [id])
   supplier     Supplier       @relation(fields: [supplierId], references: [id])
   user         User           @relation("PurchaseUser", fields: [userId], references: [id])
   items        PurchaseItem[]
 
+  @@index([storeId])
   @@index([supplierId])
   @@index([userId])
   @@index([purchaseDate])
@@ -192,39 +230,52 @@ model Purchase {
 
 model PurchaseItem {
   id            String   @id @default(cuid())
+  storeId       String
   purchaseId    String
   productId     String
   quantity      Int
   purchasePrice Int
   subtotal      Int
+  store         Store    @relation(fields: [storeId], references: [id])
   product       Product  @relation(fields: [productId], references: [id])
   purchase      Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
 
+  @@index([storeId])
   @@index([purchaseId])
   @@index([productId])
 }
 
 model SuspendedSale {
   id        String   @id @default(cuid())
+  storeId   String
   name      String?
   cartItems String
   memberId  String?
   notes     String?
   createdAt DateTime @default(now())
+  store     Store    @relation(fields: [storeId], references: [id])
+
+  @@index([storeId])
 }
 
 model Setting {
   id         String   @id @default(cuid())
+  storeId    String
   shopName   String?
   address    String?
   phone      String?
   themeColor String?  @default("#3c8dbc")
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  store      Store    @relation(fields: [storeId], references: [id])
+
+  @@index([storeId])
+  @@unique([storeId])
 }
 
 model AuditLog {
   id        String   @id @default(cuid())
+  storeId   String
   userId    String?
   action    String
   entity    String
@@ -234,8 +285,10 @@ model AuditLog {
   ipAddress String?
   userAgent String?
   createdAt DateTime @default(now())
+  store     Store    @relation(fields: [storeId], references: [id])
   user      User?    @relation(fields: [userId], references: [id])
 
+  @@index([storeId])
   @@index([userId])
   @@index([entity])
   @@index([createdAt])
@@ -243,15 +296,21 @@ model AuditLog {
 
 model ExpenseCategory {
   id          String    @id @default(cuid())
-  name        String    @unique
+  storeId     String
+  name        String
   description String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  store       Store     @relation(fields: [storeId], references: [id])
   expenses    Expense[]
+
+  @@unique([name, storeId])
+  @@index([storeId])
 }
 
 model Expense {
   id                String          @id @default(cuid())
+  storeId           String
   expenseCategoryId String
   amount            Int
   description       String?
@@ -259,10 +318,111 @@ model Expense {
   createdBy         String
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
+  store             Store           @relation(fields: [storeId], references: [id])
   user              User            @relation(fields: [createdBy], references: [id])
   category          ExpenseCategory @relation(fields: [expenseCategoryId], references: [id])
 
+  @@index([storeId])
   @@index([expenseCategoryId])
   @@index([createdBy])
   @@index([date])
+}
+
+model Store {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  address     String?
+  phone       String?
+  email       String?
+  status      String    @default("ACTIVE")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  storeUsers  StoreUser[]
+  categories  Category[]
+  products    Product[]
+  suppliers   Supplier[]
+  members     Member[]
+  sales       Sale[]
+  purchases   Purchase[]
+  settings    Setting[]
+  auditLogs   AuditLog[]
+  expenses    Expense[]
+  receivables Receivable[]
+  saleDetails SaleDetail[]
+  tempCarts   TempCart[]
+  purchaseItems PurchaseItem[]
+  suspendedSales SuspendedSale[]
+  expenseCategories ExpenseCategory[]
+  warehouseDistributions WarehouseDistribution[]
+}
+
+model StoreUser {
+  id        String   @id @default(cuid())
+  userId    String
+  storeId   String
+  role      String   // Manager, Warehouse, Admin, Cashier, Attendant
+  status    String   @default("ACTIVE")
+  assignedAt DateTime @default(now())
+  assignedBy String?
+  user      User     @relation(fields: [userId], references: [id])
+  store     Store    @relation(fields: [storeId], references: [id])
+
+  @@unique([userId, storeId]) // Seorang user hanya bisa memiliki satu role per toko
+  @@index([userId])
+  @@index([storeId])
+  @@index([role])
+}
+
+model Warehouse {
+  id          String    @id @default(cuid())
+  name        String    @default("Gudang Pusat")
+  description String?
+  address     String?
+  phone       String?
+  status      String    @default("ACTIVE")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  warehouseProducts WarehouseProduct[]
+  warehouseDistributions WarehouseDistribution[]
+}
+
+model WarehouseProduct {
+  id         String  @id @default(cuid())
+  productId  String  // Produk yang sama dengan di toko
+  warehouseId String
+  quantity   Int     @default(0)
+  reserved   Int     @default(0) // Jumlah yang sudah di-reserve untuk distribusi
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  product    Product @relation(fields: [productId], references: [id])
+  warehouse  Warehouse @relation(fields: [warehouseId], references: [id])
+
+  @@unique([productId, warehouseId])
+  @@index([warehouseId])
+}
+
+model WarehouseDistribution {
+  id               String    @id @default(cuid())
+  warehouseId      String
+  storeId          String
+  productId        String
+  quantity         Int
+  unitPrice        Int       // Harga satuan saat distribusi
+  totalAmount      Int       // quantity * unitPrice
+  status           String    @default("DELIVERED") // REQUESTED, PROCESSING, DELIVERED, CANCELLED
+  notes            String?
+  distributedAt    DateTime  @default(now())
+  distributedBy    String    // ID user yang melakukan distribusi
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  warehouse        Warehouse @relation(fields: [warehouseId], references: [id])
+  store            Store     @relation(fields: [storeId], references: [id])
+  product          Product   @relation(fields: [productId], references: [id])
+  distributedByUser User     @relation("DistributionUser", fields: [distributedBy], references: [id])
+
+  @@index([warehouseId])
+  @@index([storeId])
+  @@index([distributedBy])
+  @@index([distributedAt])
 }
