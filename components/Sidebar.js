@@ -107,7 +107,6 @@ const Sidebar = ({ children }) => {
     // MANAGER menus
     { title: "Dashboard", href: "/manager", icon: Home, type: 'item', roles: ['MANAGER'] },
     { title: "Manajemen Toko", type: 'heading', roles: ['MANAGER'] },
-    { title: "Buat Toko", href: "/manager/create-store", icon: Building, type: 'item', roles: ['MANAGER'] },
     { title: "Monitor Toko", href: "/manager/monitor-all", icon: Monitor, type: 'item', roles: ['MANAGER'] },
 
     // ADMIN menus

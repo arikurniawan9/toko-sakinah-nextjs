@@ -6,6 +6,7 @@ import { signIn, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ROLES } from '../../lib/constants';
+import LoadingSpinner from '@/components/LoadingSpinner'; // Import LoadingSpinner
 
 export default function LoginForm({ role: forcedRole = null }) {
   const [username, setUsername] = useState('');
@@ -18,38 +19,37 @@ export default function LoginForm({ role: forcedRole = null }) {
 
   // Check if a manager account exists to conditionally show the register button
   useEffect(() => {
-    const checkManager = async () => {
-      try {
-        const response = await fetch('/api/check-manager');
-        const data = await response.json();
-        if (!data.exists) {
-          setShowRegisterManager(true);
+    // Only run this on the client after session status is resolved
+    if (status !== 'loading') {
+      const checkManager = async () => {
+        try {
+          const response = await fetch('/api/check-manager');
+          const data = await response.json();
+          if (!data.exists) {
+            setShowRegisterManager(true);
+          }
+        } catch (err) {
+          console.error("Failed to check for manager account:", err);
         }
-      } catch (err) {
-        console.error("Failed to check for manager account:", err);
-      }
-    };
-    checkManager();
-  }, []);
+      };
+      checkManager();
+    }
+  }, [status]); // Dependency on status to ensure it runs after session is known
 
   useEffect(() => {
     if (status === 'authenticated' && session?.user?.role) {
-      setLoading(true);
+      setLoading(true); // Indicate loading while redirecting
       const { role, isGlobalRole, storeId } = session.user;
 
       // Redirect based on role
       if (role === ROLES.MANAGER) {
-        // MANAGER bisa langsung ke dashboard atau harus pilih toko dulu
-        router.push('/select-store');
+        router.push('/manager'); // Manager goes to manager dashboard directly
       } else if (role === ROLES.WAREHOUSE) {
-        // WAREHOUSE langsung ke dashboard warehouse
         router.push('/warehouse');
       } else if (role === ROLES.ADMIN || role === ROLES.CASHIER || role === ROLES.ATTENDANT) {
-        // Role per toko harus memilih toko terlebih dahulu
         if (!isGlobalRole && !storeId) {
           router.push('/select-store');
         } else {
-          // Jika sudah ada storeId, arahkan ke dashboard yang sesuai
           if (role === ROLES.ADMIN) {
             router.push('/admin');
           } else if (role === ROLES.CASHIER) {
@@ -61,6 +61,15 @@ export default function LoginForm({ role: forcedRole = null }) {
       }
     }
   }, [session, status, router]);
+
+  // Render LoadingSpinner if session is still loading
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();

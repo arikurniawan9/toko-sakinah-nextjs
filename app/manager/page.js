@@ -107,11 +107,30 @@ export default function ManagerDashboard() {
     endIndex: Math.min(currentPage * itemsPerPage, totalItems),
   };
 
+  // Log store data length for debugging purposes
+  console.log("Stores data length:", stores.length);
 
-  if (status === 'loading' || loading) return <div className="min-h-screen flex items-center justify-center"><LoadingSpinner /></div>;
+
+  // Hydration-safe loading and authentication checks
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
 
   if (status !== 'authenticated' || session.user.role !== ROLES.MANAGER) {
-    return null; // Redirect sudah ditangani di useEffect
+    router.push('/unauthorized');
+    return null;
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
   }
 
   return (
@@ -152,47 +171,50 @@ export default function ManagerDashboard() {
         </div>
         
         <div className="p-6">
-                      <DataTable
-                        data={stores}
-                        columns={columns}
-                        loading={loading}
-                        pagination={pagination}
-                        onSearch={handleSearch}
-                        onItemsPerPageChange={handleItemsPerPageChange}
-                        onSort={handleSort}
-                        currentSort={sortConfig}
-                        showAdd={true} // Now handled by DataTable
-                        onAdd={() => setIsCreateModalOpen(true)} // Callback for DataTable's add button
-                        showExport={false} // No export for now
-                        actions={true}
-                        darkMode={darkMode} // Pass darkMode prop
-                        mobileColumns={['name', 'status']}
-                                                rowActions={ (row) => (
-                                                  <div className="flex justify-end space-x-2"> {/* Explicit div wrapper */}
-                                                      <Tooltip content="Detail Toko">
-                                                        <button
-                                                          onClick={() => {
-                                                            setSelectedStoreId(row.id);
-                                                            setIsModalOpen(true);
-                                                          }}
-                                                          className="text-green-600 hover:text-green-900 mr-3 p-1 rounded-full hover:bg-green-100 flex items-center justify-center"
-                                                        >
-                                                          <Eye size={18} />
-                                                        </button>
-                                                      </Tooltip>
-                                                      <Tooltip content="Edit Toko">
-                                                        <button
-                                                          onClick={() => {
-                                                            setSelectedStoreId(row.id);
-                                                            setIsModalOpen(true);
-                                                          }}
-                                                          className="text-blue-600 hover:text-blue-900 p-1 rounded-full hover:bg-blue-100 flex items-center justify-center"
-                                                        >
-                                                          <Edit size={18} />
-                                                        </button>
-                                                      </Tooltip>
-                                                  </div>
-                                                )}                      />
+          <DataTable
+            data={stores}
+            columns={columns}
+            loading={loading}
+            pagination={pagination}
+            onSearch={handleSearch}
+            onItemsPerPageChange={handleItemsPerPageChange}
+            onSort={handleSort}
+            currentSort={sortConfig}
+            showAdd={true}
+            onAdd={() => setIsCreateModalOpen(true)}
+            showExport={false}
+            actions={true}
+            darkMode={darkMode}
+            mobileColumns={['name', 'status']}
+            rowActions={(row) => (
+              <div className="flex justify-end space-x-1">
+                <Tooltip content="Lihat Detail Toko">
+                  <button
+                    onClick={() => {
+                      setSelectedStoreId(row.id);
+                      setIsModalOpen(true);
+                    }}
+                    className="p-2 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    aria-label="Lihat Detail"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </button>
+                </Tooltip>
+                <Tooltip content="Edit Toko">
+                  <button
+                    onClick={() => {
+                      setSelectedStoreId(row.id);
+                      setIsModalOpen(true);
+                    }}
+                    className="p-2 text-indigo-600 hover:bg-indigo-100 dark:text-indigo-400 dark:hover:bg-indigo-900/50 rounded-lg transition-colors"
+                    aria-label="Edit"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </button>
+                </Tooltip>
+              </div>
+            )}
+          />
         </div>
       </div>
 
