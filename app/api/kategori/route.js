@@ -83,9 +83,20 @@ export async function POST(request) {
   try {
     const body = await request.json();
     const { name, description, icon } = categorySchema.parse(body);
+    const storeId = session.user.storeId;
+
+    if (!storeId) {
+      return NextResponse.json(
+        { error: 'User tidak terkait dengan toko manapun' },
+        { status: 400 }
+      );
+    }
 
     const existingCategory = await prisma.category.findFirst({
-      where: { name: { equals: name } },
+      where: { 
+        name: { equals: name },
+        storeId: storeId,
+      },
     });
 
     if (existingCategory) {
@@ -100,6 +111,7 @@ export async function POST(request) {
         name,
         description,
         icon,
+        storeId,
       },
     });
 
@@ -129,29 +141,53 @@ export async function PUT(request) {
   try {
     const body = await request.json();
     const { id, name, description, icon } = categoryUpdateSchema.parse(body);
+    const storeId = session.user.storeId;
 
+    if (!storeId) {
+      return NextResponse.json(
+        { error: 'User tidak terkait dengan toko manapun' },
+        { status: 400 }
+      );
+    }
+
+    // Check for name uniqueness within the store
     const existingCategory = await prisma.category.findFirst({
       where: {
         name: { equals: name },
         id: { not: id },
+        storeId: storeId,
       },
     });
 
     if (existingCategory) {
       return NextResponse.json(
         { error: 'Nama kategori sudah digunakan' },
-        { status: 409 } // 409 Conflict
+        { status: 409 }
       );
     }
 
-    const updatedCategory = await prisma.category.update({
-      where: { id },
+    // Use updateMany to ensure tenancy
+    const result = await prisma.category.updateMany({
+      where: {
+        id: id,
+        storeId: storeId,
+      },
       data: {
         name,
         description,
         icon,
       },
     });
+
+    if (result.count === 0) {
+      return NextResponse.json(
+        { error: 'Kategori tidak ditemukan atau Anda tidak memiliki akses' },
+        { status: 404 }
+      );
+    }
+
+    // Fetch the updated category to return it
+    const updatedCategory = await prisma.category.findUnique({ where: { id } });
 
     return NextResponse.json(updatedCategory);
   } catch (error) {
@@ -164,12 +200,8 @@ export async function PUT(request) {
       );
     }
 
-    if (error.code === 'P2025') {
-      return NextResponse.json(
-        { error: 'Kategori tidak ditemukan' },
-        { status: 404 }
-      );
-    }
+    // P2025 is for `update` not `updateMany`. A count of 0 is the equivalent check.
+    // So we can remove the specific P2025 check.
 
     return NextResponse.json(
       { error: 'Gagal memperbarui kategori' },
@@ -188,6 +220,14 @@ export async function DELETE(request) {
   try {
     const { searchParams } = new URL(request.url);
     let idsToDelete = [];
+
+    const storeId = session.user.storeId;
+    if (!storeId) {
+      return NextResponse.json(
+        { error: 'User tidak terkait dengan toko manapun' },
+        { status: 400 }
+      );
+    }
 
     // Unified way to get IDs from either body or query params
     try {
@@ -216,6 +256,7 @@ export async function DELETE(request) {
     const productsInCategory = await prisma.product.count({
       where: {
         categoryId: { in: idsToDelete },
+        storeId: storeId, // Ensure we only check products in the user's store
       },
     });
 
@@ -231,6 +272,7 @@ export async function DELETE(request) {
     const { count } = await prisma.category.deleteMany({
       where: {
         id: { in: idsToDelete },
+        storeId: storeId, // Ensure we only delete categories from the user's store
       },
     });
 
