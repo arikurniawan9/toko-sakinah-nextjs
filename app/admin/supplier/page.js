@@ -15,7 +15,10 @@ import Pagination from '@/components/produk/Pagination';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import DataTable from '@/components/DataTable';
 import Breadcrumb from '@/components/Breadcrumb';
+import * as XLSX from 'xlsx'; // ADDED: Import XLSX library
 import { AlertTriangle, CheckCircle } from 'lucide-react';
+import { exportSupplierPDF } from '@/utils/exportSupplierPDF';
+import { exportSupplierGridPDF } from '@/utils/exportSupplierGridPDF';
 
 // Skeleton component for loading state
 const CardSkeleton = ({ darkMode }) => (
@@ -112,15 +115,53 @@ export default function SupplierManagementPage() {
   const [itemToDelete, setItemToDelete] = useState(null); // Can be a single ID (string) or multiple IDs (array)
   const [isDeleting, setIsDeleting] = useState(false);
   
-  // State for import/export loading states
   const [importLoading, setImportLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+  const [pdfExportLoading, setPdfExportLoading] = useState(false);
+  const [gridPdfExportLoading, setGridPdfExportLoading] = useState(false); // ADDED: Grid PDF export loading state
 
   const handleDelete = (id) => {
     if (!isAdmin) return;
     setItemToDelete(id);
     setShowDeleteModal(true);
   };
+
+  const handleExportPDF = async () => {
+    if (pdfExportLoading) return;
+    setPdfExportLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      // Fetch all suppliers for PDF export
+      const response = await fetch(`/api/supplier?page=1&limit=${totalSuppliers}`);
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error('Gagal mengambil data supplier untuk ekspor PDF');
+      }
+      await exportSupplierPDF(data.suppliers, darkMode);
+      setSuccess('Laporan PDF supplier berhasil dibuat!');
+    } catch (err) {
+      setError(err.message || 'Gagal mengekspor data supplier ke PDF');
+    } finally {
+      setPdfExportLoading(false);
+    }
+  };
+
+  const handleExportGridPDF = async () => {
+    if (gridPdfExportLoading) return;
+    setGridPdfExportLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      await exportSupplierGridPDF(darkMode);
+      setSuccess('Laporan PDF Grid supplier berhasil dibuat!');
+    } catch (err) {
+      setError(err.message || 'Gagal mengekspor data supplier grid ke PDF');
+    } finally {
+      setGridPdfExportLoading(false);
+    }
+  };
+  
 
   // Fungsi untuk export data supplier
   const handleExport = async () => {
@@ -132,7 +173,7 @@ export default function SupplierManagementPage() {
 
     try {
       // Fetch all suppliers for export
-      const response = await fetch(`/api/supplier?page=1&limit=${pagination.total}`);
+      const response = await fetch(`/api/supplier?page=1&limit=${totalSuppliers}`);
       
       if (!response.ok) {
         throw new Error('Gagal mengambil data supplier untuk ekspor');
@@ -140,45 +181,28 @@ export default function SupplierManagementPage() {
 
       const data = await response.json();
       
-      // Buat file CSV dari data supplier
-      const csvContent = convertToCSV(data.suppliers);
+      const suppliersToExport = data.suppliers.map((sup, index) => ({
+        'No.': index + 1,
+        'Nama Supplier': sup.name,
+        'Nama Kontak': sup.contactPerson,
+        'Telepon': sup.phone,
+        'Email': sup.email,
+        'Alamat': sup.address || '-',
+        'Dibuat Pada': new Date(sup.createdAt).toLocaleDateString('id-ID'),
+        'Diperbarui Pada': new Date(sup.updatedAt).toLocaleDateString('id-ID'),
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(suppliersToExport);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Supplier');
+      XLSX.writeFile(wb, 'supplier_data.xlsx');
       
-      // Buat blob dan trigger download
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('download', `supplier_export_${new Date().toISOString().slice(0, 10)}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      setSuccess('Data supplier berhasil diekspor!');
+      setSuccess('Data supplier berhasil diekspor.');
     } catch (err) {
       setError(err.message || 'Gagal mengekspor data supplier');
     } finally {
       setExportLoading(false);
     }
-  };
-
-  // Fungsi untuk convert data ke format CSV
-  const convertToCSV = (data) => {
-    if (!data || data.length === 0) return '';
-    
-    const headers = Object.keys(data[0]);
-    const csvContent = [
-      headers.join(','),
-      ...data.map(row => headers.map(header => {
-        // Escape values that contain commas, quotes, or newlines
-        const value = row[header] || '';
-        return typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))
-          ? `"${value.replace(/"/g, '""')}"`
-          : value;
-      }).join(','))
-    ].join('\n');
-    
-    return csvContent;
   };
 
   // Fungsi untuk import data supplier
@@ -209,12 +233,13 @@ export default function SupplierManagementPage() {
       }
 
       // Kirim data ke API
+      const formData = new FormData();
+      formData.append('file', file); // Append the file directly
+
       const response = await fetch('/api/supplier/import', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ suppliers }),
+        body: formData, // Send FormData directly
+        // Do NOT set Content-Type header, browser will set it automatically to multipart/form-data
       });
 
       const result = await response.json();
@@ -365,12 +390,15 @@ export default function SupplierManagementPage() {
               onDeleteMultiple={handleDeleteMultiple}
               selectedRowsCount={selectedRows.length}
               onExport={handleExport}
+              onExportPDF={handleExportPDF} // ADDED: Pass handleExportPDF
               onImport={handleImport}
               importLoading={importLoading}
               exportLoading={exportLoading}
+              pdfExportLoading={pdfExportLoading}
+              onExportGridPDF={handleExportGridPDF}
+              gridPdfExportLoading={gridPdfExportLoading}
               view={view}
               setView={setView}
-              darkMode={darkMode}
             />
           </div>
 
@@ -430,10 +458,10 @@ export default function SupplierManagementPage() {
                     }))}
                     columns={[
                       { key: 'name', title: 'Nama', sortable: true },
+                      { key: 'contactPerson', title: 'Kontak', sortable: true, render: (value) => value || '-' },
                       { key: 'phone', title: 'Telepon', sortable: true },
                       { key: 'email', title: 'Email', sortable: true },
                       { key: 'address', title: 'Alamat', sortable: true, render: (value) => value || '-' },
-                      { key: 'productCount', title: 'Produk', sortable: true, render: (value) => value || 0 }
                     ]}
                     loading={loading}
                     selectedRows={selectedRows}
@@ -442,6 +470,7 @@ export default function SupplierManagementPage() {
                     onAdd={openModalForCreate}
                     onSearch={setSearchTerm}
                     onExport={handleExport}
+                    onExportPDF={handleExportPDF} // ADDED: Pass handleExportPDF
                     onItemsPerPageChange={setItemsPerPage}
                     onDeleteMultiple={handleDeleteMultiple}
                     selectedRowsCount={selectedRows.length}

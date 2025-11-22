@@ -1,7 +1,7 @@
 // components/supplier/SupplierToolbar.js
 'use client';
 
-import { Plus, Search, LayoutGrid, Table, Upload, Download, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Search, LayoutGrid, Table, Upload, Download, Trash2, Loader2, FileText } from 'lucide-react';
 import Tooltip from '../Tooltip';
 import DownloadTemplate from './DownloadTemplate';
 
@@ -12,9 +12,13 @@ export default function SupplierToolbar({
   onDeleteMultiple,
   selectedRowsCount,
   onExport,
+  onExportPDF,
+  onExportGridPDF, // ADDED
   onImport,
   importLoading,
   exportLoading,
+  pdfExportLoading,
+  gridPdfExportLoading, // ADDED
   view,
   setView,
   darkMode,
@@ -86,7 +90,7 @@ export default function SupplierToolbar({
         </Tooltip>
 
         {/* Export Button */}
-        <Tooltip content="Export data supplier">
+        <Tooltip content="Export data supplier (XLSX)">
           <button
             onClick={onExport}
             disabled={exportLoading}
@@ -110,24 +114,56 @@ export default function SupplierToolbar({
           </button>
         </Tooltip>
 
-        {/* Add New Button - Percantik tampilan */}
-        <button
-          onClick={onAddNew}
-          className="flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 rounded-lg shadow-md transition-all duration-300 transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2"
-        >
-          <Plus className="h-5 w-5" />
-          <span>Tambah Supplier</span>
-        </button>
-
-        {/* Bulk Delete Button (only for table view with selected rows) */}
-        {view === 'table' && selectedRowsCount > 0 && (
-          <Tooltip content={`Hapus ${selectedRowsCount} supplier terpilih`}>
+        {/* Export PDF Button (Table View) */}
+        {view === 'table' && (
+          <Tooltip content="Export data supplier (PDF)">
             <button
-              onClick={onDeleteMultiple}
-              className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-sm transition-colors"
+              onClick={onExportPDF}
+              disabled={pdfExportLoading}
+              className={`flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg shadow-sm transition-colors ${
+                pdfExportLoading
+                  ? 'bg-gray-400 text-gray-700'
+                  : (darkMode ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200')
+              }`}
             >
-              <Trash2 className="h-5 w-5" />
-              <span>Hapus ({selectedRowsCount})</span>
+              {pdfExportLoading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>Generating PDF...</span>
+                </>
+              ) : (
+                <>
+                  <FileText className="h-5 w-5" />
+                  <span>Export PDF</span>
+                </>
+              )}
+            </button>
+          </Tooltip>
+        )}
+
+        {/* Export PDF Button (Grid View) */}
+        {view === 'grid' && (
+          <Tooltip content="Export grid supplier (PDF)">
+            <button
+              onClick={onExportGridPDF}
+              disabled={gridPdfExportLoading}
+              className={`flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg shadow-sm transition-colors ${
+                gridPdfExportLoading
+                  ? 'bg-gray-400 text-gray-700'
+                  : (darkMode ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200')
+              }`}
+            >
+              {gridPdfExportLoading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>Generating Grid PDF...</span>
+                </>
+              ) : (
+                <>
+                  <FileText className="h-5 w-5" />
+                  <span>Export Grid PDF</span>
+                </>
+              )}
             </button>
           </Tooltip>
         )}
