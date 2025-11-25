@@ -8,6 +8,11 @@ import { Search, Plus, Edit, Eye, Trash2, Filter, Download, Upload } from 'lucid
 import { useUserTheme } from '@/components/UserThemeContext';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import DataTable from '@/components/DataTable';
+import CreateStoreModal from '@/components/CreateStoreModal';
+import StoreDetailModal from '@/components/StoreDetailModal';
+import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // Initial state for the reducer
 const initialState = {
@@ -56,6 +61,11 @@ export default function StoreManagementPage() {
   const [state, dispatch] = useReducer(storeManagementReducer, initialState);
   const { userTheme } = useUserTheme();
   const [showFilters, setShowFilters] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedStore, setSelectedStore] = useState(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [storeToDelete, setStoreToDelete] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Memoized fetch function
   const fetchStores = useCallback(async () => {
@@ -69,6 +79,7 @@ export default function StoreManagementPage() {
         sortDirection: state.sortConfig.direction,
         status: state.filters.status
       });
+
 
       const response = await fetch(`/api/stores?${params.toString()}`);
 
@@ -99,7 +110,7 @@ export default function StoreManagementPage() {
       if (error.message.includes('401') || error.message.includes('403')) {
         router.push('/login');
       } else {
-        alert(`Error mengambil data toko: ${error.message}`);
+        toast.error(`Error mengambil data toko: ${error.message}`);
       }
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
@@ -157,6 +168,52 @@ export default function StoreManagementPage() {
     return null;
   }
 
+  // Handler untuk menghapus toko (mengubah status menjadi INACTIVE)
+  const handleDeleteStore = useCallback(async (storeId, password) => {
+    try {
+      // Ambil data toko yang sekarang
+      const storeResponse = await fetch(`/api/stores/${storeId}`);
+      const storeData = await storeResponse.json();
+
+      if (!storeResponse.ok) {
+        toast.error('Gagal mengambil data toko');
+        return;
+      }
+
+      const currentStore = storeData.store;
+
+      // Kirim password dalam header untuk verifikasi
+      const response = await fetch(`/api/stores/${storeId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Manager-Password': password, // Kirim password untuk verifikasi
+        },
+        body: JSON.stringify({
+          name: currentStore.name,
+          description: currentStore.description,
+          address: currentStore.address,
+          phone: currentStore.phone,
+          email: currentStore.email,
+          status: 'INACTIVE' // hanya mengubah status menjadi INACTIVE
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        // Jika berhasil diubah statusnya, refresh data
+        fetchStores();
+        toast.success('Toko berhasil dinonaktifkan');
+      } else {
+        toast.error(result.error || 'Gagal menonaktifkan toko');
+      }
+    } catch (error) {
+      console.error('Error updating store status:', error);
+      toast.error('Terjadi kesalahan saat menonaktifkan toko');
+    }
+  }, [fetchStores]); // Tambahkan fetchStores sebagai dependency
+
   // Columns configuration for the DataTable
   const columns = useMemo(() => [
     {
@@ -164,32 +221,24 @@ export default function StoreManagementPage() {
       title: 'No',
       render: (_, __, index) => (state.currentPage - 1) * state.itemsPerPage + index + 1
     },
-    { 
-      key: 'name', 
-      title: 'Nama Toko', 
+    {
+      key: 'code',
+      title: 'Kode Toko',
+      sortable: true
+    },
+    {
+      key: 'name',
+      title: 'Nama Toko',
       sortable: true,
       className: 'font-medium'
     },
-    { 
-      key: 'code', 
-      title: 'Kode Toko', 
-      sortable: true 
+    {
+      key: 'phone',
+      title: 'Telepon'
     },
-    { 
-      key: 'address', 
-      title: 'Alamat' 
-    },
-    { 
-      key: 'phone', 
-      title: 'Telepon' 
-    },
-    { 
-      key: 'email', 
-      title: 'Email' 
-    },
-    { 
-      key: 'status', 
-      title: 'Status', 
+    {
+      key: 'status',
+      title: 'Status',
       sortable: true,
       render: (status) => (
         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
@@ -199,36 +248,39 @@ export default function StoreManagementPage() {
       )
     },
     {
-      key: 'createdAt',
-      title: 'Dibuat',
-      sortable: true,
-      render: (date) => new Date(date).toLocaleDateString('id-ID')
+      key: 'actions',
+      title: 'Aksi',
+      className: 'text-center', // Tambahkan class untuk center align pada header
+      render: (_, store) => (
+        <div className="flex justify-center space-x-2">
+          <button
+            onClick={() => setSelectedStore(store)}
+            className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg dark:text-blue-400 dark:hover:bg-gray-700"
+            title="Detail Toko"
+          >
+            <Eye className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => router.push(`/manager/edit-store/${store.id}`)}
+            className="p-2 text-green-600 hover:bg-green-100 rounded-lg dark:text-green-400 dark:hover:bg-gray-700"
+            title="Edit Toko"
+          >
+            <Edit className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => {
+              setStoreToDelete(store);
+              setShowDeleteModal(true);
+            }}
+            className="p-2 text-red-600 hover:bg-red-100 rounded-lg dark:text-red-400 dark:hover:bg-gray-700"
+            title="Hapus Toko"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      )
     }
-  ], [state.currentPage, state.itemsPerPage, router]);
-
-  // Row actions for the DataTable
-  const renderRowActions = useCallback((store) => (
-    <div className="flex space-x-2">
-      <button
-        onClick={() => router.push(`/manager/edit-store/${store.id}`)}
-        className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg dark:text-blue-400 dark:hover:bg-gray-700"
-        title="Edit Toko"
-      >
-        <Edit className="h-4 w-4" />
-      </button>
-      <button
-        onClick={() => {
-          if (confirm('Apakah Anda yakin ingin menghapus toko ini?')) {
-            // Implementasi penghapusan
-          }
-        }}
-        className="p-2 text-red-600 hover:bg-red-100 rounded-lg dark:text-red-400 dark:hover:bg-gray-700"
-        title="Hapus Toko"
-      >
-        <Trash2 className="h-4 w-4" />
-      </button>
-    </div>
-  ), [router]);
+  ], [state.currentPage, state.itemsPerPage, router, handleDeleteStore]);
 
   // Mobile columns configuration
   const mobileColumns = useMemo(() => [
@@ -238,7 +290,9 @@ export default function StoreManagementPage() {
       render: (name, store) => (
         <div>
           <div className="font-medium">{name}</div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">{store.address}</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            Kode: {store.code || '-'} | Telp: {store.phone || '-'}
+          </div>
           <div className="text-xs mt-1">
             <span className={`px-2 py-1 rounded-full ${
               store.status === 'ACTIVE' ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100' : 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100'
@@ -246,17 +300,44 @@ export default function StoreManagementPage() {
               {store.status}
             </span>
           </div>
+          {/* Aksi untuk mobile */}
+          <div className="flex justify-center space-x-2 mt-2">
+            <button
+              onClick={() => setSelectedStore(store)}
+              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg dark:text-blue-400 dark:hover:bg-gray-700"
+              title="Detail Toko"
+            >
+              <Eye className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => router.push(`/manager/edit-store/${store.id}`)}
+              className="p-2 text-green-600 hover:bg-green-100 rounded-lg dark:text-green-400 dark:hover:bg-gray-700"
+              title="Edit Toko"
+            >
+              <Edit className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => {
+                setStoreToDelete(store);
+                setShowDeleteModal(true);
+              }}
+              className="p-2 text-red-600 hover:bg-red-100 rounded-lg dark:text-red-400 dark:hover:bg-gray-700"
+              title="Hapus Toko"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       )
     }
-  ], []);
+  ], [setSelectedStore, router, handleDeleteStore]);
 
   // Additional actions for the DataTable
   const additionalActions = useMemo(() => [
     {
       label: 'Tambah Toko Baru',
       icon: Plus,
-      onClick: () => router.push('/manager/create-store'),
+      onClick: () => setShowCreateModal(true),
       className: 'bg-blue-600 hover:bg-blue-700 text-white'
     },
     {
@@ -264,7 +345,7 @@ export default function StoreManagementPage() {
       icon: Download,
       onClick: () => {
         // Implementasi ekspor
-        alert('Fitur ekspor akan segera tersedia');
+        toast.info('Fitur ekspor akan segera tersedia');
       },
       className: 'bg-green-600 hover:bg-green-700 text-white'
     },
@@ -273,11 +354,18 @@ export default function StoreManagementPage() {
       icon: Upload,
       onClick: () => {
         // Implementasi impor
-        alert('Fitur impor akan segera tersedia');
+        toast.info('Fitur impor akan segera tersedia');
       },
       className: 'bg-purple-600 hover:bg-purple-700 text-white'
     }
-  ], [router]);
+  ], [setShowCreateModal]);
+
+  // Handler untuk menampilkan detail toko
+  useEffect(() => {
+    if (selectedStore) {
+      setShowDetailModal(true);
+    }
+  }, [selectedStore]);
 
   // Filter options
   const filterOptions = useMemo(() => [
@@ -301,6 +389,21 @@ export default function StoreManagementPage() {
       </div>
     );
   }
+
+  const closeCreateModal = () => {
+    setShowCreateModal(false);
+  };
+
+  const closeDetailModal = () => {
+    setShowDetailModal(false);
+    setSelectedStore(null);
+  };
+
+  const handleStoreCreated = () => {
+    // Refresh data setelah membuat toko baru
+    fetchStores();
+    toast.success('Toko berhasil dibuat');
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
@@ -333,8 +436,55 @@ export default function StoreManagementPage() {
         filterValues={state.filters}
         onFilterChange={handleFilterChange}
         onToggleFilters={() => setShowFilters(!showFilters)}
-        rowActions={renderRowActions}
+        actions={false}  // Nonaktifkan actions bawaan DataTable agar tidak menambahkan kolom Aksi ganda
         darkMode={userTheme.darkMode}
+      />
+
+      {/* Create Store Modal */}
+      <CreateStoreModal
+        isOpen={showCreateModal}
+        onClose={closeCreateModal}
+        onStoreCreated={handleStoreCreated}
+      />
+
+      {/* Store Detail Modal */}
+      {selectedStore && (
+        <StoreDetailModal
+          isOpen={showDetailModal}
+          onClose={closeDetailModal}
+          store={selectedStore}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {storeToDelete && (
+        <DeleteConfirmationModal
+          isOpen={showDeleteModal}
+          onClose={() => {
+            setShowDeleteModal(false);
+            setStoreToDelete(null);
+          }}
+          onConfirm={async (password) => {
+            await handleDeleteStore(storeToDelete.id, password);
+            setShowDeleteModal(false);
+            setStoreToDelete(null);
+          }}
+          storeName={storeToDelete.name}
+        />
+      )}
+
+      {/* Toast Container */}
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme={userTheme.darkMode ? "dark" : "light"}
       />
     </div>
   );

@@ -58,12 +58,12 @@ export async function GET(request) {
         }
       });
 
-      // Ambil data penjualan harian untuk grafik
+      // Ambil data penjualan harian untuk grafik sesuai dengan rentang waktu
       const dailySales = await prisma.sale.groupBy({
         by: ['date'],
         where: {
           date: {
-            gte: new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7)
+            gte: startDate
           }
         },
         _sum: {
@@ -92,10 +92,71 @@ export async function GET(request) {
         };
       });
 
+      // Ambil data produk terjual untuk menghitung total item yang terjual
+      const totalProductsSold = await prisma.saleDetail.aggregate({
+        where: {
+          sale: {
+            date: {
+              gte: startDate
+            }
+          }
+        },
+        _sum: {
+          quantity: true
+        }
+      });
+
+      // Ambil informasi produk yang paling banyak terjual
+      const topProducts = await prisma.saleDetail.groupBy({
+        by: ['productId'],
+        where: {
+          sale: {
+            date: {
+              gte: startDate
+            }
+          }
+        },
+        _sum: {
+          quantity: true,
+          subtotal: true
+        },
+        orderBy: {
+          _sum: {
+            quantity: 'desc'
+          }
+        },
+        take: 5
+      });
+
+      // Ambil nama produk untuk top products
+      const topProductIds = topProducts.map(item => item.productId);
+      const productDetails = await prisma.product.findMany({
+        where: {
+          id: {
+            in: topProductIds
+          }
+        },
+        select: {
+          id: true,
+          name: true
+        }
+      });
+
+      // Gabungkan data produk
+      const topProductsData = topProducts.map(item => {
+        const product = productDetails.find(p => p.id === item.productId);
+        return {
+          productName: product ? product.name : 'Produk Tidak Dikenal',
+          quantity: item._sum.quantity,
+          revenue: item._sum.subtotal
+        };
+      });
+
       reportData = {
         globalStats: {
           totalRevenue: salesData.reduce((sum, sale) => sum + (sale._sum.total || 0), 0),
           totalSales: salesData.reduce((sum, sale) => sum + sale._count.id, 0),
+          totalProductsSold: totalProductsSold._sum.quantity || 0,
           activeStores: stores.length
         },
         salesData: dailySales.map(day => ({
@@ -103,7 +164,8 @@ export async function GET(request) {
           sales: day._count.id,
           revenue: day._sum.total
         })),
-        storePerformance: storeSalesData
+        storePerformance: storeSalesData,
+        topProducts: topProductsData
       };
     } else if (reportType === 'inventory') {
       // Data inventaris
@@ -119,6 +181,32 @@ export async function GET(request) {
         }
       });
 
+      // Ambil data stok untuk setiap produk
+      const inventoryDataWithRelations = await prisma.product.findMany({
+        include: {
+          store: true,
+          category: true,
+          supplier: true
+        },
+        orderBy: {
+          stock: 'asc' // Urutkan dari stok terendah
+        },
+        take: 10 // Ambil 10 produk terendah
+      });
+
+      // Transformasi data untuk menghindari masalah jika relasi tidak ditemukan
+      const inventoryData = inventoryDataWithRelations.map(item => ({
+        id: item.id,
+        name: item.name || 'Nama Produk Tidak Dikenal',
+        productCode: item.productCode || 'Kode Produk Tidak Dikenal',
+        stock: item.stock,
+        storeName: item.store ? item.store.name : 'Toko Tidak Dikenal',
+        categoryName: item.category ? item.category.name : 'Kategori Tidak Dikenal',
+        supplierName: item.supplier ? item.supplier.name : 'Supplier Tidak Dikenal',
+        purchasePrice: item.purchasePrice || 0,
+        price: item.priceTiers && item.priceTiers.length > 0 ? item.priceTiers[0].price : 0,
+      }));
+
       reportData = {
         globalStats: {
           totalProducts,
@@ -126,7 +214,7 @@ export async function GET(request) {
           outOfStockProducts,
           totalStores: await prisma.store.count()
         },
-        inventoryData: [] // Nanti bisa ditambahkan data detail inventaris
+        inventoryData: inventoryData
       };
     } else if (reportType === 'financial') {
       // Data keuangan
@@ -152,13 +240,68 @@ export async function GET(request) {
         }
       });
 
+      // Ambil detail pengeluaran berdasarkan kategori
+      const expensesByCategory = await prisma.expense.groupBy({
+        by: ['expenseCategoryId'],
+        where: {
+          date: {
+            gte: startDate
+          }
+        },
+        _sum: {
+          amount: true
+        }
+      });
+
+      // Ambil nama kategori pengeluaran
+      const expenseCategoryIds = expensesByCategory.map(item => item.expenseCategoryId);
+      const expenseCategories = await prisma.expenseCategory.findMany({
+        where: {
+          id: {
+            in: expenseCategoryIds
+          }
+        },
+        select: {
+          id: true,
+          name: true
+        }
+      });
+
+      // Gabungkan data kategori pengeluaran
+      const expensesByCategoryData = expensesByCategory.map(item => {
+        const category = expenseCategories.find(cat => cat.id === item.expenseCategoryId);
+        return {
+          categoryName: category ? category.name : 'Kategori Tidak Dikenal',
+          amount: item._sum.amount
+        };
+      });
+
+      // Ambil data pembelian dalam periode yang sama untuk menghitung laba kotor
+      const purchasesTotal = await prisma.purchase.aggregate({
+        where: {
+          purchaseDate: {
+            gte: startDate
+          }
+        },
+        _sum: {
+          totalAmount: true
+        }
+      });
+
+      // Hitung laba kotor (total penjualan - total pembelian)
+      const grossProfit = (salesTotal._sum.total || 0) - (purchasesTotal._sum.totalAmount || 0);
+
       reportData = {
         globalStats: {
           totalRevenue: salesTotal._sum.total || 0,
           totalExpenses: expensesTotal._sum.amount || 0,
-          netProfit: (salesTotal._sum.total || 0) - (expensesTotal._sum.amount || 0)
+          netProfit: (salesTotal._sum.total || 0) - (expensesTotal._sum.amount || 0),
+          grossProfit: grossProfit,
+          totalPurchases: purchasesTotal._sum.totalAmount || 0
         },
-        financialData: [] // Nanti bisa ditambahkan data detail keuangan
+        financialData: {
+          expensesByCategory: expensesByCategoryData
+        }
       };
     }
 

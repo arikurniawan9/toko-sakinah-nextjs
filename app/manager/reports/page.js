@@ -4,16 +4,17 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
 import { ROLES } from '@/lib/constants';
-import { 
-  BarChart3, 
-  FileText, 
-  Download, 
+import {
+  BarChart3,
+  FileText,
+  Download,
   Calendar,
   TrendingUp,
   ShoppingCart,
   Users,
   DollarSign,
-  Package
+  Package,
+  Store
 } from 'lucide-react';
 import { useUserTheme } from '../../../components/UserThemeContext';
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -125,7 +126,7 @@ export default function CombinedReportsPage() {
         <p className="mt-2 text-gray-600 dark:text-gray-400">
           Laporan komprehensif dari semua toko Anda
         </p>
-        
+
         {/* Time Range and Report Type Selector */}
         <div className="mt-4 flex flex-wrap gap-4">
           <div className="flex flex-wrap gap-2">
@@ -139,13 +140,13 @@ export default function CombinedReportsPage() {
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                 }`}
               >
-                {range === '7d' ? '7 Hari' : 
-                 range === '30d' ? '30 Hari' : 
+                {range === '7d' ? '7 Hari' :
+                 range === '30d' ? '30 Hari' :
                  range === '90d' ? '90 Hari' : '1 Tahun'}
               </button>
             ))}
           </div>
-          
+
           <div className="flex flex-wrap gap-2">
             {['sales', 'inventory', 'financial'].map((type) => (
               <button
@@ -157,7 +158,7 @@ export default function CombinedReportsPage() {
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                 }`}
               >
-                {type === 'sales' ? 'Penjualan' : 
+                {type === 'sales' ? 'Penjualan' :
                  type === 'inventory' ? 'Inventaris' : 'Keuangan'}
               </button>
             ))}
@@ -179,7 +180,7 @@ export default function CombinedReportsPage() {
                 darkMode ? 'text-gray-300' : 'text-gray-600'
               }`}>Total Pendapatan</h3>
               <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
-                {formatCurrency(globalStats.totalRevenue)}
+                {formatCurrency(reportData.globalStats.totalRevenue || 0)}
               </p>
             </div>
           </div>
@@ -197,7 +198,7 @@ export default function CombinedReportsPage() {
                 darkMode ? 'text-gray-300' : 'text-gray-600'
               }`}>Total Transaksi</h3>
               <p className="text-3xl font-bold text-green-600 dark:text-green-400">
-                {globalStats.totalSales}
+                {reportData.globalStats.totalSales || 0}
               </p>
             </div>
           </div>
@@ -215,7 +216,7 @@ export default function CombinedReportsPage() {
                 darkMode ? 'text-gray-300' : 'text-gray-600'
               }`}>Jumlah Toko</h3>
               <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                {globalStats.activeStores}
+                {reportData.globalStats.activeStores || 0}
               </p>
             </div>
           </div>
@@ -231,9 +232,9 @@ export default function CombinedReportsPage() {
             <div className="ml-4">
               <h3 className={`text-lg font-medium ${
                 darkMode ? 'text-gray-300' : 'text-gray-600'
-              }`}>Produk Tersedia</h3>
+              }`}>Produk Terjual</h3>
               <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">
-                {globalStats.totalProducts}
+                {reportData.globalStats.totalProductsSold || 0}
               </p>
             </div>
           </div>
@@ -241,126 +242,357 @@ export default function CombinedReportsPage() {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Overall Sales Chart */}
-        <div className={`p-6 rounded-xl shadow ${
-          darkMode ? 'bg-gray-800' : 'bg-white'
-        }`}>
-          <h3 className={`text-lg font-medium mb-4 ${
-            darkMode ? 'text-white' : 'text-gray-900'
+      {reportType === 'sales' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Overall Sales Chart */}
+          <div className={`p-6 rounded-xl shadow ${
+            darkMode ? 'bg-gray-800' : 'bg-white'
           }`}>
-            Grafik Penjualan Keseluruhan
-          </h3>
-          <SalesChart 
-            data={salesData} 
-            chartType="line"
-            xAxisKey="name"
-            yAxisKeys={['sales']}
-            labels={['Jumlah Transaksi']}
-          />
-        </div>
+            <h3 className={`text-lg font-medium mb-4 ${
+              darkMode ? 'text-white' : 'text-gray-900'
+            }`}>
+              Grafik Penjualan Keseluruhan
+            </h3>
+            {reportData.salesData && reportData.salesData.length > 0 ? (
+              <SalesChart
+                data={reportData.salesData}
+                chartType="line"
+                xAxisKey="date"
+                yAxisKeys={['revenue']}
+                labels={['Pendapatan']}
+              />
+            ) : (
+              <p className={`text-center py-8 ${
+                darkMode ? 'text-gray-400' : 'text-gray-500'
+              }`}>
+                Tidak ada data penjualan dalam periode ini
+              </p>
+            )}
+          </div>
 
-        {/* Store Performance Chart */}
-        <div className={`p-6 rounded-xl shadow ${
-          darkMode ? 'bg-gray-800' : 'bg-white'
-        }`}>
-          <h3 className={`text-lg font-medium mb-4 ${
-            darkMode ? 'text-white' : 'text-gray-900'
+          {/* Store Performance Chart */}
+          <div className={`p-6 rounded-xl shadow ${
+            darkMode ? 'bg-gray-800' : 'bg-white'
           }`}>
-            Performa Per Toko
-          </h3>
-          <SalesChart 
-            data={storePerformanceData} 
-            chartType="bar"
-            xAxisKey="name"
-            yAxisKeys={['revenue']}
-            labels={['Pendapatan']}
-          />
+            <h3 className={`text-lg font-medium mb-4 ${
+              darkMode ? 'text-white' : 'text-gray-900'
+            }`}>
+              Performa Per Toko
+            </h3>
+            {reportData.storePerformance && reportData.storePerformance.length > 0 ? (
+              <SalesChart
+                data={reportData.storePerformance}
+                chartType="bar"
+                xAxisKey="storeName"
+                yAxisKeys={['totalRevenue']}
+                labels={['Pendapatan']}
+              />
+            ) : (
+              <p className={`text-center py-8 ${
+                darkMode ? 'text-gray-400' : 'text-gray-500'
+              }`}>
+                Tidak ada data performa toko dalam periode ini
+              </p>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Additional Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Revenue by Store */}
-        <div className={`p-6 rounded-xl shadow ${
-          darkMode ? 'bg-gray-800' : 'bg-white'
-        }`}>
-          <h3 className={`text-lg font-medium mb-4 ${
-            darkMode ? 'text-white' : 'text-gray-900'
+      {/* Additional Charts - Sales specific */}
+      {reportType === 'sales' && reportData.storePerformance && reportData.storePerformance.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Revenue by Store */}
+          <div className={`p-6 rounded-xl shadow ${
+            darkMode ? 'bg-gray-800' : 'bg-white'
           }`}>
-            Pendapatan per Toko
-          </h3>
-          <div className="space-y-4">
-            {storePerformanceData.map((store, index) => (
-              <div key={index}>
-                <div className="flex justify-between mb-1">
-                  <span className={`text-sm font-medium ${
-                    darkMode ? 'text-white' : 'text-gray-700'
+            <h3 className={`text-lg font-medium mb-4 ${
+              darkMode ? 'text-white' : 'text-gray-900'
+            }`}>
+              Pendapatan per Toko
+            </h3>
+            <div className="space-y-4">
+              {reportData.storePerformance.map((store, index) => (
+                <div key={index}>
+                  <div className="flex justify-between mb-1">
+                    <span className={`text-sm font-medium ${
+                      darkMode ? 'text-white' : 'text-gray-700'
+                    }`}>
+                      {store.storeName}
+                    </span>
+                    <span className="text-sm font-medium">{formatCurrency(store.totalRevenue)}</span>
+                  </div>
+                  <div className={`w-full bg-gray-200 rounded-full h-2.5 ${
+                    darkMode ? 'bg-gray-700' : 'bg-gray-200'
                   }`}>
-                    {store.name}
-                  </span>
-                  <span className="text-sm font-medium">{formatCurrency(store.revenue)}</span>
+                    <div
+                      className="bg-blue-600 h-2.5 rounded-full"
+                      style={{ width: `${(store.totalRevenue / Math.max(...reportData.storePerformance.map(s => s.totalRevenue || 1))) * 100}%` }}
+                    ></div>
+                  </div>
                 </div>
-                <div className={`w-full bg-gray-200 rounded-full h-2.5 ${
-                  darkMode ? 'bg-gray-700' : 'bg-gray-200'
+              ))}
+            </div>
+          </div>
+
+          {/* Top Selling Products */}
+          <div className={`p-6 rounded-xl shadow ${
+            darkMode ? 'bg-gray-800' : 'bg-white'
+          }`}>
+            <h3 className={`text-lg font-medium mb-4 ${
+              darkMode ? 'text-white' : 'text-gray-900'
+            }`}>
+              Produk Terlaris
+            </h3>
+            {reportData.topProducts && reportData.topProducts.length > 0 ? (
+              <div className="space-y-4">
+                {reportData.topProducts.map((product, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 border-b border-gray-200 dark:border-gray-700">
+                    <div>
+                      <p className={`font-medium ${
+                        darkMode ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        {product.productName}
+                      </p>
+                      <p className={`text-sm ${
+                        darkMode ? 'text-gray-400' : 'text-gray-500'
+                      }`}>
+                        Terjual: {product.quantity}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className={`font-medium ${
+                        darkMode ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        {formatCurrency(product.revenue)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className={`text-center py-4 ${
+                darkMode ? 'text-gray-400' : 'text-gray-500'
+              }`}>
+                Tidak ada data produk terlaris
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Inventory Report Section */}
+      {reportType === 'inventory' && reportData.inventoryData && (
+        <div className="mb-8">
+          <div className={`p-6 rounded-xl shadow ${
+            darkMode ? 'bg-gray-800' : 'bg-white'
+          }`}>
+            <h3 className={`text-lg font-medium mb-4 ${
+              darkMode ? 'text-white' : 'text-gray-900'
+            }`}>
+              Inventaris Terendah
+            </h3>
+            {reportData.inventoryData.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className={darkMode ? 'bg-gray-700' : 'bg-gray-50'}>
+                    <tr>
+                      <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                        darkMode ? 'text-gray-300' : 'text-gray-500'
+                      }`}>
+                        Produk
+                      </th>
+                      <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                        darkMode ? 'text-gray-300' : 'text-gray-500'
+                      }`}>
+                        Kode
+                      </th>
+                      <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                        darkMode ? 'text-gray-300' : 'text-gray-500'
+                      }`}>
+                        Toko
+                      </th>
+                      <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                        darkMode ? 'text-gray-300' : 'text-gray-500'
+                      }`}>
+                        Kategori
+                      </th>
+                      <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                        darkMode ? 'text-gray-300' : 'text-gray-500'
+                      }`}>
+                        Stok
+                      </th>
+                      <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                        darkMode ? 'text-gray-300' : 'text-gray-500'
+                      }`}>
+                        Harga
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className={`divide-y ${
+                    darkMode ? 'divide-gray-700 bg-gray-800' : 'divide-gray-200 bg-white'
+                  }`}>
+                    {reportData.inventoryData.map((item, index) => (
+                      <tr key={index} className={darkMode ? 'hover:bg-gray-750' : 'hover:bg-gray-50'}>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${
+                          darkMode ? 'text-gray-300' : 'text-gray-900'
+                        }`}>
+                          <div className="font-medium">{item.name}</div>
+                        </td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${
+                          darkMode ? 'text-gray-300' : 'text-gray-900'
+                        }`}>
+                          {item.productCode}
+                        </td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${
+                          darkMode ? 'text-gray-300' : 'text-gray-900'
+                        }`}>
+                          {item.storeName}
+                        </td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${
+                          darkMode ? 'text-gray-300' : 'text-gray-900'
+                        }`}>
+                          {item.categoryName}
+                        </td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${
+                          darkMode ? 'text-gray-300' : 'text-gray-900'
+                        }`}>
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            item.stock <= 5
+                              ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                              : item.stock <= 10
+                              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+                              : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                          }`}>
+                            {item.stock}
+                          </span>
+                        </td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${
+                          darkMode ? 'text-gray-300' : 'text-gray-900'
+                        }`}>
+                          {formatCurrency(item.price)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className={`text-center py-8 ${
+                darkMode ? 'text-gray-400' : 'text-gray-500'
+              }`}>
+                Tidak ada data inventaris
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Financial Report Section */}
+      {reportType === 'financial' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Financial Summary */}
+          <div className={`p-6 rounded-xl shadow ${
+            darkMode ? 'bg-gray-800' : 'bg-white'
+          }`}>
+            <h3 className={`text-lg font-medium mb-4 ${
+              darkMode ? 'text-white' : 'text-gray-900'
+            }`}>
+              Ikhtisar Keuangan
+            </h3>
+            <div className="space-y-4">
+              <div className="flex justify-between">
+                <span className={`font-medium ${
+                  darkMode ? 'text-gray-300' : 'text-gray-700'
                 }`}>
-                  <div 
-                    className="bg-blue-600 h-2.5 rounded-full" 
-                    style={{ width: `${(store.revenue / Math.max(...storePerformanceData.map(s => s.revenue))) * 100}%` }}
-                  ></div>
-                </div>
+                  Total Pendapatan:
+                </span>
+                <span className={`font-medium ${
+                  darkMode ? 'text-white' : 'text-gray-900'
+                }`}>
+                  {formatCurrency(reportData.globalStats.totalRevenue || 0)}
+                </span>
               </div>
-            ))}
+              <div className="flex justify-between">
+                <span className={`font-medium ${
+                  darkMode ? 'text-gray-300' : 'text-gray-700'
+                }`}>
+                  Total Pengeluaran:
+                </span>
+                <span className={`font-medium ${
+                  darkMode ? 'text-white' : 'text-gray-900'
+                }`}>
+                  {formatCurrency(reportData.globalStats.totalExpenses || 0)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className={`font-medium ${
+                  darkMode ? 'text-gray-300' : 'text-gray-700'
+                }`}>
+                  Laba Kotor:
+                </span>
+                <span className={`font-medium ${
+                  darkMode ? 'text-white' : 'text-gray-900'
+                }`}>
+                  {formatCurrency(reportData.globalStats.grossProfit || 0)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className={`font-medium ${
+                  darkMode ? 'text-gray-300' : 'text-gray-700'
+                }`}>
+                  Laba Bersih:
+                </span>
+                <span className={`font-medium ${
+                  darkMode ? 'text-white' : 'text-gray-900'
+                }`}>
+                  {formatCurrency(reportData.globalStats.netProfit || 0)}
+                </span>
+              </div>
+            </div>
           </div>
-        </div>
 
-        {/* Recent Transactions */}
-        <div className={`p-6 rounded-xl shadow ${
-          darkMode ? 'bg-gray-800' : 'bg-white'
-        }`}>
-          <h3 className={`text-lg font-medium mb-4 ${
-            darkMode ? 'text-white' : 'text-gray-900'
+          {/* Expense Breakdown */}
+          <div className={`p-6 rounded-xl shadow ${
+            darkMode ? 'bg-gray-800' : 'bg-white'
           }`}>
-            Transaksi Terbaru
-          </h3>
-          <div className="space-y-4">
-            {[
-              { id: 'INV-001', store: 'Toko Pusat', amount: 250000, date: '2023-06-15' },
-              { id: 'INV-002', store: 'Toko Barat', amount: 180000, date: '2023-06-15' },
-              { id: 'INV-003', store: 'Toko Timur', amount: 320000, date: '2023-06-14' },
-              { id: 'INV-004', store: 'Toko Selatan', amount: 150000, date: '2023-06-14' },
-              { id: 'INV-005', store: 'Toko Pusat', amount: 450000, date: '2023-06-13' },
-            ].map((transaction, index) => (
-              <div key={index} className="flex items-center justify-between p-3 border-b border-gray-200 dark:border-gray-700">
-                <div>
-                  <p className={`font-medium ${
-                    darkMode ? 'text-white' : 'text-gray-900'
-                  }`}>
-                    {transaction.id}
-                  </p>
-                  <p className={`text-sm ${
-                    darkMode ? 'text-gray-400' : 'text-gray-500'
-                  }`}>
-                    {transaction.store}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className={`font-medium ${
-                    darkMode ? 'text-white' : 'text-gray-900'
-                  }`}>
-                    {formatCurrency(transaction.amount)}
-                  </p>
-                  <p className={`text-sm ${
-                    darkMode ? 'text-gray-400' : 'text-gray-500'
-                  }`}>
-                    {transaction.date}
-                  </p>
-                </div>
+            <h3 className={`text-lg font-medium mb-4 ${
+              darkMode ? 'text-white' : 'text-gray-900'
+            }`}>
+              Rincian Pengeluaran
+            </h3>
+            {reportData.financialData && reportData.financialData.expensesByCategory && reportData.financialData.expensesByCategory.length > 0 ? (
+              <div className="space-y-4">
+                {reportData.financialData.expensesByCategory.map((expense, index) => (
+                  <div key={index}>
+                    <div className="flex justify-between mb-1">
+                      <span className={`text-sm font-medium ${
+                        darkMode ? 'text-white' : 'text-gray-700'
+                      }`}>
+                        {expense.categoryName}
+                      </span>
+                      <span className="text-sm font-medium">{formatCurrency(expense.amount)}</span>
+                    </div>
+                    <div className={`w-full bg-gray-200 rounded-full h-2.5 ${
+                      darkMode ? 'bg-gray-700' : 'bg-gray-200'
+                    }`}>
+                      <div
+                        className="bg-red-600 h-2.5 rounded-full"
+                        style={{ width: `${(expense.amount / Math.max(...reportData.financialData.expensesByCategory.map(e => e.amount || 1))) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            ) : (
+              <p className={`text-center py-4 ${
+                darkMode ? 'text-gray-400' : 'text-gray-500'
+              }`}>
+                Tidak ada data pengeluaran
+              </p>
+            )}
           </div>
         </div>
-      </div>
+      )}
 
       {/* Export Button */}
       <div className="flex justify-end">

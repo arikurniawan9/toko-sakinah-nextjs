@@ -19,7 +19,7 @@ const productSchema = z.object({
   stock: z.preprocess((val) => typeof val === 'string' ? parseInt(val) : val, z.number().int().min(0, { message: 'Stok tidak boleh negatif' }).default(0)),
   purchasePrice: z.preprocess((val) => typeof val === 'string' ? parseInt(val) : val, z.number().int().min(0, { message: 'Harga beli tidak boleh negatif' }).default(0)),
   categoryId: z.string().min(1, { message: 'Kategori wajib dipilih' }),
-  supplierId: z.string().min(1, { message: 'Supplier wajib dipilih' }),
+  supplierId: z.string().min(1, { message: 'Supplier wajib dipilih' }).optional().nullable(),
   description: z.string().trim().optional().nullable(),
   priceTiers: z.array(priceTierSchema).min(1, { message: 'Minimal harus ada satu tingkatan harga' }),
 });
@@ -31,6 +31,11 @@ const productUpdateSchema = productSchema.extend({
 
 // GET /api/produk - Get all products with pagination, search, and filtering
 export async function GET(request) {
+  const session = await getSession();
+  if (!session || session.user.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page')) || 1;
@@ -43,6 +48,7 @@ export async function GET(request) {
     const offset = (page - 1) * limit;
 
     const where = {
+      storeId: session.user.storeId, // Filter by store ID
       ...(productCode && { productCode: { equals: productCode } }),
       ...(categoryId && { categoryId }),
       ...(supplierId && { supplierId }), // Add supplier filter if provided
@@ -114,23 +120,53 @@ export async function POST(request) {
     const validatedData = productSchema.parse(body);
     const { priceTiers, ...productData } = validatedData;
 
+    // Gunakan storeId dari session untuk compound key
     const existingProduct = await prisma.product.findUnique({
-      where: { productCode: productData.productCode },
+      where: {
+        productCode_storeId: {
+          productCode: productData.productCode,
+          storeId: session.user.storeId
+        }
+      },
     });
-    
+
     if (existingProduct) {
       return NextResponse.json({ error: 'Kode produk sudah digunakan' }, { status: 409 });
     }
-    
+
     // Pisahkan field categoryId dan supplierId dari productData
     const { categoryId, supplierId, ...restProductData } = productData;
+
+    // Handle supplier - create default if not provided
+    let finalSupplierId = supplierId;
+    if (!finalSupplierId) {
+      // Create or find a default supplier for "No Supplier"
+      let defaultSupplier = await prisma.supplier.findFirst({
+        where: {
+          name: "Tidak Ada",
+          storeId: session.user.storeId
+        }
+      });
+
+      if (!defaultSupplier) {
+        defaultSupplier = await prisma.supplier.create({
+          data: {
+            name: "Tidak Ada",
+            code: "NO-SUP",
+            store: { connect: { id: session.user.storeId } }
+          }
+        });
+      }
+      finalSupplierId = defaultSupplier.id;
+    }
 
     const createdProduct = await prisma.$transaction(async (tx) => {
       const product = await tx.product.create({
         data: {
           ...restProductData,
+          store: { connect: { id: session.user.storeId } },
           category: { connect: { id: categoryId } },
-          supplier: { connect: { id: supplierId } },
+          supplier: { connect: { id: finalSupplierId } },
         },
         include: {
           category: true,
@@ -170,10 +206,11 @@ export async function PUT(request) {
     const body = await request.json();
     const validatedData = productUpdateSchema.parse(body);
     const { id, priceTiers, ...productData } = validatedData;
-    
+
     const duplicateProduct = await prisma.product.findFirst({
       where: {
         productCode: productData.productCode,
+        storeId: session.user.storeId, // Tambahkan storeId ke kondisi pencarian
         id: { not: id },
       },
     });
@@ -184,7 +221,10 @@ export async function PUT(request) {
 
     // Ambil data produk sebelum update untuk logging
     const existingProduct = await prisma.product.findUnique({
-      where: { id },
+      where: {
+        id,
+        storeId: session.user.storeId // Tambahkan storeId ke kondisi pencarian
+      },
       include: {
         category: true,
         supplier: true,
@@ -195,13 +235,40 @@ export async function PUT(request) {
     // Pisahkan field categoryId dan supplierId dari productData
     const { categoryId, supplierId, ...restProductData } = productData;
 
+    // Handle supplier for update - create default if not provided
+    let finalSupplierId = supplierId;
+    if (!finalSupplierId) {
+      // Create or find a default supplier for "No Supplier"
+      let defaultSupplier = await prisma.supplier.findFirst({
+        where: {
+          name: "Tidak Ada",
+          storeId: session.user.storeId
+        }
+      });
+
+      if (!defaultSupplier) {
+        defaultSupplier = await prisma.supplier.create({
+          data: {
+            name: "Tidak Ada",
+            code: "NO-SUP",
+            store: { connect: { id: session.user.storeId } }
+          }
+        });
+      }
+      finalSupplierId = defaultSupplier.id;
+    }
+
     const updatedProduct = await prisma.$transaction(async (tx) => {
       const product = await tx.product.update({
-        where: { id },
+        where: {
+          id,
+          storeId: session.user.storeId // Tambahkan storeId ke kondisi update
+        },
         data: {
           ...restProductData,
+          store: { connect: { id: session.user.storeId } },
           category: { connect: { id: categoryId } },
-          supplier: { connect: { id: supplierId } },
+          supplier: { connect: { id: finalSupplierId } },
         },
         include: {
           category: true,
@@ -263,20 +330,27 @@ export async function DELETE(request) {
       return NextResponse.json({ error: 'ID produk harus disediakan' }, { status: 400 });
     }
 
+    // Pastikan produk yang akan dihapus milik toko yang sesuai
     const productsWithSales = await prisma.saleDetail.count({
-      where: { productId: { in: idsToDelete } },
+      where: {
+        productId: { in: idsToDelete },
+        product: { storeId: session.user.storeId } // Tambahkan filter storeId
+      },
     });
-    
+
     if (productsWithSales > 0) {
       return NextResponse.json(
-        { error: `Tidak dapat menghapus karena produk masih memiliki riwayat transaksi.` }, 
+        { error: `Tidak dapat menghapus karena produk masih memiliki riwayat transaksi.` },
         { status: 400 }
       );
     }
-    
+
     // Ambil data produk sebelum dihapus untuk logging
     const deletedProducts = await prisma.product.findMany({
-      where: { id: { in: idsToDelete } },
+      where: {
+        id: { in: idsToDelete },
+        storeId: session.user.storeId // Tambahkan filter storeId
+      },
       include: {
         category: true,
         supplier: true,
@@ -284,8 +358,16 @@ export async function DELETE(request) {
       },
     });
 
+    if (deletedProducts.length !== idsToDelete.length) {
+      // Jika tidak semua produk ditemukan, berarti beberapa produk bukan milik toko ini
+      return NextResponse.json({ error: 'Beberapa produk tidak ditemukan atau tidak memiliki izin untuk dihapus' }, { status: 404 });
+    }
+
     const { count } = await prisma.product.deleteMany({
-      where: { id: { in: idsToDelete } },
+      where: {
+        id: { in: idsToDelete },
+        storeId: session.user.storeId // Tambahkan filter storeId
+      },
     });
 
     if (count === 0) {

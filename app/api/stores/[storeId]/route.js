@@ -58,10 +58,27 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    // Dapatkan password dari header untuk verifikasi jika ini adalah permintaan penghapusan
+    const password = request.headers.get('X-Manager-Password');
+
     const body = await request.json();
     const { name, description, address, phone, email, status, adminUsername, resetAdminPassword } = body;
 
-    if (!name) {
+    // Jika permintaan untuk menghapus (mengubah status ke INACTIVE) dan verifikasi password diperlukan
+    if (status === 'INACTIVE' && password) {
+      // Verifikasi password
+      const bcrypt = (await import('bcryptjs')).default;
+      const user = await globalPrisma.user.findUnique({
+        where: { id: session.user.id }
+      });
+
+      const isValidPassword = await bcrypt.compare(password, user.password);
+      if (!isValidPassword) {
+        return NextResponse.json({ error: 'Password tidak valid' }, { status: 401 });
+      }
+    }
+
+    if (!name && status !== 'INACTIVE') {
       return NextResponse.json({ error: 'Nama toko wajib diisi' }, { status: 400 });
     }
 

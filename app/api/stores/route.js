@@ -59,6 +59,7 @@ export async function GET(request) {
           OR: [
             { name: { contains: search } },
             { address: { contains: search } },
+            { code: { contains: search } }, // Tambahkan pencarian berdasarkan kode toko
           ],
         } : {},
         statusFilter ? { status: statusFilter } : {},

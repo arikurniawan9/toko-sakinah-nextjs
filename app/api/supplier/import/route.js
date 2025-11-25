@@ -1,113 +1,181 @@
 // app/api/supplier/import/route.js
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
-import { getSession } from '@/lib/auth';
-import { z } from 'zod';
-import * as XLSX from 'xlsx';
-import { parse } from 'csv-parse/sync';
-
-// Zod Schema for validating imported supplier data
-const importSupplierSchema = z.object({
-  name: z.string().trim().min(1, { message: 'Nama supplier wajib diisi' }),
-  address: z.string().trim().optional().nullable().default(null),
-  phone: z.string().trim().optional().nullable().default(null),
-  email: z.string().trim().email({ message: 'Format email tidak valid' }).optional().nullable().default(null),
-});
 
 export async function POST(request) {
-  const session = await getSession();
+  const session = await getServerSession(authOptions);
+
   if (!session || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    const formData = await request.formData();
-    const file = formData.get('file');
+    const data = await request.json();
 
-    if (!file) {
-      return NextResponse.json({ error: 'Tidak ada file yang diunggah' }, { status: 400 });
+    // Get storeId based on user's assigned store
+    const storeUser = await prisma.storeUser.findFirst({
+      where: {
+        userId: session.user.id,
+        role: { in: ['ADMIN', 'MANAGER'] } // Only admin/manager can add suppliers
+      },
+      select: {
+        storeId: true
+      }
+    });
+
+    if (!storeUser) {
+      return NextResponse.json({ error: 'User does not have access to any store' }, { status: 400 });
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const fileExtension = file.name.split('.').pop().toLowerCase();
+    // Validasi data
+    if (!Array.isArray(data) || data.length === 0) {
+      return NextResponse.json({ error: 'Data tidak valid atau kosong' }, { status: 400 });
+    }
 
-    let records = [];
-    let importedCount = 0;
+    // Validasi setiap item
+    const validatedData = [];
+    const validationErrors = [];
+
+    for (let i = 0; i < data.length; i++) {
+      const item = data[i];
+      const errors = [];
+
+      // Validasi wajib
+      if (!item.name || typeof item.name !== 'string' || item.name.trim() === '') {
+        errors.push('Nama supplier wajib diisi');
+      }
+      if (!item.code || typeof item.code !== 'string' || item.code.trim() === '') {
+        errors.push('Kode supplier wajib diisi');
+      }
+      if (!item.phone || typeof item.phone !== 'string' || item.phone.trim() === '') {
+        errors.push('Telepon supplier wajib diisi');
+      }
+
+      // Validasi format email jika diisi
+      if (item.email && typeof item.email === 'string') {
+        // Hapus spasi di awal/akhir email sebelum validasi
+        const trimmedEmail = item.email.trim();
+        if (trimmedEmail) {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(trimmedEmail)) {
+            errors.push('Format email tidak valid');
+          }
+        }
+      }
+
+      if (errors.length > 0) {
+        validationErrors.push({
+          index: i,
+          name: item.name || `Item ${i + 1}`,
+          errors: errors.join(', ')
+        });
+      } else {
+        validatedData.push({
+          code: item.code.trim(),
+          name: item.name.trim(),
+          contactPerson: item.contactPerson ? item.contactPerson.trim() : null,
+          phone: item.phone ? item.phone.trim() : null,
+          email: item.email ? item.email.trim() : null,
+          address: item.address ? item.address.trim() : null,
+          storeId: storeUser.storeId // Tambahkan storeId
+        });
+      }
+    }
+
+    if (validationErrors.length > 0) {
+      return NextResponse.json({
+        error: 'Beberapa data tidak valid',
+        results: validationErrors.map(err => ({
+          name: err.name,
+          status: 'failed',
+          error: err.errors
+        })),
+        totalProcessed: data.length,
+        created: 0,
+        updated: 0,
+        failed: validationErrors.length
+      }, { status: 400 });
+    }
+
+    // Import data ke database
+    let createdCount = 0;
     let updatedCount = 0;
-    const failedRecords = [];
+    const importResults = [];
 
-    if (fileExtension === 'csv') {
-      records = parse(buffer, {
-        columns: true,
-        skip_empty_lines: true,
-        trim: true,
-      });
-    } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
-      const workbook = XLSX.read(buffer, { type: 'buffer' });
-      const sheetName = workbook.SheetNames[0];
-      records = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-    } else {
-      return NextResponse.json({ error: 'Format file tidak didukung. Hanya CSV atau Excel (.xlsx, .xls) yang diterima.' }, { status: 400 });
-    }
-
-    for (const record of records) {
+    for (const supplierData of validatedData) {
       try {
-        // Map keys to match schema if necessary (e.g., 'Nama' -> 'name')
-        const mappedRecord = {
-          name: record['Nama'] || record['name'],
-          address: record['Alamat'] || record['address'],
-          phone: record['Telepon'] || record['phone'],
-          email: record['Email'] || record['email'],
-        };
-
-        const validatedData = importSupplierSchema.parse(mappedRecord);
-
-        const upsertedSupplier = await prisma.supplier.upsert({
-          where: { name: validatedData.name },
-          update: {
-            address: validatedData.address,
-            phone: validatedData.phone,
-            email: validatedData.email,
-          },
-          create: {
-            name: validatedData.name,
-            address: validatedData.address,
-            phone: validatedData.phone,
-            email: validatedData.email,
-          },
+        // Cek apakah supplier sudah ada berdasarkan kode dan storeId (karena kode harus unik)
+        const existingSupplier = await prisma.supplier.findFirst({
+          where: {
+            code: supplierData.code,
+            storeId: supplierData.storeId // Hanya cari supplier dalam store yang sama
+          }
         });
 
-        if (upsertedSupplier.createdAt.getTime() === upsertedSupplier.updatedAt.getTime()) {
-          importedCount++; // Created
+        if (existingSupplier) {
+          // Update supplier yang sudah ada (hanya field yang tidak kosong)
+          const updatedSupplier = await prisma.supplier.update({
+            where: { id: existingSupplier.id },
+            data: {
+              name: supplierData.name,
+              contactPerson: supplierData.contactPerson,
+              phone: supplierData.phone,
+              email: supplierData.email,
+              address: supplierData.address
+            }
+          });
+          updatedCount++;
+          importResults.push({
+            name: updatedSupplier.name,
+            status: 'updated'
+          });
         } else {
-          updatedCount++; // Updated
+          // Buat supplier baru dengan kode manual
+          const newSupplier = await prisma.supplier.create({
+            data: supplierData
+          });
+          createdCount++;
+          importResults.push({
+            name: newSupplier.name,
+            status: 'created'
+          });
+        }
+      } catch (error) {
+        // Tangani error seperti constraint unik atau field yang tidak valid
+        let errorMessage = error.message || 'Gagal menyimpan data';
+
+        // Tambahkan penanganan khusus untuk error Prisma
+        if (error.code === 'P2002') {
+          // Error constraint unik (misalnya kode atau kombinasi kode-storeId sudah ada)
+          const target = error.meta?.target;
+          if (target && Array.isArray(target)) {
+            errorMessage = `Kode supplier '${supplierData.code}' sudah digunakan dalam toko ini`;
+          } else {
+            errorMessage = 'Kode atau kombinasi kode dan toko sudah digunakan';
+          }
         }
 
-      } catch (error) {
-        if (error.errors || (error instanceof z.ZodError)) {
-          // This is a validation error
-          failedRecords.push({ record, error: error.errors || error.message });
-        } else {
-          // This is likely a database error
-          console.error('Database error during import:', error);
-          failedRecords.push({ record, error: error.message });
-        }
+        importResults.push({
+          name: supplierData.name,
+          status: 'failed',
+          error: errorMessage
+        });
       }
     }
 
     return NextResponse.json({
-      message: 'Proses import selesai.',
-      importedCount,
-      updatedCount,
-      failedCount: failedRecords.length,
-      failedRecords,
+      success: true,
+      message: `Berhasil mengimpor ${createdCount + updatedCount} supplier`,
+      results: importResults,
+      totalProcessed: validatedData.length,
+      created: createdCount,
+      updated: updatedCount,
+      failed: importResults.filter(r => r.status === 'failed').length
     });
-
   } catch (error) {
-    console.error('Error during supplier import:', error);
-    return NextResponse.json(
-      { error: 'Gagal memproses file import: ' + error.message },
-      { status: 500 }
-    );
+    console.error('Error importing suppliers:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

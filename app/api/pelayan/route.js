@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
-import { generateShortCode } from '@/lib/utils';
+import { generateShortCode, generateNumericCode } from '@/lib/utils';
 
 // GET /api/pelayan - Get all attendants with pagination and search
 export async function GET(request) {
@@ -36,6 +36,7 @@ export async function GET(request) {
           id: true,
           name: true,
           username: true,
+          code: true, // tambahkan field code
           role: true,
           gender: true,
           phone: true,
@@ -84,17 +85,17 @@ export async function POST(request) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Generate unique code for the attendant
+    // Generate unique 6-digit numeric code for the attendant
     let uniqueCode;
     let attempt = 0;
-    const maxAttempts = 10; // Maximum attempts to generate unique code
+    const maxAttempts = 20; // Increased attempts for 6-digit numeric code
 
     do {
-      uniqueCode = generateShortCode('USR');
+      uniqueCode = generateNumericCode();
       attempt++;
 
       // Check if code already exists
-      const existingCode = await prisma.user.findUnique({
+      const existingCode = await prisma.user.findFirst({
         where: { code: uniqueCode }
       });
 
@@ -128,9 +129,17 @@ export async function POST(request) {
   } catch (error) {
     console.error('Error creating attendant:', error);
     if (error.code === 'P2002') { // Unique constraint violation
-      return NextResponse.json({ error: `Username '${error.meta.target}' sudah digunakan.` }, { status: 409 });
+      // Check if it's username or code that's duplicated
+      const target = error.meta?.target;
+      if (Array.isArray(target) && target.includes('username')) {
+        return NextResponse.json({ error: `Username '${data.username}' sudah digunakan.` }, { status: 409 });
+      } else if (Array.isArray(target) && target.includes('code')) {
+        return NextResponse.json({ error: `Kode pelayan '${data.code}' sudah digunakan.` }, { status: 409 });
+      } else {
+        return NextResponse.json({ error: 'Data sudah digunakan, silakan coba dengan data lain.' }, { status: 409 });
+      }
     }
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal Server Error: ' + error.message }, { status: 500 });
   }
 }
 

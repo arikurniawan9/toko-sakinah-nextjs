@@ -312,14 +312,6 @@ export default function ManagerDashboard() {
   // Menu items untuk akses cepat manager
   const quickMenuItems = [
     {
-      title: "Tambah Toko Baru",
-      description: "Buat toko baru lengkap dengan akun admin",
-      href: "/manager/create-store",
-      icon: Store,
-      color: "bg-blue-100 text-blue-600",
-      darkModeColor: "bg-blue-900/30 text-blue-400",
-    },
-    {
       title: "Monitor Semua Toko",
       description: "Lihat ringkasan aktivitas dari semua toko",
       href: "/manager/monitor-all",
@@ -385,13 +377,6 @@ export default function ManagerDashboard() {
             title="Customisasi Dashboard"
           >
             <Settings className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => router.push('/manager/create-store')}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition duration-200 flex items-center"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Tambah Toko Baru
           </button>
         </div>
       </div>

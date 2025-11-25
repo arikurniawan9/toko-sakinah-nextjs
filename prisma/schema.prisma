@@ -88,19 +88,22 @@ model PriceTier {
 }
 
 model Supplier {
-  id        String     @id @default(cuid())
-  storeId   String
-  name      String
-  address   String?
-  phone     String?
-  email     String?
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  products  Product[]
-  purchases Purchase[]
-  store     Store      @relation(fields: [storeId], references: [id])
+  id            String     @id @default(cuid())
+  storeId       String
+  code          String     // Kode unik untuk supplier yang bisa dibaca (unik per toko)
+  name          String
+  contactPerson String?    // Nama kontak di supplier
+  address       String?
+  phone         String?
+  email         String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  products      Product[]
+  purchases     Purchase[]
+  store         Store      @relation(fields: [storeId], references: [id])
 
   @@index([storeId])
+  @@unique([code, storeId]) // Kode unik per toko
   @@unique([name, storeId])
 }
 

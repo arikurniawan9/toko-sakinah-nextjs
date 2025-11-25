@@ -32,7 +32,13 @@ export default function DataTable({
   mobileColumns = [],
   rowActions = null,
   onImport = null, // ADDED: Import handler
-  showImport = true // ADDED: Show import button
+  showImport = true, // ADDED: Show import button
+  additionalActions = [], // ADDED: Additional actions for toolbar
+  showFilters = false, // ADDED: Show filter toggle
+  filterOptions = [], // ADDED: Filter options
+  filterValues = {}, // ADDED: Current filter values
+  onFilterChange = null, // ADDED: Filter change handler
+  onToggleFilters = null // ADDED: Toggle filters handler
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [isMobile, setIsMobile] = useState(false);
@@ -146,7 +152,7 @@ export default function DataTable({
     : columns;
 
   return (
-    <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
+    <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border relative z-0`}>
       {/* Toolbar */}
       {showToolbar && (
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
@@ -204,6 +210,19 @@ export default function DataTable({
               )}
 
               <div className="flex gap-2">
+                {additionalActions.map((action, index) => {
+                  const IconComponent = action.icon;
+                  return (
+                    <button
+                      key={index}
+                      onClick={action.onClick}
+                      className={`p-2 rounded-lg hover:opacity-90 transition-colors ${action.className}`}
+                      title={action.label}
+                    >
+                      {IconComponent && <IconComponent className="h-4 w-4" />}
+                    </button>
+                  );
+                })}
                 {showAdd && onAdd && (
                   <button
                     onClick={onAdd}
@@ -257,9 +276,11 @@ export default function DataTable({
             data.map((row, index) => (
               <div
                 key={row.id || index}
-                className={`mb-3 p-4 rounded-lg border ${
-                  darkMode ? 'bg-gray-750 border-gray-600' : 'bg-white border-gray-200'
-                } ${selectedRows.includes(row.id) ? (darkMode ? 'ring-2 ring-cyan-500' : 'ring-2 ring-cyan-500') : ''}`}
+                className={`
+                  mb-3 p-4 rounded-lg border
+                  ${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}
+                  ${selectedRows.includes(row.id) ? (darkMode ? 'ring-2 ring-cyan-500' : 'ring-2 ring-cyan-500') : ''}
+                `.trim().replace(/\s+/g, ' ')}
               >
                 {/* Mobile Row Header */}
                 <div className="flex justify-between items-start mb-2">
@@ -273,7 +294,7 @@ export default function DataTable({
                   )}
                   <div className="flex gap-1 ml-2">
                     {actions && rowActions && typeof rowActions === 'function' && (
-                      <div className="flex justify-end space-x-2"> {/* Match desktop wrapper for consistency */}
+                      <div className="flex justify-end space-x-2">
                         {rowActions(row)}
                       </div>
                     )}
@@ -324,10 +345,10 @@ export default function DataTable({
                     key={column.key}
                     className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer ${
                       darkMode ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'
-                    } ${column.sortable ? 'hover:bg-gray-100 dark:hover:bg-gray-600' : ''}`}
+                    } ${column.sortable ? 'hover:bg-gray-100 dark:hover:bg-gray-600' : ''} ${column.className || ''}`}
                     onClick={() => column.sortable && handleSort(column.key)}
                   >
-                    <div className="flex items-center">
+                    <div className={column.className?.includes('text-center') ? 'flex justify-center items-center' : 'flex items-center'}>
                       {column.title}
                       {column.sortable && (
                         <div className="ml-1">

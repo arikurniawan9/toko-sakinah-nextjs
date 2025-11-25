@@ -4,19 +4,19 @@
 import { Plus, Download, Upload, Trash2, Search, Folder, X } from 'lucide-react';
 import Tooltip from '../Tooltip';
 
-export default function Toolbar({ 
-  searchTerm, 
-  setSearchTerm, 
-  itemsPerPage, 
-  setItemsPerPage, 
-  onAddNew, 
-  onDeleteMultiple, 
-  selectedRowsCount, 
-  onExport, 
-  onImport, 
-  importLoading, 
-  exportLoading, 
-  darkMode 
+export default function Toolbar({
+  searchTerm,
+  setSearchTerm,
+  itemsPerPage,
+  setItemsPerPage,
+  onAddNew,
+  onDeleteMultiple,
+  selectedRowsCount,
+  onExport,
+  onImport,
+  importLoading,
+  exportLoading,
+  darkMode
 }) {
   return (
     <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
@@ -72,10 +72,16 @@ export default function Toolbar({
             </button>
           </Tooltip>
         )}
-        <Tooltip content="Import dinonaktifkan">
-          <label className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${darkMode ? 'text-gray-300 bg-gray-700' : 'text-gray-700 bg-gray-100'} opacity-50 cursor-not-allowed`}>
+        <Tooltip content="Import produk dari file">
+          <label className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${darkMode ? 'text-gray-200 bg-gray-800 hover:bg-gray-700' : 'text-gray-700 bg-gray-100 hover:bg-gray-200'}`}>
             <Upload className="h-4 w-4" />
-            <input type="file" className="hidden" disabled />
+            <input
+              type="file"
+              className="hidden"
+              accept=".xlsx,.xls,.csv"
+              onChange={onImport}
+              disabled={importLoading}
+            />
           </label>
         </Tooltip>
         <Tooltip content="Export data ke file">

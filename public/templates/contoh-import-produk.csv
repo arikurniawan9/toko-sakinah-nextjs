@@ -1,0 +1,6 @@
+Nama,Kode,Stok,Kategori,Supplier,Deskripsi,Tanggal Dibuat,Tanggal Diubah,Harga Beli,Harga Jual Min,Harga Jual Max,Harga Jual
+"Kemeja Lengan Panjang","KLP-001",100,"Pakaian","Supplier A","Kemeja lengan panjang motif kotak","2025-01-01","2025-01-01",50000,1,10,75000
+"Kemeja Lengan Panjang","KLP-001",100,"Pakaian","Supplier A","Kemeja lengan panjang motif kotak","2025-01-01","2025-01-01",50000,11,20,70000
+"Kemeja Lengan Panjang","KLP-001",100,"Pakaian","Supplier A","Kemeja lengan panjang motif kotak","2025-01-01","2025-01-01",50000,21,"",65000
+"Celana Jeans","CJ-001",50,"Pakaian","Supplier B","Celana jeans model slim fit","2025-01-01","2025-01-01",80000,1,5,120000
+"Celana Jeans","CJ-001",50,"Pakaian","Supplier B","Celana jeans model slim fit","2025-01-01","2025-01-01",80000,6,"",100000

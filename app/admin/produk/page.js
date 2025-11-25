@@ -2,11 +2,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Search, Plus, Download, Upload, Trash2, Folder, Edit, Eye } from 'lucide-react';
 import ProtectedRoute from '../../../components/ProtectedRoute';
 import { useUserTheme } from '../../../components/UserThemeContext';
 import { useSession } from 'next-auth/react'; // Import useSession
 import { toast } from 'react-toastify';
 import useSWR from 'swr';
+import Tooltip from '../../../components/Tooltip';
 
 import { useProductTable } from '../../../lib/hooks/useProductTable';
 import { useProductForm } from '../../../lib/hooks/useProductForm';
@@ -16,7 +18,6 @@ import { useCachedCategories, useCachedSuppliers } from '../../../lib/hooks/useC
 import DataTable from '../../../components/DataTable';
 import ProductModal from '../../../components/produk/ProductModal';
 import ProductDetailModal from '../../../components/produk/ProductDetailModal';
-import Toolbar from '../../../components/produk/Toolbar';
 import ConfirmationModal from '../../../components/ConfirmationModal';
 import Breadcrumb from '../../../components/Breadcrumb';
 
@@ -73,6 +74,11 @@ export default function ProductManagement() {
 
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedProductForDetail, setSelectedProductForDetail] = useState(null);
+
+  // State untuk modal konfirmasi import produk yang sama
+  const [showImportConfirmModal, setShowImportConfirmModal] = useState(false);
+  const [duplicateProducts, setDuplicateProducts] = useState([]);
+  const [fileToImport, setFileToImport] = useState(null);
 
   // Gunakan hook SWR yang baru untuk mengambil data kategori dan supplier
   const { categories: cachedCategories, loading: categoriesLoading, error: categoriesError } = useCachedCategories();
@@ -155,6 +161,42 @@ export default function ProductManagement() {
     }
   };
 
+  // Fungsi untuk mengimpor produk setelah konfirmasi
+  const handleImportWithConfirmation = async (force = true) => {
+    if (!fileToImport) return;
+
+    setShowImportConfirmModal(false); // Tutup modal konfirmasi
+    setImportLoading(true);
+
+    const formData = new FormData();
+    formData.append('file', fileToImport);
+    formData.append('force', force.toString()); // Kirim parameter force
+
+    try {
+      toast.info(`Memproses file ${fileToImport.name}...`);
+      const response = await fetch('/api/produk/import', { method: 'POST', body: formData });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Gagal mengimport produk');
+      } else {
+        // Import berhasil
+        fetchProducts();
+        toast.success(result.message || `Berhasil mengimport produk`);
+        if (result.errors && result.errors.length > 0) {
+          console.warn('Import errors:', result.errors);
+          toast.warn(`Beberapa produk gagal diimpor: ${result.errors.length} error(s)`);
+        }
+      }
+    } catch (err) {
+      toast.error('Terjadi kesalahan saat import: ' + err.message);
+    } finally {
+      setImportLoading(false);
+      setFileToImport(null); // Reset file
+      setDuplicateProducts([]); // Reset duplicate products
+    }
+  };
+
   const handleViewDetails = (product) => {
     setSelectedProductForDetail(product);
     setShowDetailModal(true);
@@ -167,23 +209,49 @@ export default function ProductManagement() {
       if (!response.ok) throw new Error('Gagal mengambil data untuk export');
       const data = await response.json();
 
-      let csvContent = 'Nama,Kode,Harga,Stok,Kategori,Supplier,Deskripsi,Tanggal Dibuat,Tanggal Diubah\n';
+      // Generate CSV with all price tiers
+      let csvContent = 'Nama,Kode,Stok,Kategori,Supplier,Deskripsi,Tanggal Dibuat,Tanggal Diubah,Harga Beli,Harga Jual Min,Harga Jual Max,Harga Jual\n';
       data.products.forEach(product => {
-        const basePrice = product.priceTiers?.sort((a, b) => a.minQty - b.minQty)[0]?.price || 0;
         const category = categories.find(cat => cat.id === product.categoryId);
         const supplier = suppliers.find(supp => supp.id === product.supplierId);
-        const row = [
-          `"${product.name.replace(/"/g, '""')}"`,
-          `"${product.productCode.replace(/"/g, '""')}"`,
-          basePrice,
-          product.stock,
-          `"${category?.name || ''}"`,
-          `"${supplier?.name || ''}"`,
-          `"${product.description ? product.description.replace(/"/g, '""') : ''}"`,
-          `"${new Date(product.createdAt).toLocaleDateString('id-ID')}"`,
-          `"${new Date(product.updatedAt).toLocaleDateString('id-ID')}"`
-        ].join(',');
-        csvContent += row + '\n';
+
+        // If product has no price tiers, export as a single row
+        if (!product.priceTiers || product.priceTiers.length === 0) {
+          const row = [
+            `"${product.name.replace(/"/g, '""')}"`,
+            `"${product.productCode.replace(/"/g, '""')}"`,
+            product.stock,
+            `"${category?.name || ''}"`,
+            `"${supplier?.name || ''}"`,
+            `"${product.description ? product.description.replace(/"/g, '""') : ''}"`,
+            `"${new Date(product.createdAt).toLocaleDateString('id-ID')}"`,
+            `"${new Date(product.updatedAt).toLocaleDateString('id-ID')}"`,
+            product.purchasePrice || 0,
+            '', // Harga Jual Min
+            '', // Harga Jual Max
+            ''  // Harga Jual
+          ].join(',');
+          csvContent += row + '\n';
+        } else {
+          // Export each price tier as a separate row
+          product.priceTiers.forEach(tier => {
+            const row = [
+              `"${product.name.replace(/"/g, '""')}"`,
+              `"${product.productCode.replace(/"/g, '""')}"`,
+              product.stock,
+              `"${category?.name || ''}"`,
+              `"${supplier?.name || ''}"`,
+              `"${product.description ? product.description.replace(/"/g, '""') : ''}"`,
+              `"${new Date(product.createdAt).toLocaleDateString('id-ID')}"`,
+              `"${new Date(product.updatedAt).toLocaleDateString('id-ID')}"`,
+              product.purchasePrice || 0,
+              tier.minQty,
+              tier.maxQty || '', // Max quantity can be null
+              tier.price
+            ].join(',');
+            csvContent += row + '\n';
+          });
+        }
       });
 
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -207,12 +275,25 @@ export default function ProductManagement() {
 
   const handleImport = async (e) => {
     if (!isAdmin) return; // Prevent import if not admin
-    const file = e.target.files[0];
-    if (!file) return;
+
+    // Check if e is an event object or a file directly
+    let file;
+    if (e && e.target && e.target.files) {
+      file = e.target.files[0];
+      if (!file) return;
+    } else if (e instanceof File) {
+      file = e;
+    } else {
+      console.error('Invalid input for handleImport:', e);
+      return;
+    }
+
     if (!file.name.toLowerCase().endsWith('.xlsx') && !file.name.toLowerCase().endsWith('.xls') && !file.name.toLowerCase().endsWith('.csv')) {
       setTableError('Silakan pilih file Excel (.xlsx, .xls) atau CSV (.csv)');
       setTimeout(() => setTableError(''), 5000);
-      e.target.value = '';
+      if (e && e.target) {
+        e.target.value = '';
+      }
       return;
     }
 
@@ -224,13 +305,31 @@ export default function ProductManagement() {
       toast.info(`Memproses file ${file.name}...`);
       const response = await fetch('/api/produk/import', { method: 'POST', body: formData });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Gagal mengimport produk');
-      fetchProducts();
-      toast.success(result.message || `Berhasil mengimport ${result.importedCount || 0} produk`);
-      e.target.value = '';
+
+      if (result.needConfirmation && result.duplicateProducts) {
+        // Menampilkan modal konfirmasi karena ada produk yang sama
+        setDuplicateProducts(result.duplicateProducts);
+        setFileToImport(file); // Simpan file untuk diproses setelah konfirmasi
+        setShowImportConfirmModal(true);
+      } else if (!response.ok) {
+        throw new Error(result.error || 'Gagal mengimport produk');
+      } else {
+        // Import berhasil tanpa konflik
+        fetchProducts();
+        toast.success(result.message || `Berhasil mengimport ${result.importedCount || 0} produk`);
+        if (result.errors && result.errors.length > 0) {
+          console.warn('Import errors:', result.errors);
+          toast.warn(`Beberapa produk gagal diimpor: ${result.errors.length} error(s)`);
+        }
+        if (e && e.target) {
+          e.target.value = '';
+        }
+      }
     } catch (err) {
       toast.error('Terjadi kesalahan saat import: ' + err.message);
-      e.target.value = '';
+      if (e && e.target) {
+        e.target.value = '';
+      }
     } finally {
       setImportLoading(false);
     }
@@ -291,6 +390,39 @@ export default function ProductManagement() {
     onDelete: isAdmin ? handleDelete : undefined
   }));
 
+  // Row actions for DataTable
+  const rowActions = (row) => {
+    return (
+      <div className="flex space-x-2">
+        <button
+          onClick={() => handleViewDetails(row)}
+          className={`p-1.5 rounded-md ${darkMode ? 'text-blue-400 hover:bg-gray-700' : 'text-blue-600 hover:bg-gray-200'}`}
+          title="Detail"
+        >
+          <Eye className="h-4 w-4" />
+        </button>
+        {isAdmin && (
+          <button
+            onClick={() => openModalForEdit(row)}
+            className={`p-1.5 rounded-md ${darkMode ? 'text-yellow-400 hover:bg-gray-700' : 'text-yellow-600 hover:bg-gray-200'}`}
+            title="Edit"
+          >
+            <Edit className="h-4 w-4" />
+          </button>
+        )}
+        {isAdmin && (
+          <button
+            onClick={() => handleDelete(row.id)}
+            className={`p-1.5 rounded-md ${darkMode ? 'text-red-400 hover:bg-gray-700' : 'text-red-600 hover:bg-gray-200'}`}
+            title="Hapus"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+    );
+  };
+
   // Pagination data
   const paginationData = {
     currentPage,
@@ -315,6 +447,99 @@ export default function ProductManagement() {
         </h1>
 
         <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-pastel-purple-700' : 'bg-white border-gray-200'} border`}>
+          {/* Custom toolbar with import button */}
+          <div className={`p-4 border-b ${darkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 flex-grow">
+                <div className="relative flex-grow sm:w-64">
+                  <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Cari produk..."
+                    className={`w-full pl-10 pr-4 py-2 border rounded-md shadow-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:outline-none focus:ring-2 focus:ring-pastel-purple-500`}
+                  />
+                </div>
+                <div className="w-full sm:w-auto">
+                  <label htmlFor="itemsPerPage" className="sr-only">Items per page</label>
+                  <select
+                    id="itemsPerPage"
+                    value={itemsPerPage}
+                    onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:outline-none focus:ring-2 focus:ring-pastel-purple-500`}
+                  >
+                    <option value={10}>10/halaman</option>
+                    <option value={20}>20/halaman</option>
+                    <option value={50}>50/halaman</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-start md:justify-end flex-wrap gap-2">
+                {selectedRows.length > 0 && (
+                  <Tooltip content={`Hapus ${selectedRows.length} produk terpilih`}>
+                    <button
+                      onClick={handleDeleteMultiple}
+                      className="inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span className="ml-2">{selectedRows.length}</span>
+                    </button>
+                  </Tooltip>
+                )}
+                <Tooltip content="Import produk dari file">
+                  <label className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${darkMode ? 'text-gray-200 bg-gray-800 hover:bg-gray-700' : 'text-gray-700 bg-gray-100 hover:bg-gray-200'}`}>
+                    <Upload className="h-4 w-4" />
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept=".xlsx,.xls,.csv"
+                      onChange={handleImport}
+                      disabled={importLoading}
+                    />
+                  </label>
+                </Tooltip>
+                <Tooltip content="Template Produk">
+                  <a
+                    href="/templates/contoh-import-produk.csv"
+                    download="contoh-import-produk.csv"
+                    className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${darkMode ? 'text-gray-200 bg-gray-800 hover:bg-gray-700' : 'text-gray-700 bg-gray-100 hover:bg-gray-200'}`}
+                  >
+                    <Folder className="h-4 w-4" />
+                  </a>
+                </Tooltip>
+                <Tooltip content="Export data ke file">
+                  <button
+                    onClick={handleExport}
+                    disabled={exportLoading}
+                    className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${darkMode ? 'text-gray-200 bg-gray-800 hover:bg-gray-700' : 'text-gray-700 bg-gray-100 hover:bg-gray-200'}`}
+                  >
+                    {exportLoading ? (
+                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    ) : (
+                      <Download className="h-4 w-4" />
+                    )}
+                  </button>
+                </Tooltip>
+                {isAdmin && (
+                  <Tooltip content="Tambah produk baru">
+                    <button
+                      onClick={openModalForCreate}
+                      className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      <span>Baru</span>
+                    </button>
+                  </Tooltip>
+                )}
+              </div>
+            </div>
+          </div>
+
           <DataTable
             data={enhancedProducts}
             columns={columns}
@@ -325,19 +550,23 @@ export default function ProductManagement() {
             onAdd={isAdmin ? openModalForCreate : undefined}
             onSearch={setSearchTerm}
             onExport={handleExport}
+            onImport={handleImport}
             onItemsPerPageChange={setItemsPerPage}
             onDeleteMultiple={handleDeleteMultiple}
             selectedRowsCount={selectedRows.length}
             darkMode={darkMode}
             actions={isAdmin}
-            showToolbar={isAdmin}
+            rowActions={rowActions}
+            showToolbar={false} // Use custom toolbar instead
             showAdd={isAdmin}
             showExport={true}
+            showImport={true}
             showItemsPerPage={true}
             pagination={paginationData}
             mobileColumns={['productCode', 'name', 'price', 'stock']} // Show key information on mobile
           />
         </div>
+
 
         {isAdmin && ( // Only show modal for admin
           <ProductModal
@@ -377,6 +606,70 @@ export default function ProductManagement() {
           product={selectedProductForDetail}
           darkMode={darkMode}
         />
+
+        {/* Modal konfirmasi import produk yang sama */}
+        {showImportConfirmModal && (
+          <div className="fixed z-[100] inset-0 overflow-y-auto">
+            <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+              <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+                <div className={darkMode ? 'bg-gray-800 bg-opacity-75' : 'bg-gray-500 bg-opacity-75'}></div>
+              </div>
+
+              <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+              <div className={`inline-block align-bottom ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full ${darkMode ? 'border-gray-700' : 'border-gray-200'} border`}>
+                <div className="px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                  <div className="sm:flex sm:items-start">
+                    <div className={`mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full ${darkMode ? 'bg-red-900' : 'bg-red-100'} sm:mx-0 sm:h-10 sm:w-10`}>
+                      <svg className={`${darkMode ? 'text-red-400' : 'text-red-600'} h-6 w-6`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                    </div>
+                    <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                      <h3 className={`text-lg leading-6 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                        Produk yang Sama Ditemukan
+                      </h3>
+                      <div className="mt-2">
+                        <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                          Ditemukan {duplicateProducts.length} produk yang sudah ada di sistem. Apakah Anda ingin menimpa produk yang sudah ada?
+                        </p>
+                        <div className="mt-4 max-h-40 overflow-y-auto">
+                          <ul className={`list-disc pl-5 space-y-1 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                            {duplicateProducts.map((product, index) => (
+                              <li key={index}>
+                                <span className="font-medium">{product.productCode}</span> - {product.name}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className={`px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                  <button
+                    type="button"
+                    onClick={() => handleImportWithConfirmation(true)}
+                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm"
+                  >
+                    Timpa Produk
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowImportConfirmModal(false);
+                      setFileToImport(null);
+                      setDuplicateProducts([]);
+                    }}
+                    className={`mt-3 w-full inline-flex justify-center rounded-md border px-4 py-2 text-base font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm ${darkMode ? 'bg-gray-600 text-white hover:bg-gray-500 border-gray-500 focus:ring-gray-600' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300 focus:ring-gray-300'}`}
+                  >
+                    Batalkan
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </ProtectedRoute>
   );

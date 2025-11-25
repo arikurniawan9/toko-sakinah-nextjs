@@ -33,7 +33,9 @@ import {
   Folder,          // Added for Kategori Pengeluaran
   Building,
   Monitor,
-  Plus
+  Plus,
+  HardDrive,
+  RotateCcw
 } from 'lucide-react';
 import { useUserTheme } from './UserThemeContext';
 import { useSidebar } from './SidebarContext';
@@ -106,6 +108,7 @@ const Sidebar = ({ children }) => {
     { title: "Manajemen Toko", type: 'heading', roles: ['MANAGER'] },
     { title: "Manajemen Toko", href: "/manager/stores", icon: ShoppingBag, type: 'item', roles: ['MANAGER'] },
     { title: "Monitor Toko", href: "/manager/monitor-all", icon: Monitor, type: 'item', roles: ['MANAGER'] },
+    { title: "Backup & Restore", href: "/manager/backup-restore", icon: HardDrive, type: 'item', roles: ['MANAGER'] },
 
     // ADMIN menus
     { title: "Dashboard", href: "/admin", icon: Home, type: 'item', roles: ['ADMIN'] },

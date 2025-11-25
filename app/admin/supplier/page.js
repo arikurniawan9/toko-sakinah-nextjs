@@ -6,35 +6,18 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import { useUserTheme } from '../../../components/UserThemeContext';
 import { useSession } from 'next-auth/react';
 import { useSupplierForm } from '@/lib/hooks/useSupplierForm';
-import { useTableSelection } from '@/lib/hooks/useTableSelection'; // Reintroduce for table view
-import SupplierCard from '@/components/supplier/SupplierCard';
-import SupplierTable from '@/components/supplier/SupplierTable'; // Reintroduce for table view
+import { useSupplierTable } from '@/lib/hooks/useSupplierTable';
 import SupplierModal from '@/components/supplier/SupplierModal';
-import SupplierToolbar from '@/components/supplier/SupplierToolbar'; // Import the new toolbar
-import Pagination from '@/components/produk/Pagination';
 import ConfirmationModal from '@/components/ConfirmationModal';
+import Toast from '@/components/Toast';
+import { AlertTriangle, CheckCircle, Plus, Search, Edit, Trash2, Eye, FileText, Download } from 'lucide-react';
 import DataTable from '@/components/DataTable';
 import Breadcrumb from '@/components/Breadcrumb';
-import * as XLSX from 'xlsx'; // ADDED: Import XLSX library
-import { AlertTriangle, CheckCircle } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import ImportModal from '@/components/ImportModal'; // ADDED: Import ImportModal
 import { exportSupplierPDF } from '@/utils/exportSupplierPDF';
-import { exportSupplierGridPDF } from '@/utils/exportSupplierGridPDF';
-
-// Skeleton component for loading state
-const CardSkeleton = ({ darkMode }) => (
-  <div className={`rounded-xl shadow-md p-6 animate-pulse ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-    <div className="flex items-start justify-between">
-      <div className={`w-12 h-12 rounded-full ${darkMode ? 'bg-gray-700' : 'bg-gray-600'}`}></div>
-      <div className={`h-6 w-20 rounded-full ${darkMode ? 'bg-gray-700' : 'bg-gray-600'}`}></div>
-    </div>
-    <div className="mt-4">
-      <div className={`h-6 w-3/4 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-600'}`}></div>
-      <div className={`h-4 w-1/2 rounded mt-2 ${darkMode ? 'bg-gray-700' : 'bg-gray-600'}`}></div>
-    </div>
-    <div className={`h-4 w-full rounded mt-2 ${darkMode ? 'bg-gray-700' : 'bg-gray-600'}`}></div>
-    <div className={`h-4 w-2/3 rounded mt-2 ${darkMode ? 'bg-gray-700' : 'bg-gray-600'}`}></div>
-  </div>
-);
+import { generateSupplierImportTemplate } from '@/utils/supplierImportTemplate';
+import { z } from 'zod';
 
 export default function SupplierManagementPage() {
   const { userTheme } = useUserTheme();
@@ -42,49 +25,20 @@ export default function SupplierManagementPage() {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === 'ADMIN';
 
-  const [suppliers, setSuppliers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalSuppliers, setTotalSuppliers] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
-  const [view, setView] = useState('table'); // Default to 'table' to use DataTable
-
-  const fetchSuppliers = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const url = `/api/supplier?search=${searchTerm}&limit=${itemsPerPage}&page=${currentPage}`;
-      const response = await fetch(url);
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Gagal mengambil data');
-      setSuppliers(data.suppliers || []);
-      // Update pagination info from API response
-      setTotalSuppliers(data.pagination?.total || 0);
-      setTotalPages(data.pagination?.totalPages || 1);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [searchTerm, itemsPerPage, currentPage]);
-
-  useEffect(() => {
-    fetchSuppliers();
-  }, [fetchSuppliers]);
-
-  // Debounce search term
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setCurrentPage(1); // Reset to page 1 on search
-      fetchSuppliers();
-    }, 500); // 500ms delay
-    return () => clearTimeout(handler);
-  }, [searchTerm]);
-
+  const {
+    suppliers,
+    loading,
+    error: tableError,
+    setSearchTerm,
+    itemsPerPage,
+    setItemsPerPage,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    totalSuppliers,
+    fetchSuppliers,
+    setError: setTableError,
+  } = useSupplierTable();
 
   const {
     showModal,
@@ -100,94 +54,90 @@ export default function SupplierManagementPage() {
     handleSave: originalHandleSave,
   } = useSupplierForm(fetchSuppliers);
 
-  // Wrapper to clear success message on save
+  const [success, setSuccess] = useState('');
+  const [errorState, setErrorState] = useState('');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [itemsToDelete, setItemsToDelete] = useState([]);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedRows, setSelectedRows] = useState([]);
+  const [showImportModal, setShowImportModal] = useState(false); // ADDED: State for import modal
+  const [showDetailModal, setShowDetailModal] = useState(false); // State for detail modal
+  const [selectedSupplier, setSelectedSupplier] = useState(null); // Selected supplier for detail
+
+  const handleSelectRow = (id) => {
+    setSelectedRows(prev =>
+      prev.includes(id) ? prev.filter(rowId => rowId !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      const allRowIds = suppliers.map(s => s.id);
+      setSelectedRows(allRowIds);
+    } else {
+      setSelectedRows([]);
+    }
+  };
+
   const handleSave = async () => {
-    setSuccess(''); // Clear previous success message
     const result = await originalHandleSave();
     if (result.success) {
       setSuccess('Supplier berhasil disimpan!');
+      fetchSuppliers(); // Refresh data on save
     }
   };
 
-  const { selectedRows, handleSelectAll, handleSelectRow, clearSelection } = useTableSelection(suppliers); // Reintroduce
-
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState(null); // Can be a single ID (string) or multiple IDs (array)
-  const [isDeleting, setIsDeleting] = useState(false);
-  
-  const [importLoading, setImportLoading] = useState(false);
-  const [exportLoading, setExportLoading] = useState(false);
-  const [pdfExportLoading, setPdfExportLoading] = useState(false);
-  const [gridPdfExportLoading, setGridPdfExportLoading] = useState(false); // ADDED: Grid PDF export loading state
-
-  const handleDelete = (id) => {
+  const handleDelete = (ids) => {
     if (!isAdmin) return;
-    setItemToDelete(id);
+    setItemsToDelete(ids);
     setShowDeleteModal(true);
   };
 
-  const handleExportPDF = async () => {
-    if (pdfExportLoading) return;
-    setPdfExportLoading(true);
-    setError('');
+  const handleConfirmDelete = async () => {
+    if (itemsToDelete.length === 0 || !isAdmin) return;
+    setIsDeleting(true);
     setSuccess('');
+    setErrorState('');
+
     try {
-      // Fetch all suppliers for PDF export
-      const response = await fetch(`/api/supplier?page=1&limit=${totalSuppliers}`);
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error('Gagal mengambil data supplier untuk ekspor PDF');
-      }
-      await exportSupplierPDF(data.suppliers, darkMode);
-      setSuccess('Laporan PDF supplier berhasil dibuat!');
+      const response = await fetch(`/api/supplier`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: itemsToDelete }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Gagal menghapus supplier');
+
+      setSuccess(`Berhasil menghapus ${result.deletedCount} supplier.`);
+      setSelectedRows([]);
+      fetchSuppliers(); // Refresh data
     } catch (err) {
-      setError(err.message || 'Gagal mengekspor data supplier ke PDF');
+      setErrorState(err.message);
     } finally {
-      setPdfExportLoading(false);
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+      setItemsToDelete([]);
     }
   };
 
-  const handleExportGridPDF = async () => {
-    if (gridPdfExportLoading) return;
-    setGridPdfExportLoading(true);
-    setError('');
-    setSuccess('');
-    try {
-      await exportSupplierGridPDF(darkMode);
-      setSuccess('Laporan PDF Grid supplier berhasil dibuat!');
-    } catch (err) {
-      setError(err.message || 'Gagal mengekspor data supplier grid ke PDF');
-    } finally {
-      setGridPdfExportLoading(false);
-    }
-  };
-  
-
-  // Fungsi untuk export data supplier
   const handleExport = async () => {
-    if (exportLoading) return;
-    
-    setExportLoading(true);
-    setError('');
-    setSuccess('');
-
     try {
-      // Fetch all suppliers for export
-      const response = await fetch(`/api/supplier?page=1&limit=${totalSuppliers}`);
-      
+      const response = await fetch('/api/supplier?export=true');
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error('Gagal mengambil data supplier untuk ekspor');
+        throw new Error(data.error || 'Gagal mengambil data untuk ekspor');
       }
 
-      const data = await response.json();
-      
       const suppliersToExport = data.suppliers.map((sup, index) => ({
         'No.': index + 1,
+        'Kode Supplier': sup.code,
         'Nama Supplier': sup.name,
-        'Nama Kontak': sup.contactPerson,
-        'Telepon': sup.phone,
-        'Email': sup.email,
+        'Nama Kontak': sup.contactPerson || '-',
+        'Telepon': sup.phone || '-',
+        'Email': sup.email || '-',
         'Alamat': sup.address || '-',
+        'Jumlah Produk': sup.productCount || 0, // Include product count
         'Dibuat Pada': new Date(sup.createdAt).toLocaleDateString('id-ID'),
         'Diperbarui Pada': new Date(sup.updatedAt).toLocaleDateString('id-ID'),
       }));
@@ -196,315 +146,177 @@ export default function SupplierManagementPage() {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Supplier');
       XLSX.writeFile(wb, 'supplier_data.xlsx');
-      
       setSuccess('Data supplier berhasil diekspor.');
     } catch (err) {
-      setError(err.message || 'Gagal mengekspor data supplier');
-    } finally {
-      setExportLoading(false);
+      setErrorState(err.message);
     }
   };
 
-  // Fungsi untuk import data supplier
-  const handleImport = async (event) => {
-    if (importLoading) return;
-    
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    // Validasi tipe file
-    const validTypes = ['text/csv', 'application/vnd.ms-excel', '.csv'];
-    if (!validTypes.includes(file.type) && !file.name.endsWith('.csv')) {
-      setError('Hanya file CSV yang diperbolehkan untuk diimpor');
-      return;
-    }
-    
-    setImportLoading(true);
-    setError('');
-    setSuccess('');
+  const handleImport = () => {
+    setShowImportModal(true);
+    setErrorState(''); // Clear any previous error when opening import modal
+  }; // ADDED: handleImport function
 
+  // Fungsi untuk export PDF
+  const handleExportPDF = async () => {
     try {
-      const text = await file.text();
-      const suppliers = parseCSV(text);
-      
-      // Validasi data sebelum dikirim
-      if (!suppliers || suppliers.length === 0) {
-        throw new Error('Tidak ada data supplier yang valid ditemukan dalam file');
-      }
-
-      // Kirim data ke API
-      const formData = new FormData();
-      formData.append('file', file); // Append the file directly
-
-      const response = await fetch('/api/supplier/import', {
-        method: 'POST',
-        body: formData, // Send FormData directly
-        // Do NOT set Content-Type header, browser will set it automatically to multipart/form-data
-      });
-
-      const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.error || 'Terjadi kesalahan saat mengimpor data');
-      }
-
-      setSuccess(`Berhasil mengimpor ${suppliers.length} supplier. Harap refresh halaman untuk melihat data terbaru.`);
-      
-      // Refresh data
-      fetchSuppliers();
-    } catch (err) {
-      setError(err.message || 'Gagal mengimpor data supplier');
-    } finally {
-      setImportLoading(false);
-      // Reset file input
-      event.target.value = '';
+      await exportSupplierPDF(suppliers, darkMode);
+      setSuccess('Laporan PDF berhasil dibuat!');
+    } catch (error) {
+      setErrorState(error.message || 'Gagal membuat laporan PDF');
     }
   };
 
-  // Fungsi untuk parse CSV
-  const parseCSV = (csvText) => {
-    const lines = csvText.split(/\r?\n/).filter(line => line.trim() !== '');
-    if (lines.length < 2) return [];
-    
-    const headers = lines[0].split(',').map(header => header.trim());
-    const suppliers = [];
-    
-    for (let i = 1; i < lines.length; i++) {
-      const currentLine = lines[i].trim();
-      if (currentLine === '') continue;
-      
-      const values = [];
-      let current = '';
-      let inQuotes = false;
-      
-      for (let j = 0; j < currentLine.length; j++) {
-        const char = currentLine[j];
-        
-        if (char === '"') {
-          if (inQuotes && j + 1 < currentLine.length && currentLine[j + 1] === '"') {
-            // Handle double quotes inside quoted field
-            current += '"';
-            j++; // Skip next quote
-          } else {
-            // Toggle quotes state
-            inQuotes = !inQuotes;
-          }
-        } else if (char === ',' && !inQuotes) {
-          values.push(current.trim());
-          current = '';
-        } else {
-          current += char;
-        }
-      }
-      
-      values.push(current.trim());
-      
-      // Buat objek supplier dari values dan headers
-      const supplier = {};
-      headers.forEach((header, index) => {
-        supplier[header] = values[index] || '';
-      });
-      
-      suppliers.push(supplier);
-    }
-    
-    return suppliers;
-  };
-
-  const handleDeleteMultiple = () => { // Reintroduce
-    if (!isAdmin || selectedRows.length === 0) return;
-    setItemToDelete(selectedRows);
-    setShowDeleteModal(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!itemToDelete || !isAdmin) return;
-    setIsDeleting(true);
-    setSuccess('');
-    setError('');
-
-    const idsToDelete = Array.isArray(itemToDelete) ? itemToDelete : [itemToDelete];
-    const url = '/api/supplier';
-    const options = {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids: idsToDelete }),
-    };
-
-    try {
-      const response = await fetch(url, options);
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Gagal menghapus supplier');
-      
-      setSuccess(`Berhasil menghapus ${idsToDelete.length} supplier.`);
-      // Refresh data
-      setPagination(p => ({ ...p, page: 1 }));
-      fetchSuppliers();
-      clearSelection(); // Clear selection after deletion
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsDeleting(false);
-      setShowDeleteModal(false);
-      setItemToDelete(null);
-    }
-  };
-  
-  // Clear messages after a delay
   useEffect(() => {
     if (success) {
-      const timer = setTimeout(() => setSuccess(''), 5000);
-      return () => clearTimeout(timer);
+      setTimeout(() => setSuccess(''), 5000);
     }
-    if (error) {
-      const timer = setTimeout(() => setError(''), 5000);
-      return () => clearTimeout(timer);
+    if (tableError) {
+      setTimeout(() => setTableError(''), 5000);
     }
-  }, [success, error]);
+  }, [success, tableError]);
+
+  // Handle table errors with toast
+  useEffect(() => {
+    if (tableError) {
+      setErrorState(tableError);
+    }
+  }, [tableError]);
+
+  // Handle form errors with toast
+  useEffect(() => {
+    if (formError) {
+      setErrorState(formError);
+    }
+  }, [formError]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [itemsPerPage]);
+
+  const columns = [
+    {
+      key: 'no',
+      title: 'No.',
+      render: (_, __, index) => (currentPage - 1) * itemsPerPage + index + 1,
+    },
+    {
+      key: 'code',
+      title: 'Kode Supplier',
+      sortable: true
+    },
+    {
+      key: 'name',
+      title: 'Nama Supplier',
+      sortable: true
+    },
+    {
+      key: 'contactPerson',
+      title: 'Kontak',
+      render: (value) => value || '-',
+      sortable: true
+    },
+    {
+      key: 'phone',
+      title: 'Telepon',
+      render: (value) => value || '-',
+      sortable: true
+    },
+    {
+      key: 'productCount',
+      title: 'Jumlah Produk',
+      sortable: true,
+      render: (value) => value || 0,
+    },
+  ];
+
+  const handleViewDetail = (supplier) => {
+    setSelectedSupplier(supplier);
+    setShowDetailModal(true);
+  };
+
+  const renderRowActions = (row) => (
+    <>
+      <button onClick={() => openModalForEdit(row)} className="p-1 text-blue-500 hover:text-blue-700 mr-2">
+        <Edit size={18} />
+      </button>
+      <button onClick={() => handleViewDetail(row)} className="p-1 text-green-500 hover:text-green-700 mr-2">
+        <Eye size={18} />
+      </button>
+      <button onClick={() => handleDelete([row.id])} className="p-1 text-red-500 hover:text-red-700">
+        <Trash2 size={18} />
+      </button>
+    </>
+  );
+
+  const paginationData = {
+    currentPage,
+    totalPages,
+    totalItems: totalSuppliers,
+    startIndex: (currentPage - 1) * itemsPerPage + 1,
+    endIndex: Math.min(currentPage * itemsPerPage, totalSuppliers),
+    onPageChange: setCurrentPage,
+    itemsPerPage: itemsPerPage
+  };
 
   return (
     <ProtectedRoute requiredRole="ADMIN">
-      <main className={`w-full px-4 sm:px-6 lg:px-8 py-8 ${darkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-50'}`}>
+      <main className={`w-full px-4 sm:px-6 lg:px-8 py-8 ${darkMode ? 'bg-gray-900' : 'bg-white'}`}>
         <Breadcrumb
           items={[{ title: 'Supplier', href: '/admin/supplier' }]}
           darkMode={darkMode}
         />
 
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-              Manajemen Supplier
-            </h1>
-            <p className={`mt-1 text-lg ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              Kelola semua supplier produk Anda.
-            </p>
-          </div>
+        <h1 className={`text-3xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+          Manajemen Supplier
+        </h1>
 
-          {/* Toolbar */}
-          <div className="mb-6">
-            <SupplierToolbar
-              searchTerm={searchTerm}
-              setSearchTerm={setSearchTerm}
-              onAddNew={openModalForCreate}
-              onDeleteMultiple={handleDeleteMultiple}
-              selectedRowsCount={selectedRows.length}
-              onExport={handleExport}
-              onExportPDF={handleExportPDF} // ADDED: Pass handleExportPDF
-              onImport={handleImport}
-              importLoading={importLoading}
-              exportLoading={exportLoading}
-              pdfExportLoading={pdfExportLoading}
-              onExportGridPDF={handleExportGridPDF}
-              gridPdfExportLoading={gridPdfExportLoading}
-              view={view}
-              setView={setView}
-            />
-          </div>
-
-          {/* Alerts */}
-          {error && (
-            <div className="flex items-center p-4 mb-4 rounded-lg bg-red-500/10 text-red-400">
-              <AlertTriangle className="h-5 w-5 mr-3" />
-              <p className="text-sm font-medium">{error}</p>
-            </div>
-          )}
-          {success && (
-            <div className="flex items-center p-4 mb-4 rounded-lg bg-green-500/10 text-green-400">
-              <CheckCircle className="h-5 w-5 mr-3" />
-              <p className="text-sm font-medium">{success}</p>
-            </div>
-          )}
-
-          {/* Content based on view */}
-          {loading ? (
-            view === 'grid' ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {[...Array(itemsPerPage)].map((_, i) => <CardSkeleton key={i} darkMode={darkMode} />)}
-              </div>
-            ) : (
-              <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
-                <div className="animate-pulse">
-                  <div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-200'} h-12 rounded mb-4`}></div>
-                  <div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-200'} h-96 rounded`}></div>
-                </div>
-              </div>
-            )
-          ) : suppliers.length > 0 ? (
-            view === 'grid' ? (
-              <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {suppliers.map(supplier => (
-                    <SupplierCard
-                      key={supplier.id}
-                      supplier={supplier}
-                      onEdit={openModalForEdit}
-                      onDelete={handleDelete}
-                      darkMode={darkMode}
-                    />
-                  ))}
-                </div>
-              </>
-            ) : (
-              // Use DataTable for table view
-              <>
-                <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
-                  <DataTable
-                    data={suppliers.map(supplier => ({
-                      ...supplier,
-                      onViewDetails: (s) => console.log('View details', s), // Placeholder
-                      onEdit: () => openModalForEdit(supplier),
-                      onDelete: () => handleDelete(supplier.id)
-                    }))}
-                    columns={[
-                      { key: 'name', title: 'Nama', sortable: true },
-                      { key: 'contactPerson', title: 'Kontak', sortable: true, render: (value) => value || '-' },
-                      { key: 'phone', title: 'Telepon', sortable: true },
-                      { key: 'email', title: 'Email', sortable: true },
-                      { key: 'address', title: 'Alamat', sortable: true, render: (value) => value || '-' },
-                    ]}
-                    loading={loading}
-                    selectedRows={selectedRows}
-                    onSelectAll={handleSelectAll}
-                    onSelectRow={handleSelectRow}
-                    onAdd={openModalForCreate}
-                    onSearch={setSearchTerm}
-                    onExport={handleExport}
-                    onExportPDF={handleExportPDF} // ADDED: Pass handleExportPDF
-                    onItemsPerPageChange={setItemsPerPage}
-                    onDeleteMultiple={handleDeleteMultiple}
-                    selectedRowsCount={selectedRows.length}
-                    darkMode={darkMode}
-                    actions={true}
-                    showToolbar={false}
-                    showAdd={false}
-                    showExport={false}
-                    showItemsPerPage={true}
-                    pagination={{
-                      currentPage,
-                      totalPages: Math.ceil(totalSuppliers / itemsPerPage),
-                      totalItems: totalSuppliers,
-                      startIndex: (currentPage - 1) * itemsPerPage + 1,
-                      endIndex: Math.min(currentPage * itemsPerPage, totalSuppliers),
-                      onPageChange: setCurrentPage,
-                      itemsPerPage: itemsPerPage
-                    }}
-                    mobileColumns={['name', 'phone', 'email']} // Show key information on mobile
-                  />
-                </div>
-              </>
-            )
-          ) : (
-            <div className={`text-center py-16 px-6 rounded-xl ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-              <h3 className={`text-xl font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>Tidak Ada Supplier Ditemukan</h3>
-              <p className={`mt-2 text-md ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                Coba kata kunci lain atau buat supplier baru.
-              </p>
-            </div>
-          )}
+        <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
+          <DataTable
+            data={suppliers}
+            columns={columns}
+            loading={loading}
+            selectedRows={selectedRows}
+            onSelectAll={handleSelectAll}
+            onSelectRow={handleSelectRow}
+            onAdd={isAdmin ? openModalForCreate : undefined}
+            onSearch={setSearchTerm}
+            onExport={handleExport} // Pass handleExport
+            onExportPDF={handleExportPDF} // Pass handleExportPDF
+            onItemsPerPageChange={setItemsPerPage}
+            darkMode={darkMode}
+            actions={isAdmin}
+            showToolbar={true}
+            showAdd={isAdmin}
+            showExport={true} // Show export button
+            showExportPDF={true} // Show export PDF button
+            showItemsPerPage={true}
+            pagination={paginationData}
+            mobileColumns={['code', 'name', 'contactPerson']}
+            rowActions={renderRowActions}
+            onDeleteMultiple={() => handleDelete(selectedRows)}
+            selectedRowsCount={selectedRows.length}
+            onImport={handleImport} // ADDED: Pass handleImport
+            showImport={isAdmin} // ADDED: Show import button
+          />
         </div>
 
-        {/* Modals */}
+        {/* Toast notifications */}
+        {errorState && (
+          <Toast
+            message={errorState}
+            type="error"
+            onClose={() => setErrorState('')}
+          />
+        )}
+        {success && (
+          <Toast
+            message={success}
+            type="success"
+            onClose={() => setSuccess('')}
+          />
+        )}
+
         {isAdmin && (
           <>
             <SupplierModal
@@ -522,12 +334,131 @@ export default function SupplierManagementPage() {
               isOpen={showDeleteModal}
               onClose={() => setShowDeleteModal(false)}
               onConfirm={handleConfirmDelete}
-              title="Konfirmasi Hapus"
-              message={`Apakah Anda yakin ingin menghapus ${ 
-                Array.isArray(itemToDelete) ? itemToDelete.length + ' supplier terpilih' : 'supplier ini'
-              }? Semua produk terkait harus dipindahkan terlebih dahulu.`}
+              title={`Konfirmasi Hapus ${itemsToDelete.length} Supplier`}
+              message={`Apakah Anda yakin ingin menghapus supplier yang dipilih? Tindakan ini tidak dapat dibatalkan.`}
               isLoading={isDeleting}
             />
+            {/* ADDED: ImportModal Placeholder */}
+            {showImportModal && (
+              <ImportModal
+                isOpen={showImportModal}
+                onClose={() => setShowImportModal(false)}
+                onImportSuccess={() => {
+                  fetchSuppliers();
+                  setShowImportModal(false);
+                  setSuccess('Import supplier berhasil!');
+                }}
+                darkMode={darkMode}
+                importEndpoint="/api/supplier/import"
+                checkDuplicatesEndpoint="/api/supplier/check-duplicates"
+                templateGenerator={generateSupplierImportTemplate}
+                entityName="Supplier"
+                schema={z.object({
+                  name: z.string().min(1, { message: 'Nama supplier wajib diisi' }),
+                  contactPerson: z.string().optional().nullable(),
+                  phone: z.string().optional().nullable(),
+                  email: z.string().email('Format email tidak valid').optional().nullable(),
+                  address: z.string().optional().nullable(),
+                })}
+                columnMapping={{
+                  'Kode Supplier': 'code',
+                  'Nama Supplier': 'name',
+                  'Nama Kontak': 'contactPerson',
+                  'Telepon': 'phone',
+                  'Email': 'email',
+                  'Alamat': 'address'
+                }}
+                generateTemplateLabel="Unduh Template Supplier"
+              />
+            )}
+
+            {/* Detail Modal for Supplier */}
+            {showDetailModal && selectedSupplier && (
+              <div className="fixed z-50 inset-0 overflow-y-auto">
+                <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                  <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+                    <div className={`${darkMode ? 'bg-gray-800 bg-opacity-75' : 'bg-gray-500 bg-opacity-75'}`}></div>
+                  </div>
+
+                  <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+                  <div className={`inline-block align-bottom ${
+                    darkMode ? 'bg-gray-800' : 'bg-white'
+                  } rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full ${
+                    darkMode ? 'border-gray-700' : 'border-pastel-purple-200'
+                  } border`}>
+                    <div className={`px-4 pt-5 pb-4 sm:p-6 sm:pb-4 ${
+                      darkMode ? 'bg-gray-800' : 'bg-white'
+                    }`}>
+                      <div className="sm:flex sm:items-start">
+                        <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                          <h3 className={`text-lg leading-6 font-medium ${
+                            darkMode ? 'text-cyan-400' : 'text-cyan-800'
+                          }`} id="modal-title">
+                            Detail Supplier
+                          </h3>
+                          <div className="mt-4 w-full">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Kode Supplier</p>
+                                <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedSupplier.code}</p>
+                              </div>
+                              <div>
+                                <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Nama Supplier</p>
+                                <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedSupplier.name}</p>
+                              </div>
+                              <div>
+                                <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Nama Kontak</p>
+                                <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedSupplier.contactPerson || '-'}</p>
+                              </div>
+                              <div>
+                                <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Telepon</p>
+                                <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedSupplier.phone || '-'}</p>
+                              </div>
+                              <div>
+                                <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Email</p>
+                                <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedSupplier.email || '-'}</p>
+                              </div>
+                              <div className="col-span-2">
+                                <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Alamat</p>
+                                <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedSupplier.address || '-'}</p>
+                              </div>
+                              <div>
+                                <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Jumlah Produk</p>
+                                <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedSupplier.productCount || 0}</p>
+                              </div>
+                              <div>
+                                <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Tanggal Dibuat</p>
+                                <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{new Date(selectedSupplier.createdAt).toLocaleDateString('id-ID')}</p>
+                              </div>
+                              <div>
+                                <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Tanggal Diperbarui</p>
+                                <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{new Date(selectedSupplier.updatedAt).toLocaleDateString('id-ID')}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className={`px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse ${
+                      darkMode ? 'bg-gray-700' : 'bg-pastel-purple-50'
+                    }`}>
+                      <button
+                        type="button"
+                        onClick={() => setShowDetailModal(false)}
+                        className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm ${
+                          darkMode
+                            ? 'bg-cyan-600 hover:bg-cyan-700'
+                            : 'bg-cyan-600 hover:bg-cyan-700'
+                        }`}
+                      >
+                        Tutup
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
       </main>

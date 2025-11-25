@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import { useUserTheme } from './UserThemeContext';
 import SearchBar from './SearchBar';
 import Link from 'next/link';
@@ -59,11 +59,8 @@ const AppHeader = ({ darkModeOverride = null }) => {
   };
 
   const handleLogout = async () => {
-    // Misalnya menggunakan next-auth untuk logout
     try {
-      // Di sini Anda akan memanggil fungsi logout next-auth
-      // await signOut({ redirect: true, callbackUrl: '/login' });
-      console.log("Logging out...");
+      await signOut({ redirect: true, callbackUrl: '/login' });
       setIsUserMenuOpen(false); // Tutup menu setelah logout
     } catch (error) {
       console.error('Logout error:', error);
@@ -117,6 +114,20 @@ const AppHeader = ({ darkModeOverride = null }) => {
             >
               {dynamicDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </button>
+
+            {/* Dashboard Button for Authenticated Users */}
+            {status === 'authenticated' && session.user && (
+              <Link
+                href={getDashboardUrl()}
+                className={`mr-4 px-4 py-2 rounded-md text-sm font-medium ${
+                  dynamicDarkMode
+                    ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                    : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                } transition-colors duration-200`}
+              >
+                Dashboard
+              </Link>
+            )}
 
             {/* User Info and Menu */}
             {status === 'authenticated' && session.user ? (
@@ -228,6 +239,17 @@ const AppHeader = ({ darkModeOverride = null }) => {
             {/* User Menu */}
             {status === 'authenticated' && session.user && (
               <>
+                <Link
+                  href={getDashboardUrl()}
+                  className={`block px-4 py-2 text-sm font-medium ${
+                    dynamicDarkMode
+                      ? 'text-gray-300 hover:bg-gray-700 bg-gray-700'
+                      : 'text-gray-700 hover:bg-gray-100 bg-gray-100'
+                  } rounded-md mx-2 mt-2`}
+                >
+                  Dashboard
+                </Link>
+
                 <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
                   <div className="flex items-center">
                     <div className={`h-8 w-8 rounded-full flex items-center justify-center mr-3 ${
@@ -245,13 +267,6 @@ const AppHeader = ({ darkModeOverride = null }) => {
                     </div>
                   </div>
                 </div>
-
-                <Link
-                  href={getDashboardUrl()}
-                  className={`block px-4 py-2 text-sm ${dynamicDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'}`}
-                >
-                  Dashboard
-                </Link>
 
                 <button
                   onClick={handleLogout}

@@ -143,7 +143,7 @@ export default function ProductModal({
           </div>
           <div className={`px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
             <Tooltip content={editingProduct ? 'Perbarui produk' : 'Simpan produk baru'}>
-              <button type="button" onClick={() => handleSave(onSuccess)} className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm flex items-center ${darkMode ? 'bg-purple-600 hover:bg-purple-700' : 'bg-purple-600 hover:bg-purple-700'}`}>
+              <button type="button" onClick={() => handleSave(onSuccess || null)} className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm flex items-center ${darkMode ? 'bg-purple-600 hover:bg-purple-700' : 'bg-purple-600 hover:bg-purple-700'}`}>
                 <Save className="h-4 w-4 mr-1" />
                 {editingProduct ? 'Perbarui' : 'Simpan'}
               </button>

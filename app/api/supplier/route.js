@@ -18,12 +18,29 @@ export async function GET(request) {
     const page = parseInt(searchParams.get('page')) || 1;
     const search = searchParams.get('search');
 
+    // Get storeId based on user's assigned store
+    const storeUser = await prisma.storeUser.findFirst({
+      where: {
+        userId: session.user.id,
+        role: { in: ['ADMIN', 'CASHIER'] } // Include cashier role for fetch
+      },
+      select: {
+        storeId: true
+      }
+    });
+
+    if (!storeUser) {
+      return NextResponse.json({ error: 'User does not have access to any store' }, { status: 400 });
+    }
+
     // Calculate offset for pagination
     const offset = (page - 1) * limit;
 
     // Build query conditions
-    const whereCondition = search
-      ? {
+    const whereCondition = {
+      storeId: storeUser.storeId, // Only suppliers for this store
+      AND: search ? [
+        {
           OR: [
             { name: { contains: search } },
             { phone: { contains: search } },
@@ -31,7 +48,8 @@ export async function GET(request) {
             { address: { contains: search } }
           ]
         }
-      : {};
+      ] : []
+    };
 
     // Get suppliers with pagination and include product count
     const suppliers = await prisma.supplier.findMany({
@@ -90,8 +108,23 @@ export async function POST(request) {
     const data = await request.json();
 
     // Validation
-    if (!data.name || !data.phone) {
-      return NextResponse.json({ error: 'Name and phone are required' }, { status: 400 });
+    if (!data.name || !data.phone || !data.code) {
+      return NextResponse.json({ error: 'Name, phone, and code are required' }, { status: 400 });
+    }
+
+    // Get storeId based on user's assigned store
+    const storeUser = await prisma.storeUser.findFirst({
+      where: {
+        userId: session.user.id,
+        role: { in: ['ADMIN', 'MANAGER'] } // Only admin/manager can add suppliers
+      },
+      select: {
+        storeId: true
+      }
+    });
+
+    if (!storeUser) {
+      return NextResponse.json({ error: 'User does not have access to any store' }, { status: 400 });
     }
 
     // Create supplier in database
@@ -100,7 +133,10 @@ export async function POST(request) {
         name: data.name,
         phone: data.phone,
         email: data.email || null,
-        address: data.address || null
+        address: data.address || null,
+        contactPerson: data.contactPerson || null, // Add contactPerson
+        code: data.code, // Use manual code
+        storeId: storeUser.storeId
       }
     });
 
@@ -113,7 +149,7 @@ export async function POST(request) {
     console.error('Error creating supplier:', error);
     // Check if it's a unique constraint error
     if (error.code === 'P2002') {
-      return NextResponse.json({ error: 'Supplier dengan nama ini sudah ada' }, { status: 400 });
+      return NextResponse.json({ error: 'Kode atau nama supplier sudah digunakan' }, { status: 400 });
     }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
@@ -132,6 +168,21 @@ export async function DELETE(request) {
 
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
       return NextResponse.json({ error: 'Invalid or empty IDs list' }, { status: 400 });
+    }
+
+    // Get storeId based on user's assigned store
+    const storeUser = await prisma.storeUser.findFirst({
+      where: {
+        userId: session.user.id,
+        role: { in: ['ADMIN'] } // Only admin can delete
+      },
+      select: {
+        storeId: true
+      }
+    });
+
+    if (!storeUser) {
+      return NextResponse.json({ error: 'User does not have access to any store' }, { status: 400 });
     }
 
     // Check if any suppliers have associated products
@@ -154,7 +205,8 @@ export async function DELETE(request) {
       where: {
         id: {
           in: ids
-        }
+        },
+        storeId: storeUser.storeId // Only delete suppliers from this store
       }
     });
 

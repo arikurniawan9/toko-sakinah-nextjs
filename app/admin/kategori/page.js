@@ -13,8 +13,10 @@ import { AlertTriangle, CheckCircle, Plus, Search, Edit, Trash2, Eye, FileText, 
 import DataTable from '@/components/DataTable';
 import Breadcrumb from '@/components/Breadcrumb';
 import * as XLSX from 'xlsx';
-import ImportModal from '@/components/kategori/ImportModal'; // ADDED: Import ImportModal
+import ImportModal from '@/components/ImportModal'; // ADDED: Import ImportModal
 import { exportCategoryPDF } from '@/utils/exportCategoryPDF';
+import { generateCategoryImportTemplate } from '@/utils/categoryImportTemplate';
+import { z } from 'zod';
 
 export default function CategoryManagementPage() {
   const { userTheme } = useUserTheme();
@@ -264,7 +266,7 @@ export default function CategoryManagementPage() {
 
   return (
     <ProtectedRoute requiredRole="ADMIN">
-      <main className={`w-full px-4 sm:px-6 lg:px-8 py-8 ${darkMode ? 'bg-gray-900' : 'bg-gray-950'}`}>
+      <main className={`w-full px-4 sm:px-6 lg:px-8 py-8 ${darkMode ? 'bg-gray-900' : 'bg-white'}`}>
         <Breadcrumb
           items={[{ title: 'Kategori', href: '/admin/kategori' }]}
           darkMode={darkMode}
@@ -350,6 +352,19 @@ export default function CategoryManagementPage() {
                   setSuccess('Import kategori berhasil!');
                 }}
                 darkMode={darkMode}
+                importEndpoint="/api/kategori/import"
+                checkDuplicatesEndpoint="/api/kategori/check-duplicates"
+                templateGenerator={generateCategoryImportTemplate}
+                entityName="Kategori"
+                schema={z.object({
+                  name: z.string().min(1, { message: 'Nama kategori wajib diisi' }),
+                  description: z.string().optional().nullable(),
+                })}
+                columnMapping={{
+                  'Nama Kategori': 'name',
+                  'Deskripsi': 'description'
+                }}
+                generateTemplateLabel="Unduh Template Kategori"
               />
             )}
 
