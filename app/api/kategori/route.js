@@ -2,6 +2,11 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
+import {
+  getFromCache,
+  setToCache,
+  invalidateCategoryCache
+} from '@/lib/redis'; // Tambahkan import fungsi cache
 import { z } from 'zod';
 
 // Zod Schemas
@@ -24,6 +29,8 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const exportData = searchParams.get('export') === 'true';
+    const page = parseInt(searchParams.get('page')) || 1;
+    const limit = parseInt(searchParams.get('limit')) || 10;
     const storeId = session.user.storeId; // Assume session contains storeId
 
     if (!storeId) {
@@ -33,17 +40,25 @@ export async function GET(request) {
       );
     }
 
+    // Validasi parameter
+    if (page < 1 || limit < 1 || limit > 100) {
+      return NextResponse.json({ error: 'Parameter pagination tidak valid' }, { status: 400 });
+    }
+
     const search = searchParams.get('search') || '';
 
-    const where = {
-      storeId: storeId, // Always filter by storeId
-      ...(search && {
-        OR: [
-          { name: { contains: search } },
-          { description: { contains: search } },
-        ],
-      }),
-    };
+    // Buat cache key berdasarkan parameter
+    const cacheKey = exportData
+      ? `categories:export:${storeId}:${search}`
+      : `categories:${storeId}:${page}:${limit}:${search}`;
+
+    if (!exportData) { // Hanya cache untuk permintaan non-export
+      // Coba ambil dari cache dulu
+      const cachedData = await getFromCache(cacheKey);
+      if (cachedData) {
+        return NextResponse.json(JSON.parse(cachedData));
+      }
+    }
 
     // Gunakan opsi yang didukung oleh versi Prisma
     const searchWhere = search
@@ -61,7 +76,12 @@ export async function GET(request) {
       const categoriesForExport = await prisma.category.findMany({
         where: searchWhere,
         orderBy: { createdAt: 'desc' },
-        include: {
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          createdAt: true,
+          updatedAt: true,
           _count: {
             select: { products: true }
           }
@@ -77,7 +97,7 @@ export async function GET(request) {
         'Dibuat Pada': new Date(cat.createdAt).toLocaleDateString('id-ID'),
       }));
 
-      return NextResponse.json({
+      const result = {
         categories: exportedData,
         pagination: {
           page: 1,
@@ -85,35 +105,51 @@ export async function GET(request) {
           total: categoriesForExport.length,
           totalPages: 1,
         },
-      });
+      };
+
+      return NextResponse.json(result);
     } else {
       // Jika bukan export, gunakan pagination
-      const page = parseInt(searchParams.get('page')) || 1;
-      const limit = parseInt(searchParams.get('limit')) || 10;
       const offset = (page - 1) * limit;
 
-      const categoriesToFetch = await prisma.category.findMany({
-        where: searchWhere,
-        skip: offset,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          _count: {
-            select: { products: true }
+      // Ambil data dan hitung total dalam satu operasi
+      const [categoriesToFetch, total] = await Promise.all([
+        prisma.category.findMany({
+          where: searchWhere,
+          skip: offset,
+          take: limit,
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            createdAt: true,
+            updatedAt: true,
+            _count: {
+              select: { products: true }
+            }
           }
-        }
-      });
-      const totalCount = await prisma.category.count({ where: searchWhere });
+        }),
+        prisma.category.count({ where: searchWhere })
+      ]);
 
-      return NextResponse.json({
+      const totalPages = Math.ceil(total / limit);
+
+      const result = {
         categories: categoriesToFetch,
         pagination: {
           page: page,
           limit: limit,
-          total: totalCount,
-          totalPages: Math.ceil(totalCount / limit),
+          total: total,
+          totalPages: totalPages,
+          hasMore: page < totalPages,
         },
-      });
+      };
+
+      // Simpan ke cache
+      await setToCache(cacheKey, JSON.stringify(result), 600); // Cache selama 10 menit
+
+      return NextResponse.json(result);
     }
   } catch (error) {
     console.error('Error fetching categories:', error);
@@ -164,6 +200,9 @@ export async function POST(request) {
         storeId,
       },
     });
+
+    // Hapus cache kategori untuk toko ini karena ada perubahan data
+    await invalidateCategoryCache(storeId);
 
     return NextResponse.json(category, { status: 201 }); // 201 Created
   } catch (error) {
@@ -234,6 +273,9 @@ export async function PUT(request) {
         { status: 404 }
       );
     }
+
+    // Hapus cache kategori untuk toko ini karena ada perubahan data
+    await invalidateCategoryCache(storeId);
 
     // Fetch the updated category to return it
     const updatedCategory = await prisma.category.findUnique({ where: { id } });
@@ -331,6 +373,9 @@ export async function DELETE(request) {
         { status: 404 }
       );
     }
+
+    // Hapus cache kategori untuk toko ini karena ada perubahan data
+    await invalidateCategoryCache(storeId);
 
     return NextResponse.json({
       message: `Berhasil menghapus ${count} kategori.`,

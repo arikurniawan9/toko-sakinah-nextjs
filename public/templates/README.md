@@ -6,6 +6,7 @@ File template produk menyediakan format standar untuk mengimpor produk ke sistem
 
 File template produk standar yang disediakan:
 - `template-produk-standar.csv` - Template sederhana berisi kolom utama produk
+- `template-produk-standar.xlsx` - Versi Excel dari template standar
 
 ### Struktur Kolom Standar
 
@@ -33,11 +34,14 @@ Kode,Nama,Kategori,Deskripsi,Harga Beli,Harga Jual
 
 ## Template Produk Lanjutan (Dengan Tier Harga)
 
-File template produk lanjutan yang tersedia:
+File template produk lanjutan yang lebih bervariasi dan realistis:
 - `template-produk.xlsx` - Template dalam format Excel (dengan tier harga)
 - `template-produk.csv` - Template dalam format CSV (dengan tier harga)
-- `contoh-import-produk.csv` - Contoh data produk
+- `template-produk-kategori-spesifik.csv` - Template dengan produk dari berbagai kategori bisnis
+- `template-produk-variabel.csv` - Template khusus untuk produk dengan harga bervariasi per kuantitas
+- `contoh-import-produk.csv` - Contoh data produk terbaru yang lebih bervariasi
 - `contoh-import-produk-updated.csv` - Contoh data produk yang lebih lengkap
+- `PANDUAN_TEMPLATE_TERBARU.md` - Panduan untuk template baru
 
 ## Format File yang Didukung
 
@@ -54,7 +58,9 @@ File template produk lanjutan yang tersedia:
 - Format tanggal akan otomatis terisi saat import
 - Gunakan angka tanpa pemisah ribuan (contoh: 50000, bukan 50,000)
 - Untuk template standar, hanya harga jual tunggal yang digunakan
+- Template baru menyertakan produk dari berbagai kategori dan harga tier yang bervariasi
 
 ## File Dokumentasi
 
 - `PANDUAN_IMPORT_PRODUK.md` - Panduan lengkap import produk
+- `PANDUAN_TEMPLATE_TERBARU.md` - Panduan untuk template terbaru

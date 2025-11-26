@@ -50,9 +50,11 @@ const AppHeader = ({ darkModeOverride = null }) => {
       case ROLES.WAREHOUSE:
         return '/warehouse';
       case ROLES.ADMIN:
+        return '/admin';
       case ROLES.CASHIER:
+        return '/kasir';
       case ROLES.ATTENDANT:
-        return '/select-store';
+        return '/pelayan';
       default:
         return '/login';
     }

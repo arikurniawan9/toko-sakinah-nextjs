@@ -86,7 +86,7 @@ const Sidebar = ({ children }) => {
   if (!hasMounted) {
     return null;
   }
-  
+
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen();
@@ -117,8 +117,7 @@ const Sidebar = ({ children }) => {
     { title: "Kategori", href: "/admin/kategori", icon: Tag, type: 'item', roles: ['ADMIN'] },
     { title: "Supplier", href: "/admin/supplier", icon: Truck, type: 'item', roles: ['ADMIN'] },
     { title: "Member", href: "/admin/member", icon: UserRound, type: 'item', roles: ['ADMIN'] },
-    { title: "Kasir", href: "/admin/kasir", icon: CreditCard, type: 'item', roles: ['ADMIN'] },
-    { title: "Pelayan", href: "/admin/pelayan", icon: Users, type: 'item', roles: ['ADMIN'] },
+    { title: "User", href: "/admin/users", icon: Users, type: 'item', roles: ['ADMIN'] },
     { title: "Laporan", type: 'heading', roles: ['ADMIN'] },
     { title: "Laporan", href: "/admin/laporan", icon: BarChart3, type: 'item', roles: ['ADMIN'] },
     { title: "Laporan Laba Rugi", href: "/admin/laporan/labarugi", icon: BarChart3, type: 'item', roles: ['ADMIN'] },
@@ -246,7 +245,7 @@ const Sidebar = ({ children }) => {
 
         {/* Sidebar Toggle for Desktop */}
         {!isMobile && (
-            <div className={`px-4 py-3 border-t ${darkMode ? 'border-gray-700' : 'border-pastel-purple-200'}`}>
+            <div className={`px-4 py-3 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
                 <Tooltip content={isCollapsed ? "Buka Sidebar" : "Tutup Sidebar"} position="bottom">
                     <button onClick={toggleSidebar} className={`w-full flex items-center justify-center p-2 rounded-lg ${darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-200'}`}>
                         {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
@@ -267,7 +266,7 @@ const Sidebar = ({ children }) => {
       {/* Main content wrapper */}
       <div className={`flex-1 flex flex-col transition-all duration-300 ${mainContentLeftMargin}`}>
         {/* Top Header */}
-        <header className={`flex items-center justify-between h-16 px-4 border-b ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} z-30`}>
+        <header className={`flex items-center justify-between h-16 px-4 border-b ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} z-30 sticky top-0`}>
           {/* Left side: Mobile Menu Toggle & Desktop Sidebar Toggle */}
           <div className="flex items-center space-x-2">
             {/* Mobile Menu Toggle */}
@@ -324,14 +323,25 @@ const Sidebar = ({ children }) => {
                     <p className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{session?.user?.name || 'User'}</p>
                     <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{session?.user?.role || 'Guest'}</p>
                     {session?.user?.employeeNumber && <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>Kode: {session.user.employeeNumber}</p>}
+                    {session?.user?.storeAccess?.name && (
+                      <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`} title="Toko Aktif">
+                        <span className="truncate max-w-[120px] inline-block align-bottom">({session.user.storeAccess.name})</span>
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
 
               {/* Dropdown Menu */}
               {isUserMenuOpen && (
-                <div className={`absolute top-full right-0 mt-2 w-52 ${darkMode ? 'bg-gray-700' : 'bg-white'} rounded-md shadow-lg ring-1 ring-black ring-opacity-5`}>
+                <div className={`absolute top-full right-0 mt-2 w-52 ${darkMode ? 'bg-gray-700' : 'bg-white'} rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50`}>
                   <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
+                    {/* Show active store info in dropdown */}
+                    {session?.user?.storeAccess?.name && (
+                      <div className={`px-4 py-2 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'} border-b ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
+                        Toko Aktif: <span className="font-medium">{session.user.storeAccess.name}</span>
+                      </div>
+                    )}
                     <Link
                       href={
                         session?.user?.role === 'ADMIN'

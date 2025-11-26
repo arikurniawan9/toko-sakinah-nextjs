@@ -72,35 +72,43 @@ const ProductSearch = memo(({
           {!isProductListLoading && products.length === 0 && !searchTerm && (
             <div className="p-4 text-center text-gray-500">Ketik nama atau kode produk untuk mencari</div>
           )}
-          {!isProductListLoading && products.map(product => (
-            <div
-              key={product.id}
-              className={`flex items-center justify-between p-4 cursor-pointer transition-colors ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'} border-l-4 ${product.stock < 5 ? 'border-red-500' : 'border-transparent'}`}
-              onClick={() => addToCart(product)}
-              role="button"
-              tabIndex="0"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  addToCart(product);
-                }
-              }}
-              title={`Tambahkan ${product.name} ke keranjang`}
-            >
-              <div className="flex-1 min-w-0">
-                <div className={`font-medium truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>{product.name}</div>
-                <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Kode: {product.productCode}</div>
-              </div>
-              <div className="text-right ml-4">
-                <div className={`text-sm font-semibold ${darkMode ? 'text-purple-400' : 'text-purple-600'}`}>
-                  Rp {formatNumber(getTierPrice(product, 1))}
+          {!isProductListLoading && products && Array.isArray(products) && products.map(product => {
+            // Validasi bahwa produk memiliki properti yang diperlukan
+            if (!product || !product.id || !product.name || !product.productCode) {
+              console.warn('Invalid product data:', product);
+              return null;
+            }
+
+            return (
+              <div
+                key={product.id}
+                className={`flex items-center justify-between p-4 cursor-pointer transition-colors ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'} border-l-4 ${product.stock < 5 ? 'border-red-500' : 'border-transparent'}`}
+                onClick={() => addToCart(product)}
+                role="button"
+                tabIndex="0"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    addToCart(product);
+                  }
+                }}
+                title={`Tambahkan ${product.name} ke keranjang`}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className={`font-medium truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>{product.name}</div>
+                  <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Kode: {product.productCode}</div>
                 </div>
-                <div className={`text-xs mt-1 ${product.stock < 5 ? (darkMode ? 'text-red-400' : 'text-red-600') : (darkMode ? 'text-gray-500' : 'text-gray-500')}`}>
-                  Stok: {product.stock} {product.stock < 5 && product.stock > 0 ? '(Stok Menipis)' : ''}
-                  {product.stock === 0 && '(Habis)'}
+                <div className="text-right ml-4">
+                  <div className={`text-sm font-semibold ${darkMode ? 'text-purple-400' : 'text-purple-600'}`}>
+                    Rp {formatNumber(getTierPrice(product, 1))}
+                  </div>
+                  <div className={`text-xs mt-1 ${product.stock < 5 ? (darkMode ? 'text-red-400' : 'text-red-600') : (darkMode ? 'text-gray-500' : 'text-gray-500')}`}>
+                    Stok: {product.stock} {product.stock < 5 && product.stock > 0 ? '(Stok Menipis)' : ''}
+                    {product.stock === 0 && '(Habis)'}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          }).filter(Boolean)} {/* Filter out any null values */}
         </div>
       </div>
     </div>

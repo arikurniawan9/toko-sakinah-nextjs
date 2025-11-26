@@ -1,20 +1,38 @@
 // app/api/produk/low-stock/route.js
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getSession } from '@/lib/auth';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/authOptions';
+import { ROLES } from '@/lib/constants';
 
 export async function GET(request) {
-  const session = await getSession();
-  if (!session || !['ADMIN', 'CASHIER'].includes(session.user.role)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   try {
+    // Get session to determine store access
+    const session = await getServerSession(authOptions);
+
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Only allow cashier, admin, and manager roles to access this data
+    const allowedRoles = [ROLES.CASHIER, ROLES.ADMIN, ROLES.MANAGER];
+    if (!allowedRoles.includes(session.user.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // For multi-tenant system, get store ID from session
+    const storeId = session.user.storeId;
+
+    if (!storeId) {
+      return NextResponse.json({ error: 'Store ID not found in session' }, { status: 400 });
+    }
+
     const { searchParams } = new URL(request.url);
     const threshold = parseInt(searchParams.get('threshold')) || 10; // Default to 10 if not provided
 
     const lowStockProducts = await prisma.product.findMany({
       where: {
+        storeId, // Filter by store ID
         stock: {
           lt: threshold, // Less than the specified threshold
         },

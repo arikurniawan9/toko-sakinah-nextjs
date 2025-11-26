@@ -3,6 +3,11 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
+import {
+  getFromCache,
+  setToCache,
+  invalidateSupplierCache
+} from '@/lib/redis'; // Tambahkan import fungsi cache
 
 // GET: Fetch all suppliers
 export async function GET(request) {
@@ -16,7 +21,12 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit')) || 10;
     const page = parseInt(searchParams.get('page')) || 1;
-    const search = searchParams.get('search');
+    const search = searchParams.get('search') || '';
+
+    // Validasi parameter
+    if (page < 1 || limit < 1 || limit > 100) {
+      return NextResponse.json({ error: 'Parameter pagination tidak valid' }, { status: 400 });
+    }
 
     // Get storeId based on user's assigned store
     const storeUser = await prisma.storeUser.findFirst({
@@ -31,6 +41,15 @@ export async function GET(request) {
 
     if (!storeUser) {
       return NextResponse.json({ error: 'User does not have access to any store' }, { status: 400 });
+    }
+
+    // Buat cache key berdasarkan parameter
+    const cacheKey = `suppliers:${storeUser.storeId}:${page}:${limit}:${search}`;
+
+    // Coba ambil dari cache dulu
+    const cachedData = await getFromCache(cacheKey);
+    if (cachedData) {
+      return NextResponse.json(JSON.parse(cachedData));
     }
 
     // Calculate offset for pagination
@@ -51,22 +70,36 @@ export async function GET(request) {
       ] : []
     };
 
-    // Get suppliers with pagination and include product count
-    const suppliers = await prisma.supplier.findMany({
-      where: whereCondition,
-      skip: offset,
-      take: limit,
-      orderBy: {
-        createdAt: 'desc'
-      },
-      include: {
-        products: {
-          select: {
-            id: true
+    // Ambil data dan hitung total dalam satu operasi
+    const [suppliers, total] = await Promise.all([
+      prisma.supplier.findMany({
+        where: whereCondition,
+        skip: offset,
+        take: limit,
+        orderBy: {
+          createdAt: 'desc'
+        },
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          email: true,
+          address: true,
+          contactPerson: true,
+          code: true,
+          createdAt: true,
+          updatedAt: true,
+          products: {
+            select: {
+              id: true
+            }
           }
         }
-      }
-    });
+      }),
+      prisma.supplier.count({
+        where: whereCondition
+      })
+    ]);
 
     // Transform data to include product count
     const suppliersWithProductCount = suppliers.map(supplier => ({
@@ -74,22 +107,23 @@ export async function GET(request) {
       productCount: supplier.products.length
     }));
 
-    // Get total count for pagination
-    const totalCount = await prisma.supplier.count({
-      where: whereCondition
-    });
+    const totalPages = Math.ceil(total / limit);
 
-    const totalPages = Math.ceil(totalCount / limit);
-
-    return NextResponse.json({
+    const result = {
       suppliers: suppliersWithProductCount,
       pagination: {
         page: page,
         limit: limit,
-        total: totalCount,
-        totalPages: totalPages
+        total: total,
+        totalPages: totalPages,
+        hasMore: page < totalPages
       }
-    });
+    };
+
+    // Simpan ke cache
+    await setToCache(cacheKey, JSON.stringify(result), 600); // Cache selama 10 menit
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error('Error fetching suppliers:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -139,6 +173,9 @@ export async function POST(request) {
         storeId: storeUser.storeId
       }
     });
+
+    // Hapus cache supplier untuk toko ini karena ada perubahan data
+    await invalidateSupplierCache(storeUser.storeId);
 
     return NextResponse.json({
       success: true,
@@ -209,6 +246,9 @@ export async function DELETE(request) {
         storeId: storeUser.storeId // Only delete suppliers from this store
       }
     });
+
+    // Hapus cache supplier untuk toko ini karena ada perubahan data
+    await invalidateSupplierCache(storeUser.storeId);
 
     return NextResponse.json({
       success: true,

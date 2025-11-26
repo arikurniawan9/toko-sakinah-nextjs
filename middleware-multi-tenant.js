@@ -29,15 +29,8 @@ function authMiddleware(req) {
         // Jika user memiliki global role, arahkan ke halaman yang sesuai
         if (token?.role === ROLES.MANAGER) {
           if (pathname.startsWith('/admin') || pathname.startsWith('/kasir') || pathname.startsWith('/pelayan')) {
-            // Manager bisa mengakses halaman toko jika mereka memilih toko
-            if (!token.storeId) {
-              // Jika manager belum memilih toko, perbolehkan akses ke select-store
-              if (!pathname.startsWith('/select-store')) {
-                const url = req.nextUrl.clone();
-                url.pathname = '/select-store';
-                return NextResponse.redirect(url);
-              }
-            }
+            // Manager bisa mengakses halaman toko, tapi akan ditangani di halaman masing-masing
+            // jika mereka tidak memiliki storeId
           } else {
             // Untuk halaman non-toko, biarkan manager akses
           }
@@ -56,9 +49,30 @@ function authMiddleware(req) {
 
       // Untuk role per toko (bukan global), pastikan memiliki akses ke toko tertentu
       if (!GLOBAL_ROLES.includes(token.role) && !token.storeId) {
-        const url = req.nextUrl.clone();
-        url.pathname = '/select-store';
-        return NextResponse.redirect(url);
+        // Jika user belum memiliki akses ke toko, coba ambil toko yang tersedia untuk user
+        // dan arahkan ke toko pertama, atau tampilkan unauthorized
+        if (!pathname.startsWith('/api/')) { // Hanya untuk halaman UI, bukan API
+          // Kita tidak bisa mengakses database langsung dari middleware untuk mencari toko
+          // Jadi kita tetap arahkan ke dashboard default tergantung role, dan biarkan
+          // halaman tersebut menangani kasus tidak ada toko
+          let defaultPath = '/unauthorized';
+
+          switch(token.role) {
+            case 'ADMIN':
+              defaultPath = '/admin';
+              break;
+            case 'CASHIER':
+              defaultPath = '/kasir';
+              break;
+            case 'ATTENDANT':
+              defaultPath = '/pelayan';
+              break;
+          }
+
+          const url = req.nextUrl.clone();
+          url.pathname = defaultPath;
+          return NextResponse.redirect(url);
+        }
       }
 
       // Validasi apakah user memiliki akses ke toko yang dipilih
@@ -102,12 +116,11 @@ export const config = {
      * - /api/ routes
      * - /login page
      * - /unauthorized page
-     * - /select-store page
      * - /register-manager page
      * - /register page
      * - Static assets (.png, .jpg, etc.)
      * - Other public files
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|login|unauthorized|select-store|register-manager|register|.*\\.png$|.*\\.jpg$|.*\\.jpeg$|.*\\.gif$|.*\\.svg$).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|login|unauthorized|register-manager|register|.*\\.png$|.*\\.jpg$|.*\\.jpeg$|.*\\.gif$|.*\\.svg$).*)',
   ],
 };

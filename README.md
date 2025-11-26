@@ -179,6 +179,8 @@ Setelah seeding, akun default tersedia:
 - Sistem log stock (stock in/out)
 - Notifikasi stok rendah langsung di halaman transaksi
 - Export/import CSV
+- Export ke Excel (.xlsx) dan PDF dengan preview sebelum download
+- Caching Redis untuk performa lebih cepat
 - Undo transaksi dalam 5 menit pertama setelah transaksi selesai
 - Audit log untuk admin
 - Integrasi printer thermal
@@ -191,3 +193,5 @@ Setelah seeding, akun default tersedia:
 - **Tombol Undo Transaksi**: Memungkinkan pembatalan transaksi dalam waktu 5 menit pertama di halaman riwayat
 - **Detail Diskon Lengkap**: Struk thermal menampilkan detail perhitungan diskon (diskon item, member, dan tambahan)
 - **Metode Pembayaran QRIS**: Menyediakan opsi pembayaran QRIS sebagai tambahan dari CASH dan TRANSFER
+- **Fitur Export Lengkap**: Ekspor data ke format Excel (.xlsx), PDF (dengan pratinjau), dan CSV dengan struktur data yang konsisten
+- **Caching dengan Redis**: Meningkatkan performa sistem dengan caching data yang sering diakses

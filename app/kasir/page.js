@@ -90,11 +90,13 @@ export default function CashierDashboard() {
   ];
 
   const formatCurrency = (amount) => {
+    // Validasi bahwa amount adalah angka sebelum diformat
+    const numAmount = typeof amount === 'number' ? amount : 0;
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
       minimumFractionDigits: 0,
-    }).format(amount);
+    }).format(numAmount);
   };
 
   return (

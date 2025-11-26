@@ -1,19 +1,16 @@
 // app/kasir/kategori/page.js
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import ProtectedRoute from '../../../components/ProtectedRoute';
 import Sidebar from '../../../components/Sidebar';
 import { useUserTheme } from '../../../components/UserThemeContext';
 import { useSession } from 'next-auth/react';
-import { Home, FileText, Download } from 'lucide-react';
+import { Home, Download, Eye } from 'lucide-react';
+import DataTable from '../../../components/DataTable';
 
-import { useCategoryTable } from '../../../lib/hooks/useCategoryTable';
+import { useCashierCategoryTable } from '../../../lib/hooks/useCashierCategoryTable';
 
-import CategoryTable from '../../../components/kategori/CategoryTable';
-import KasirCategoryToolbar from '../../../components/kasir/KasirCategoryToolbar';
-import Pagination from '../../../components/produk/Pagination';
-import KategoriDetailModal from '../../../components/kategori/KategoriDetailModal';
 import CategoryProductsModal from '../../../components/kategori/CategoryProductsModal';
 import { exportCategoryPDF } from '../../../utils/exportCategoryPDF';
 
@@ -37,12 +34,9 @@ export default function KasirCategoryView() {
     totalCategories,
     fetchCategories,
     setError: setTableError,
-  } = useCategoryTable();
+  } = useCashierCategoryTable();
 
   const [success, setSuccess] = useState('');
-
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [selectedCategoryForDetail, setSelectedCategoryForDetail] = useState(null);
 
   // State untuk modal produk kategori
   const [showCategoryProductsModal, setShowCategoryProductsModal] = useState(false);
@@ -50,48 +44,145 @@ export default function KasirCategoryView() {
   const [categoryProducts, setCategoryProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
 
+
   // Fungsi untuk export PDF
-  const handleExportPDF = async () => {
+  const handleExportPDF = useCallback(async () => {
     try {
       await exportCategoryPDF(darkMode);
       setSuccess('Laporan PDF berhasil dibuat!');
     } catch (error) {
       setTableError(error.message || 'Gagal membuat laporan PDF');
     }
-  };
+  }, [darkMode, setSuccess, setTableError]);
 
   useEffect(() => {
     // Fetch initial data if needed
     fetchCategories();
-  }, [fetchCategories]);
+  }, []); // Hanya dijalankan sekali saat mount, bukan setiap fetchCategories berubah
+
+  // Debug logging to see what data we're getting
+  useEffect(() => {
+    if (!loading && categories.length > 0) {
+      console.log('Categories data in KasirCategoryView:', categories[0]);
+      // Check for _count field specifically
+      if (categories[0]?._count) {
+        console.log('Category with _count:', categories[0].name, '_count:', categories[0]._count);
+      }
+    }
+  }, [categories, loading]); // Ini perlu tetap ada agar log muncul ketika data berubah
 
   // Fungsi untuk melihat produk dalam kategori
-  const handleViewCategoryProducts = async (category) => {
+  const handleViewCategoryProducts = useCallback(async (category) => {
     setSelectedCategory(category);
     setLoadingProducts(true);
 
     try {
-      const response = await fetch(`/api/products?categoryId=${category.id}`);
+      // Pastikan category.id valid
+      if (!category.id) {
+        throw new Error('Kategori tidak valid');
+      }
+
+      // Pastikan session user memiliki akses ke toko
+      const url = new URL('/api/products', window.location.origin);
+      url.searchParams.append('categoryId', category.id);
+
+      const response = await fetch(url.toString(), {
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
       const data = await response.json();
 
       if (!response.ok) {
         throw new Error(data.error || 'Gagal mengambil produk dalam kategori');
       }
 
+      // Validasi bahwa data memiliki struktur yang benar
+      if (!Array.isArray(data.products)) {
+        console.error('Data produk tidak dalam bentuk array:', data);
+        throw new Error('Format data produk tidak valid');
+      }
+
+      // Log struktur produk untuk debugging
+      console.log('Received products:', data.products.slice(0, 2)); // Log hanya 2 produk pertama untuk ringkas
+
       setCategoryProducts(data.products || []);
       setShowCategoryProductsModal(true);
     } catch (error) {
-      setTableError(error.message);
+      console.error('Error fetching category products:', error);
+      setTableError(error.message || 'Gagal mengambil produk dalam kategori');
     } finally {
       setLoadingProducts(false);
     }
-  };
+  }, [setSelectedCategory, setLoadingProducts, setCategoryProducts, setShowCategoryProductsModal, setTableError]);
 
-  const handleViewDetails = (category) => {
-    handleViewCategoryProducts(category);
-  };
+  const handleViewDetails = useCallback((category) => {
+    if (!category || !category.id) {
+      setTableError('Data kategori tidak valid');
+      return;
+    }
+    // Menampilkan produk dalam kategori
+    setSelectedCategory(category);
+    setShowCategoryProductsModal(true);
+  }, [setSelectedCategory, setShowCategoryProductsModal]);
 
   const error = tableError;
+
+  // Definisikan kolom untuk DataTable
+  const columns = useMemo(() => [
+    {
+      key: 'no',
+      title: 'No.',
+      render: (_, __, index) => (currentPage - 1) * itemsPerPage + index + 1,
+    },
+    {
+      key: 'name',
+      title: 'Nama',
+      sortable: true
+    },
+    {
+      key: 'description',
+      title: 'Deskripsi',
+      render: (value) => value || '-',
+      sortable: true
+    },
+    {
+      key: 'jumlahProduk',
+      title: 'Jumlah Produk',
+      sortable: true,
+      render: (value, row) => row._count?.products || 0,
+    },
+  ], [currentPage, itemsPerPage]);
+
+  // Enhanced categories with action handlers
+  const enhancedCategories = useMemo(() =>
+    categories.map(category => ({
+      ...category,
+      onViewDetails: handleViewDetails,
+    }))
+  , [categories, handleViewDetails]);
+
+  // Row actions for DataTable - menampilkan aksi
+  const rowActions = useCallback((row) => (
+    <button
+      onClick={() => handleViewDetails(row)}
+      className={`p-1.5 rounded-md ${darkMode ? 'text-green-400 hover:bg-gray-700' : 'text-green-600 hover:bg-gray-200'}`}
+      title="Lihat Produk dalam Kategori"
+    >
+      <Eye className="h-4 w-4" />
+    </button>
+  ), [handleViewDetails, darkMode]);
+
+  // Pagination data
+  const paginationData = {
+    currentPage,
+    totalPages,
+    totalItems: totalCategories,
+    startIndex: (currentPage - 1) * itemsPerPage + 1,
+    endIndex: Math.min(currentPage * itemsPerPage, totalCategories),
+    onPageChange: setCurrentPage,
+    itemsPerPage: itemsPerPage
+  };
 
   return (
     <ProtectedRoute requiredRole="CASHIER">
@@ -119,68 +210,115 @@ export default function KasirCategoryView() {
             </div>
           </div>
 
-          <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-pastel-purple-700' : 'bg-white border-gray-200'} border`}>
-            <div className="p-4 sm:p-6">
-              <KasirCategoryToolbar
-                searchTerm={searchTerm}
-                setSearchTerm={setSearchTerm}
-                itemsPerPage={itemsPerPage}
-                setItemsPerPage={(value) => {
-                  setItemsPerPage(value);
-                  setCurrentPage(1);
-                }}
-                onExportPDF={handleExportPDF}
-                showExportPDF={true}
-                darkMode={darkMode}
-              />
-
-              {error && (
-                <div className={`my-4 p-4 ${darkMode ? 'bg-red-900/30 border-red-700 text-red-200' : 'bg-red-50 border border-red-200 text-red-700'} rounded-md`}>
-                  {error}
+          <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
+            {/* Custom toolbar */}
+            <div className={`p-4 border-b ${darkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="relative flex-grow sm:w-64">
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Cari kategori..."
+                    className={`w-full pl-10 pr-4 py-2 border rounded-md shadow-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:outline-none focus:ring-2 focus:ring-pastel-purple-500`}
+                  />
                 </div>
-              )}
-              {success && (
-                <div className={`my-4 p-4 ${darkMode ? 'bg-green-900/30 border-green-700 text-green-200' : 'bg-green-50 border-green-200 text-green-700'} rounded-md`}>
-                  {success}
+                <div className="w-full sm:w-auto">
+                  <label htmlFor="itemsPerPage" className="sr-only">Items per page</label>
+                  <select
+                    id="itemsPerPage"
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:outline-none focus:ring-2 focus:ring-pastel-purple-500`}
+                  >
+                    <option value={10}>10/halaman</option>
+                    <option value={20}>20/halaman</option>
+                    <option value={50}>50/halaman</option>
+                  </select>
                 </div>
-              )}
-
-              <CategoryTable
-                categories={categories}
-                loading={loading}
-                darkMode={darkMode}
-                selectedRows={[]} // Cashier doesn't need selection
-                handleSelectAll={() => {}} // Cashier doesn't need selection
-                handleSelectRow={() => {}} // Cashier doesn't need selection
-                onEdit={() => {}} // Cashier doesn't need edit
-                onDelete={() => {}} // Cashier doesn't need delete
-                onViewDetails={handleViewDetails}
-                showActions={false} // Hide action column for cashier
-              />
+              </div>
             </div>
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              setCurrentPage={setCurrentPage}
-              itemsPerPage={itemsPerPage}
-              totalItems={totalCategories}
-              darkMode={darkMode}
-            />
-          </div>
 
-          <KategoriDetailModal
-            isOpen={showDetailModal}
-            onClose={() => setShowDetailModal(false)}
-            category={selectedCategoryForDetail}
-            darkMode={darkMode}
-          />
+            {error && (
+              <div className={`my-4 p-4 ${darkMode ? 'bg-red-900/30 border-red-700 text-red-200' : 'bg-red-50 border border-red-200 text-red-700'} rounded-md`}>
+                {error}
+              </div>
+            )}
+            {success && (
+              <div className={`my-4 p-4 ${darkMode ? 'bg-green-900/30 border-green-700 text-green-200' : 'bg-green-50 border-green-200 text-green-700'} rounded-md`}>
+                {success}
+              </div>
+            )}
+
+            <DataTable
+              data={enhancedCategories}
+              columns={columns}
+              loading={loading}
+              darkMode={darkMode}
+              actions={true}
+              rowActions={rowActions}
+              showItemsPerPage={false} // We're handling pagination manually
+              showSearch={false} // We're handling search manually
+            />
+
+            <div className={`p-4 border-t ${darkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}>
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-700 dark:text-gray-300">
+                  Menampilkan {paginationData.startIndex} - {paginationData.endIndex} dari {paginationData.totalItems} kategori
+                </div>
+                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className={`relative inline-flex items-center px-2 py-2 rounded-l-md border ${
+                      darkMode
+                        ? 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600'
+                        : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                    } text-sm font-medium ${(currentPage === 1) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    Previous
+                  </button>
+
+                  {[...Array(totalPages)].map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentPage(index + 1)}
+                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                        currentPage === index + 1
+                          ? 'z-10 ' + (darkMode ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-indigo-50 border-indigo-500 text-indigo-600')
+                          : darkMode
+                            ? 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700'
+                            : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      {index + 1}
+                    </button>
+                  ))}
+
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className={`relative inline-flex items-center px-2 py-2 rounded-r-md border ${
+                      darkMode
+                        ? 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600'
+                        : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                    } text-sm font-medium ${(currentPage === totalPages) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    Next
+                  </button>
+                </nav>
+              </div>
+            </div>
+          </div>
 
           {/* Modal untuk menampilkan produk dalam kategori */}
           <CategoryProductsModal
             isOpen={showCategoryProductsModal}
             onClose={() => setShowCategoryProductsModal(false)}
             category={selectedCategory}
-            products={categoryProducts}
             darkMode={darkMode}
           />
         </main>

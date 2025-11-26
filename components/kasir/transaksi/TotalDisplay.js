@@ -28,9 +28,14 @@ const TotalDisplay = memo(({ total, darkMode }) => {
       return 'Angka negatif tidak valid';
     }
 
+    // Batasi jumlah maksimum untuk mencegah crash dari library terbilang
+    if (amount > 999999999999) { // Maksimum 999 milyar
+      return 'Jumlah terlalu besar untuk ditampilkan';
+    }
+
     try {
       // Untuk jumlah besar, terbilang bisa gagal, jadi kita gunakan try-catch
-      const result = terbilang(amount);
+      const result = terbilang(Math.round(amount));
       if (typeof result === 'string') {
         return capitalize(result) + ' Rupiah';
       } else {

@@ -81,7 +81,7 @@ export default function CategoryTable({
                   {category.description || '-'}
                 </td>
                 <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                  {category.productCount || 0}
+                  {category._count?.products || category.productCount || 0}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <Tooltip content="Lihat Produk dalam Kategori">

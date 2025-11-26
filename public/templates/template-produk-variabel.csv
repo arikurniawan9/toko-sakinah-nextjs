@@ -1,0 +1,16 @@
+Nama,Kode,Stok,Kategori,Supplier,Deskripsi,Tanggal Dibuat,Tanggal Diubah,Harga Beli,Harga Jual Min,Harga Jual Max,Harga Jual
+"Kulkas Mini Sharp SJ-X20",KMS-20X,30,"Electronics","PT Elektronik Jaya","Kulkas mini hemat energi","2025-02-01","2025-02-01",1200000,1,3,1500000
+"Kulkas Mini Sharp SJ-X20",KMS-20X,30,"Electronics","PT Elektronik Jaya","Kulkas mini hemat energi","2025-02-01","2025-02-01",1200000,4,8,1400000
+"Kulkas Mini Sharp SJ-X20",KMS-20X,30,"Electronics","PT Elektronik Jaya","Kulkas mini hemat energi","2025-02-01","2025-02-01",1200000,9,"",1300000
+"Headphone Wireless Sony WH-CH720",HSW-CH72,45,"Electronics","PT Audio Dunia","Headphone Bluetooth kualitas tinggi","2025-02-02","2025-02-02",450000,1,5,550000
+"Headphone Wireless Sony WH-CH720",HSW-CH72,45,"Electronics","PT Audio Dunia","Headphone Bluetooth kualitas tinggi","2025-02-02","2025-02-02",450000,6,"",500000
+"Jam Tangan Analog Casio Edifice",JTC-EDIF,20,"Accessories","PT Jam Tangan Nusantara","Jam tangan pria elegan","2025-02-03","2025-02-03",750000,1,1,900000
+"Setrika Uap Philips GC2999",SUP-GC29,35,"Home Appliance","PT Alat Rumah Tangga","Setrika uap anti lengket","2025-02-04","2025-02-04",280000,1,4,350000
+"Setrika Uap Philips GC2999",SUP-GC29,35,"Home Appliance","PT Alat Rumah Tangga","Setrika uap anti lengket","2025-02-04","2025-02-04",280000,5,"",320000
+"Kamera Canon EOS M50 Kit",KCM-M50K,15,"Electronics","PT Kamera Indonesia","Kamera mirrorless dengan lensa kit","2025-02-05","2025-02-05",6500000,1,1,7500000
+"Gitar Akustik Yamaha FG800",GTY-FG80,25,"Musical Instruments","PT Musik Dunia","Gitar akustik profesional","2025-02-06","2025-02-06",2200000,1,2,2600000
+"Gitar Akustik Yamaha FG800",GTY-FG80,25,"Musical Instruments","PT Musik Dunia","Gitar akustik profesional","2025-02-06","2025-02-06",2200000,3,"",2400000
+"Panci Stainless Set 5pcs",PCS-S5PC,40,"Kitchenware","PT Alat Dapur",Panci stainless steel set 5 pcs,"2025-02-07","2025-02-07",320000,1,2,400000
+"Panci Stainless Set 5pcs",PCS-S5PC,40,"Kitchenware","PT Alat Dapur",Panci stainless steel set 5 pcs,"2025-02-07","2025-02-07",320000,3,6,370000
+"Panci Stainless Set 5pcs",PCS-S5PC,40,"Kitchenware","PT Alat Dapur",Panci stainless steel set 5 pcs,"2025-02-07","2025-02-07",320000,7,"",340000
+"Vitamin C 1000mg Nature Made",VC-NM1K,80,"Health Supplements","PT Vitamin Sehat","Vitamin C dosis tinggi","2025-02-08","2025-02-08",75000,1,10,120000

@@ -54,8 +54,7 @@ Berikut adalah file-file yang telah dimodifikasi untuk mendukung fitur multi-ten
 - `prisma/schema.prisma` - Menambahkan model Store, StoreUser, Warehouse, dll. dan menambahkan storeId ke model eksisting
 - `middleware-multi-tenant.js` - Middleware untuk otorisasi multi-tenant
 - `lib/authOptions.js` - Penanganan session dengan informasi toko
-- `app/select-store/page.js` - Halaman pemilihan toko
-- `app/api/users/[userId]/stores/route.js` - API untuk mendapatkan toko user
+- `app/api/users/[id]/stores/route.js` - API untuk mendapatkan toko user (telah dihapus karena tidak digunakan)
 - Dan banyak file halaman lainnya yang telah disesuaikan
 
 ## Akun Default

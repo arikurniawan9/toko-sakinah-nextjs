@@ -3,7 +3,9 @@
 ## Public Routes
 - `GET /login` - Halaman login sistem
 - `GET /unauthorized` - Halaman akses ditolak
-- `GET /select-store` - Halaman pemilihan toko setelah login
+- `GET /admin` - Dashboard admin toko
+- `GET /kasir` - Dashboard kasir toko
+- `GET /pelayan` - Dashboard pelayan toko
 - `GET /register-manager` - Halaman pendaftaran akun MANAGER pertama (jika belum ada)
 
 ## Protected Routes (memerlukan otentikasi)

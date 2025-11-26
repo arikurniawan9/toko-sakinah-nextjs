@@ -376,48 +376,69 @@ export default function DataTable({
                                 </div>
                               </td>
                             </tr>
-                          ) : data && data.length > 0 ? (                data.map((row, index) => (
-                  <tr
-                    key={row.id || index}
-                    className={`group ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} ${
-                      selectedRows.includes(row.id) ? (darkMode ? 'bg-gray-700' : 'bg-blue-50') : ''
-                    } transition-colors`}
-                  >
-                    {onSelectRow && (
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <input
-                          type="checkbox"
-                          checked={selectedRows.includes(row.id)}
-                          onChange={() => onSelectRow(row.id)}
-                          className="rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
-                        />
-                      </td>
-                    )}
-                    {columns.map((column) => (
-                      <td
-                        key={column.key}
-                        className={`px-6 py-4 whitespace-nowrap text-sm ${
-                          darkMode ? 'text-gray-300' : 'text-gray-900'
-                        }`}
-                      >
-                        {column.render ? column.render(row[column.key], row, index) :
-                          (row[column.key] !== undefined && row[column.key] !== null ? row[column.key] : '-')}
-                      </td>
-                    ))}
-                    {actions && (
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex justify-end space-x-2">
-                          {rowActions && typeof rowActions === 'function' && (
-                            <>
-                              {rowActions(row)}
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    )}
-                  </tr>
-                ))
-              ) : (
+                          ) : data && Array.isArray(data) && data.length > 0 ? (
+                            data.map((row, index) => {
+                              // Validasi bahwa row memiliki id atau index untuk key
+                              if (!row) {
+                                console.warn('Invalid data row:', row);
+                                return null;
+                              }
+
+                              const rowId = row.id || index;
+
+                              return (
+                                <tr
+                                  key={rowId}
+                                  className={`group ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} ${
+                                    selectedRows.includes(rowId) ? (darkMode ? 'bg-gray-700' : 'bg-blue-50') : ''
+                                  } transition-colors`}
+                                >
+                                  {onSelectRow && (
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedRows.includes(rowId)}
+                                        onChange={() => onSelectRow(rowId)}
+                                        className="rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+                                      />
+                                    </td>
+                                  )}
+                                  {columns.map((column) => {
+                                    if (!column || !column.key) {
+                                      console.warn('Invalid column definition:', column);
+                                      return null;
+                                    }
+
+                                    return (
+                                      <td
+                                        key={column.key}
+                                        className={`px-6 py-4 whitespace-nowrap text-sm ${
+                                          darkMode ? 'text-gray-300' : 'text-gray-900'
+                                        }`}
+                                      >
+                                        {column.render
+                                          ? (typeof column.render === 'function'
+                                              ? column.render(row[column.key], row, index)
+                                              : column.render)
+                                          : (row[column.key] !== undefined && row[column.key] !== null ? row[column.key] : '-')}
+                                      </td>
+                                    );
+                                  }).filter(Boolean)}
+                                  {actions && (
+                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                      <div className="flex justify-end space-x-2">
+                                        {rowActions && typeof rowActions === 'function' && (
+                                          <>
+                                            {rowActions(row)}
+                                          </>
+                                        )}
+                                      </div>
+                                    </td>
+                                  )}
+                                </tr>
+                              );
+                            }).filter(Boolean)
+                          ) : (
                 <tr>
                   <td
                     colSpan={columns.length + (actions ? 2 : (onSelectAll ? 1 : 0))}

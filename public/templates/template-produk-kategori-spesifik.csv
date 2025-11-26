@@ -1,0 +1,17 @@
+Nama,Kode,Stok,Kategori,Supplier,Deskripsi,Tanggal Dibuat,Tanggal Diubah,Harga Beli,Harga Jual Min,Harga Jual Max,Harga Jual
+"Meja Belajar Anak Minimalis",MBA-MIN1,15,"Furniture","PT Mebelindo Jati","Meja belajar multifungsi untuk anak","2025-02-10","2025-02-10",450000,1,1,600000
+"Kursi Kantor Ergonomic KB-700",KK-ERG70,12,"Furniture","PT Furniture Sehat","Kursi ergonomis dengan sandaran punggung","2025-02-11","2025-02-11",750000,1,2,950000
+"Kursi Kantor Ergonomic KB-700",KK-ERG70,12,"Furniture","PT Furniture Sehat","Kursi ergonomis dengan sandaran punggung","2025-02-11","2025-02-11",750000,3,5,880000
+"Kursi Kantor Ergonomic KB-700",KK-ERG70,12,"Furniture","PT Furniture Sehat","Kursi ergonomis dengan sandaran punggung","2025-02-11","2025-02-11",750000,6,"",820000
+"Komputer PC Gaming i7 RTX3060",KPG-I7306,8,"Electronics","PT Komputer Gaming","PC gaming siap pakai dengan VGA RTX3060","2025-02-12","2025-02-12",12500000,1,1,15000000
+"Printer Laser Multifungsi HP",PLM-HPM4,25,"Electronics","PT Printer Solutions","Printer laser warna multifungsi","2025-02-13","2025-02-13",1800000,1,3,2200000
+"Printer Laser Multifungsi HP",PLM-HPM4,25,"Electronics","PT Printer Solutions","Printer laser warna multifungsi","2025-02-13","2025-02-13",1800000,4,"",2000000
+"Speaker Bluetooth JBL Flip 6",SBJ-FLIP6,35,"Electronics","PT Audio Dunia","Speaker portabel berkualitas tinggi","2025-02-14","2025-02-14",1200000,1,2,1450000
+"Speaker Bluetooth JBL Flip 6",SBJ-FLIP6,35,"Electronics","PT Audio Dunia","Speaker portabel berkualitas tinggi","2025-02-14","2025-02-14",1200000,3,5,1350000
+"Speaker Bluetooth JBL Flip 6",SBJ-FLIP6,35,"Electronics","PT Audio Dunia","Speaker portabel berkualitas tinggi","2025-02-14","2025-02-14",1200000,6,"",1280000
+"Mesin Jahit Portable Singer",MJP-SINGER,20,"Home Appliance","PT Mesin Jahit Nusantara","Mesin jahit portable untuk kerajinan","2025-02-15","2025-02-15",650000,1,2,800000
+"Proyektor Mini Xiaomi Smart",PM-XIAOMI,30,"Electronics","PT Teknologi Cerdas","Proyektor pintar dengan konektivitas HDMI","2025-02-16","2025-02-16",2500000,1,1,3000000
+"Kipas Angin Standing Oscillating",KAS-OCS4,45,"Home Appliance","PT Ventilasi Sejuk","Kipas standing dengan osilasi 360 derajat","2025-02-17","2025-02-17",250000,1,5,320000
+"Kipas Angin Standing Oscillating",KAS-OCS4,45,"Home Appliance","PT Ventilasi Sejuk","Kipas standing dengan osilasi 360 derajat","2025-02-17","2025-02-17",250000,6,10,300000
+"Kipas Angin Standing Oscillating",KAS-OCS4,45,"Home Appliance","PT Ventilasi Sejuk","Kipas standing dengan osilasi 360 derajat","2025-02-17","2025-02-17",250000,11,"",280000
+"Alat Makan Stainless 24pcs",AMS-24PC,60,"Kitchenware","PT Perlengkapan Dapur","Set alat makan stainless steel premium","2025-02-18","2025-02-18",125000,1,12,180000

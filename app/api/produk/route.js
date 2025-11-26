@@ -4,6 +4,11 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { z } from 'zod';
+import {
+  getFromCache,
+  setToCache,
+  invalidateProductCache
+} from '@/lib/redis'; // Tambahkan import fungsi cache
 import { logCreate, logUpdate, logDelete } from '@/lib/auditLogger';
 
 // Zod Schemas for Product
@@ -19,9 +24,9 @@ const productSchema = z.object({
   stock: z.preprocess((val) => typeof val === 'string' ? parseInt(val) : val, z.number().int().min(0, { message: 'Stok tidak boleh negatif' }).default(0)),
   purchasePrice: z.preprocess((val) => typeof val === 'string' ? parseInt(val) : val, z.number().int().min(0, { message: 'Harga beli tidak boleh negatif' }).default(0)),
   categoryId: z.string().min(1, { message: 'Kategori wajib dipilih' }),
-  supplierId: z.string().min(1, { message: 'Supplier wajib dipilih' }).optional().nullable(),
+  supplierId: z.string().optional().nullable(),
   description: z.string().trim().optional().nullable(),
-  priceTiers: z.array(priceTierSchema).min(1, { message: 'Minimal harus ada satu tingkatan harga' }),
+  priceTiers: z.array(priceTierSchema).min(1, { message: 'Minimal harus ada satu tingkatan harga' }).default([{ minQty: '1', maxQty: '', price: '0' }]),
 });
 
 const productUpdateSchema = productSchema.extend({
@@ -45,6 +50,20 @@ export async function GET(request) {
     const productCode = searchParams.get('productCode') || '';
     const supplierId = searchParams.get('supplierId') || ''; // Add supplier ID parameter
 
+    // Validasi parameter
+    if (page < 1 || limit < 1 || limit > 100) {
+      return NextResponse.json({ error: 'Parameter pagination tidak valid' }, { status: 400 });
+    }
+
+    // Buat cache key berdasarkan parameter
+    const cacheKey = `products:${session.user.storeId}:${page}:${limit}:${search}:${categoryId}:${productCode}:${supplierId}`;
+
+    // Coba ambil dari cache dulu
+    const cachedData = await getFromCache(cacheKey);
+    if (cachedData) {
+      return NextResponse.json(JSON.parse(cachedData));
+    }
+
     const offset = (page - 1) * limit;
 
     const where = {
@@ -59,49 +78,69 @@ export async function GET(request) {
         ],
       }),
     };
-    
-    const products = await prisma.product.findMany({
-      where,
-      skip: offset,
-      take: limit,
-      include: {
-        category: {
-          select: {
-            id: true,
-            name: true
-          }
+
+    // Ambil data dan hitung total dalam satu operasi
+    const [products, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        skip: offset,
+        take: limit,
+        select: {
+          id: true,
+          name: true,
+          productCode: true,
+          stock: true,
+          description: true,
+          purchasePrice: true,
+          createdAt: true,
+          updatedAt: true,
+          categoryId: true,
+          supplierId: true,
+          category: {
+            select: {
+              id: true,
+              name: true
+            }
+          },
+          supplier: {
+            select: {
+              id: true,
+              name: true
+            }
+          },
+          priceTiers: {
+            orderBy: { minQty: 'asc' },
+            select: {
+              id: true,
+              productId: true,
+              minQty: true,
+              maxQty: true,
+              price: true
+            }
+          },
         },
-        supplier: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
-        priceTiers: {
-          orderBy: { minQty: 'asc' },
-          select: {
-            id: true,
-            productId: true,
-            minQty: true,
-            maxQty: true,
-            price: true
-          }
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-    
-    const totalCount = await prisma.product.count({ where });
-    
-    return NextResponse.json({
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.product.count({ where })
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    const result = {
       products,
       pagination: {
         page,
-        limit,
-        total: totalCount,
-        totalPages: Math.ceil(totalCount / limit),
+        totalPages,
+        totalItems: total,
+        hasMore: page < totalPages,
+        itemsPerPage: limit
       },
-    });
+    };
+
+    // Simpan ke cache
+    await setToCache(cacheKey, JSON.stringify(result), 300); // Cache selama 5 menit
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error('Error fetching products:', error);
     return NextResponse.json({ error: 'Gagal mengambil data produk' }, { status: 500 });
@@ -181,6 +220,9 @@ export async function POST(request) {
 
       return product;
     });
+
+    // Hapus cache produk untuk toko ini karena ada perubahan data
+    await invalidateProductCache(session.user.storeId);
 
     // Log audit untuk pembuatan produk
     await logCreate(session.user.id, 'Product', createdProduct.id, createdProduct, request);
@@ -285,6 +327,9 @@ export async function PUT(request) {
       return product;
     });
 
+    // Hapus cache produk untuk toko ini karena ada perubahan data
+    await invalidateProductCache(session.user.storeId);
+
     // Log audit untuk pembaruan produk
     await logUpdate(session.user.id, 'Product', updatedProduct.id, existingProduct, updatedProduct, request);
 
@@ -373,6 +418,9 @@ export async function DELETE(request) {
     if (count === 0) {
       return NextResponse.json({ error: 'Produk tidak ditemukan' }, { status: 404 });
     }
+
+    // Hapus cache produk untuk toko ini karena ada perubahan data
+    await invalidateProductCache(session.user.storeId);
 
     // Log audit untuk penghapusan produk
     for (const product of deletedProducts) {

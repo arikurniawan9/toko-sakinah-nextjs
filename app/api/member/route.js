@@ -72,27 +72,15 @@ export async function POST(request) {
     const body = await request.json();
     const { name, phone, address, membershipType } = body;
 
-    // Validasi input
+    // 1. Validasi input dasar
     if (!name || !phone) {
       return NextResponse.json(
         { error: 'Nama dan nomor telepon wajib diisi' }, 
         { status: 400 }
       );
     }
-
-    // Cek apakah nomor telepon sudah terdaftar
-    const existingMember = await prisma.member.findUnique({
-      where: { phone },
-    });
-
-    if (existingMember) {
-      return NextResponse.json(
-        { error: 'Nomor telepon sudah terdaftar' }, 
-        { status: 400 }
-      );
-    }
-
-    // Validasi format nomor telepon
+    
+    // 2. Validasi format nomor telepon
     if (!/^\d{10,15}$/.test(phone)) {
       return NextResponse.json(
         { error: 'Format nomor telepon tidak valid' }, 
@@ -100,10 +88,9 @@ export async function POST(request) {
       );
     }
 
-    // Determine the storeId based on the user's role
+    // 3. Tentukan storeId dari sesi pengguna
     let storeId;
     if (session.user.role === 'MANAGER' || session.user.role === 'WAREHOUSE') {
-      // For MANAGER or WAREHOUSE, check if they have a selected store
       if (session.user.storeId) {
         storeId = session.user.storeId;
       } else {
@@ -113,7 +100,6 @@ export async function POST(request) {
         );
       }
     } else {
-      // For other roles (ADMIN, CASHIER, ATTENDANT), get their assigned store
       const storeUser = await prisma.storeUser.findFirst({
         where: {
           userId: session.user.id,
@@ -130,11 +116,35 @@ export async function POST(request) {
           { status: 400 }
         );
       }
-
       storeId = storeUser.storeId;
     }
+    
+    // Jika tidak ada storeId, hentikan proses
+    if (!storeId) {
+        return NextResponse.json(
+            { error: 'Tidak dapat menentukan toko untuk pengguna ini.' },
+            { status: 403 }
+        );
+    }
 
-    // Generate unique code for the member
+    // 4. Cek apakah nomor telepon sudah terdaftar DI TOKO YANG SAMA
+    const existingMember = await prisma.member.findUnique({
+      where: { 
+        phone_storeId: {
+          phone: phone,
+          storeId: storeId,
+        },
+      },
+    });
+
+    if (existingMember) {
+      return NextResponse.json(
+        { error: 'Nomor telepon sudah terdaftar di toko ini' }, 
+        { status: 400 }
+      );
+    }
+
+    // 5. Generate kode unik untuk member
     let uniqueCode;
     let attempt = 0;
     const maxAttempts = 10; // Maximum attempts to generate unique code

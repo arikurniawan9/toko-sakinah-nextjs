@@ -1,7 +1,7 @@
 // app/admin/page.js
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -37,9 +37,19 @@ export default function AdminDashboard() {
   const { data: session } = useSession();
   const { userTheme } = useUserTheme();
   const darkMode = userTheme.darkMode;
-  
+
   const [startDate, setStartDate] = useState(subDays(new Date(), 6));
   const [endDate, setEndDate] = useState(new Date());
+  const [dateError, setDateError] = useState('');
+
+  // Validate date range
+  useEffect(() => {
+    if (startDate && endDate && startDate > endDate) {
+      setDateError('Tanggal mulai tidak boleh lebih besar dari tanggal akhir');
+    } else {
+      setDateError('');
+    }
+  }, [startDate, endDate]);
 
   const {
     totalSales,
@@ -74,13 +84,20 @@ export default function AdminDashboard() {
   );
 
   if (error) {
+    console.error('Dashboard data fetch error:', error);
     return (
       <ProtectedRoute requiredRole="ADMIN">
         <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
           <Breadcrumb items={breadcrumbItems} darkMode={darkMode} />
           <div className="text-center py-10">
             <h2 className="text-2xl font-semibold text-red-500">Gagal memuat data</h2>
-            <p className="text-gray-500 dark:text-gray-400 mt-2">{error.message}</p>
+            <p className="text-gray-500 dark:text-gray-400 mt-2">{error.message || 'Terjadi kesalahan saat memuat data dashboard'}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+            >
+              Muat Ulang
+            </button>
           </div>
         </main>
       </ProtectedRoute>
@@ -97,30 +114,39 @@ export default function AdminDashboard() {
           <h2 className={`text-2xl font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
             Dasbor Analitik
           </h2>
-          <div className="flex items-center space-x-2 mt-4 sm:mt-0">
-            <CalendarIcon className={`h-5 w-5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
-            <DatePicker
-              selected={startDate}
-              onChange={(date) => setStartDate(date)}
-              selectsStart
-              startDate={startDate}
-              endDate={endDate}
-              className={`p-2 rounded-md border w-32 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-              dateFormat="dd/MM/yyyy"
-            />
-            <span className={darkMode ? 'text-gray-400' : 'text-gray-500'}>-</span>
-            <DatePicker
-              selected={endDate}
-              onChange={(date) => setEndDate(date)}
-              selectsEnd
-              startDate={startDate}
-              endDate={endDate}
-              minDate={startDate}
-              className={`p-2 rounded-md border w-32 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-              dateFormat="dd/MM/yyyy"
-            />
+          <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-2 mt-4 sm:mt-0">
+            <div className="flex items-center">
+              <CalendarIcon className={`h-5 w-5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+              <DatePicker
+                selected={startDate}
+                onChange={(date) => setStartDate(date)}
+                selectsStart
+                startDate={startDate}
+                endDate={endDate}
+                className={`p-2 rounded-md border w-32 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                dateFormat="dd/MM/yyyy"
+              />
+              <span className={darkMode ? 'text-gray-400' : 'text-gray-500'}>-</span>
+              <DatePicker
+                selected={endDate}
+                onChange={(date) => setEndDate(date)}
+                selectsEnd
+                startDate={startDate}
+                endDate={endDate}
+                minDate={startDate}
+                className={`p-2 rounded-md border w-32 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                dateFormat="dd/MM/yyyy"
+              />
+            </div>
           </div>
         </div>
+
+        {/* Date Error Message */}
+        {dateError && (
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
+            {dateError}
+          </div>
+        )}
 
         {/* Stats for Selected Range */}
         <div className="mb-8">

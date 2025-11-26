@@ -90,16 +90,14 @@ export default function LoginForm({ role: forcedRole = null }) {
       } else if (role === ROLES.WAREHOUSE) {
         router.push('/warehouse');
       } else if (role === ROLES.ADMIN || role === ROLES.CASHIER || role === ROLES.ATTENDANT) {
-        if (!isGlobalRole && !storeId) {
-          router.push('/select-store');
-        } else {
-          if (role === ROLES.ADMIN) {
-            router.push('/admin');
-          } else if (role === ROLES.CASHIER) {
-            router.push('/kasir');
-          } else if (role === ROLES.ATTENDANT) {
-            router.push('/pelayan');
-          }
+        // For non-global roles, redirect to their respective dashboards
+        // The dashboard page will handle cases where user doesn't have store access
+        if (role === ROLES.ADMIN) {
+          router.push('/admin');
+        } else if (role === ROLES.CASHIER) {
+          router.push('/kasir');
+        } else if (role === ROLES.ATTENDANT) {
+          router.push('/pelayan');
         }
       }
     }

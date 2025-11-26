@@ -25,16 +25,17 @@ import AllReceivablesModal from "@/components/kasir/transaksi/AllReceivablesModa
 import LowStockModal from "@/components/kasir/transaksi/LowStockModal";
 import { useReactToPrint } from "react-to-print";
 import { printThermalReceipt } from "@/utils/thermalPrint";
+import { useProductSearch } from "@/lib/hooks/kasir/useProductSearch";
+import { useNotification } from "@/components/notifications/NotificationProvider";
 
 export default function KasirTransaksiPage() {
   const { data: session } = useSession();
   const { userTheme } = useUserTheme();
+  const { showNotification } = useNotification();
   const darkMode = userTheme.darkMode;
   const router = useRouter();
 
   // State Management
-  const [searchTerm, setSearchTerm] = useState("");
-  const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]);
   const [members, setMembers] = useState([]);
   const [selectedMember, setSelectedMember] = useState(null);
@@ -44,7 +45,6 @@ export default function KasirTransaksiPage() {
   const [payment, setPayment] = useState(0);
   const [calculation, setCalculation] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [isProductListLoading, setIsProductListLoading] = useState(false);
   const [showMembersModal, setShowMembersModal] = useState(false);
   const [showAttendantsModal, setShowAttendantsModal] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -59,6 +59,61 @@ export default function KasirTransaksiPage() {
   const [showReceivablesModal, setShowReceivablesModal] = useState(false);
   const [showAllReceivablesModal, setShowAllReceivablesModal] = useState(false);
   const [showLowStockModal, setShowLowStockModal] = useState(false);
+
+  // --- Cart Logic ---
+  const removeFromCart = useCallback((productId) => {
+    setCart((prevCart) => prevCart.filter((item) => item.productId !== productId));
+  }, []);
+
+  const updateQuantity = useCallback((productId, newQuantity) => {
+    if (newQuantity <= 0) {
+      removeFromCart(productId);
+      return;
+    }
+    setCart((prevCart) =>
+      prevCart.map((item) => {
+        if (item.productId === productId) {
+          if (newQuantity > item.stock) {
+            alert(`Jumlah maksimum ${item.name} adalah ${item.stock} (stok tersedia).`);
+            return { ...item, quantity: Math.min(newQuantity, item.stock) };
+          }
+          return { ...item, quantity: newQuantity };
+        }
+        return item;
+      })
+    );
+  }, [removeFromCart]);
+
+  const addToCart = useCallback((product) => {
+    const existingItem = cart.find((item) => item.productId === product.id);
+    if (existingItem) {
+      updateQuantity(product.id, existingItem.quantity + 1);
+    } else {
+      setCart((prevCart) => [
+        ...prevCart,
+        {
+          productId: product.id,
+          name: product.name,
+          productCode: product.productCode,
+          quantity: 1,
+          stock: product.stock,
+          priceTiers: product.priceTiers,
+        },
+      ]);
+    }
+    if (product.stock < 5) {
+      setShowLowStockModal(true);
+    }
+  }, [cart, updateQuantity]);
+
+  // --- Product Search Logic ---
+  const {
+    searchTerm,
+    setSearchTerm,
+    products,
+    isProductListLoading,
+    handleScan,
+  } = useProductSearch(addToCart);
 
   // State untuk fullscreen dan lock
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -162,7 +217,6 @@ export default function KasirTransaksiPage() {
         setPayment(0);
         setCalculation(null);
         setSearchTerm("");
-        setProducts([]);
         setAdditionalDiscount(0);
       } else {
         alert(`Gagal: ${result.error}`);
@@ -342,7 +396,6 @@ export default function KasirTransaksiPage() {
         setPayment(0);
         setCalculation(null);
         setSearchTerm("");
-        setProducts([]);
         setAdditionalDiscount(0); // Reset additional discount after successful transaction
       } else {
         alert(`Gagal: ${result.error}`);
@@ -383,7 +436,6 @@ export default function KasirTransaksiPage() {
         setPayment(0);
         setCalculation(null);
         setSearchTerm("");
-        setProducts([]);
         setAdditionalDiscount(0);
         setIsSuspendModalOpen(false);
       } else {
@@ -432,28 +484,6 @@ export default function KasirTransaksiPage() {
     content: () => receiptRef.current,
     onAfterPrint: () => setReceiptData(null),
   });
-
-  useEffect(() => {
-    const handler = setTimeout(async () => {
-      if (searchTerm.trim().length === 0) {
-        setProducts([]);
-        return;
-      }
-      setIsProductListLoading(true);
-      try {
-        const response = await fetch(
-          `/api/produk?search=${encodeURIComponent(searchTerm)}&limit=20`
-        );
-        const data = await response.json();
-        setProducts(data.products || []);
-      } catch (error) {
-        console.error("Error fetching products:", error);
-      } finally {
-        setIsProductListLoading(false);
-      }
-    }, 300);
-    return () => clearTimeout(handler);
-  }, [searchTerm]);
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -604,97 +634,6 @@ export default function KasirTransaksiPage() {
       setShowLowStockModal(true);
     }
   }, [cart, selectedMember, getTierPrice, additionalDiscount]);
-
-  // --- CART LOGIC (can be defined here as they don't depend on hooks) ---
-
-  const addToCart = (product) => {
-    const existingItem = cart.find((item) => item.productId === product.id);
-    if (existingItem) {
-      updateQuantity(product.id, existingItem.quantity + 1);
-    } else {
-      setCart((prevCart) => [
-        ...prevCart,
-        {
-          productId: product.id,
-          name: product.name,
-          productCode: product.productCode,
-          quantity: 1,
-          stock: product.stock,
-          priceTiers: product.priceTiers,
-        },
-      ]);
-    }
-
-    // Tampilkan modal jika produk memiliki stok rendah
-    if (product.stock < 5) {
-      setShowLowStockModal(true);
-    }
-  };
-
-  const removeFromCart = (productId) => {
-    setCart((prevCart) => prevCart.filter((item) => item.productId !== productId));
-  };
-
-  const updateQuantity = (productId, newQuantity) => {
-    if (newQuantity <= 0) {
-      removeFromCart(productId);
-      return;
-    }
-    setCart((prevCart) =>
-      prevCart.map((item) => {
-        if (item.productId === productId) {
-          if (newQuantity > item.stock) {
-            // Tampilkan peringatan jika jumlah melebihi stok
-            alert(`Jumlah maksimum ${item.name} adalah ${item.stock} (stok tersedia).`);
-            return { ...item, quantity: Math.min(newQuantity, item.stock) };
-          }
-          return { ...item, quantity: newQuantity };
-        }
-        return item;
-      })
-    );
-  };
-
-  const handleScan = async (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      const trimmedSearchTerm = searchTerm.trim();
-      if (!trimmedSearchTerm) return;
-      setIsProductListLoading(true);
-      try {
-        let response = await fetch(
-          `/api/produk?productCode=${encodeURIComponent(trimmedSearchTerm)}`
-        );
-        let data = await response.json();
-        let scannedProduct =
-          data.products && data.products.length > 0 ? data.products[0] : null;
-        if (!scannedProduct) {
-          response = await fetch(
-            `/api/produk?search=${encodeURIComponent(trimmedSearchTerm)}`
-          );
-          data = await response.json();
-          scannedProduct = data.products.find(
-            (p) =>
-              p.productCode.toLowerCase() === trimmedSearchTerm.toLowerCase() ||
-              p.name.toLowerCase() === trimmedSearchTerm.toLowerCase()
-          );
-        }
-        if (scannedProduct) {
-          addToCart(scannedProduct);
-          setSearchTerm("");
-        } else {
-          alert(
-            `Produk dengan kode/nama "${trimmedSearchTerm}" tidak ditemukan.`
-          );
-        }
-      } catch (error) {
-        console.error("Error scanning product:", error);
-        alert("Terjadi kesalahan saat mencari produk.");
-      } finally {
-        setIsProductListLoading(false);
-      }
-    }
-  };
 
   // Fungsi untuk menambah member baru
   const handleAddMember = async (memberData) => {

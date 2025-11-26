@@ -5,8 +5,13 @@ import { getSession } from '@/lib/auth';
 
 export async function GET(request) {
   const session = await getSession();
-  if (!session || session.user.role !== 'ADMIN') {
+  if (!session || !['ADMIN', 'CASHIER', 'ATTENDANT'].includes(session.user.role)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // For non-global roles, check if user has store access
+  if (!session.user.isGlobalRole && !session.user.storeId) {
+    return NextResponse.json({ error: 'User does not have access to any store' }, { status: 403 });
   }
 
   const { searchParams } = new URL(request.url);
@@ -29,13 +34,27 @@ export async function GET(request) {
     }
     startDate.setHours(0, 0, 0, 0); // Start of the selected day
 
+    // Get store ID for non-global roles
+    const storeId = session.user.isGlobalRole ? null : session.user.storeId;
 
     // --- Stats Overview (Not date-dependent) ---
-    const totalProducts = await prisma.product.count();
-    const totalMembers = await prisma.member.count();
-    const activeEmployees = await prisma.user.count({
-      where: { role: { in: ['CASHIER', 'ATTENDANT'] } },
-    });
+    const totalProducts = storeId
+      ? await prisma.product.count({ where: { storeId } })
+      : await prisma.product.count();
+    const totalMembers = storeId
+      ? await prisma.member.count({ where: { storeId } })
+      : await prisma.member.count();
+    const activeEmployees = storeId
+      ? await prisma.storeUser.count({
+          where: {
+            storeId,
+            role: { in: ['CASHIER', 'ATTENDANT'] },
+            status: 'AKTIF'
+          }
+        })
+      : await prisma.user.count({
+          where: { role: { in: ['CASHIER', 'ATTENDANT'] } }
+        });
 
     // --- Range-based Stats ---
     const salesInRange = await prisma.sale.findMany({
@@ -44,6 +63,7 @@ export async function GET(request) {
                 gte: startDate,
                 lte: endDate,
             },
+            ...(storeId && { storeId }), // Filter by storeId if it exists (non-global roles)
         },
         include: {
             saleDetails: {
@@ -60,7 +80,7 @@ export async function GET(request) {
 
     const totalSalesInRange = salesInRange.reduce((sum, sale) => sum + sale.total, 0);
     const totalTransactionsInRange = salesInRange.length;
-    
+
     // Calculate Total Profit
     const totalProfitInRange = salesInRange.reduce((totalProfit, sale) => {
       const totalCostForSale = sale.saleDetails.reduce((costSum, detail) => {
@@ -77,6 +97,9 @@ export async function GET(request) {
     const recentTransactions = await prisma.sale.findMany({
       take: 5,
       orderBy: { createdAt: 'desc' },
+      where: {
+        ...(storeId && { storeId }), // Filter by storeId if it exists (non-global roles)
+      },
       include: { cashier: { select: { name: true } } }, // CORRECTED: from 'user' to 'cashier'
     });
 
@@ -89,6 +112,7 @@ export async function GET(request) {
             gte: startDate,
             lte: endDate,
           },
+          ...(storeId && { storeId }), // Filter by storeId if it exists (non-global roles)
         },
       },
       _sum: {
@@ -106,6 +130,7 @@ export async function GET(request) {
     const productDetails = await prisma.product.findMany({
       where: {
         id: { in: productIds },
+        ...(storeId && { storeId }), // Filter by storeId if it exists (non-global roles)
       },
       select: {
         id: true,

@@ -20,7 +20,15 @@ const ProtectedRoute = ({ children, requiredRole }) => {
       router.push('/');
     } else if (status === 'authenticated') {
       // Check if user has the required role
-      if (requiredRole && session.user.role !== requiredRole) {
+      // If requiredRole is an array, check if user's role is included
+      let hasAccess = false;
+      if (Array.isArray(requiredRole)) {
+        hasAccess = requiredRole.includes(session.user.role);
+      } else {
+        hasAccess = !requiredRole || session.user.role === requiredRole;
+      }
+
+      if (!hasAccess) {
         // Redirect to home if user doesn't have the required role
         router.push('/');
       }
@@ -35,7 +43,15 @@ const ProtectedRoute = ({ children, requiredRole }) => {
     );
   }
 
-  if (status === 'unauthenticated' || (requiredRole && session?.user.role !== requiredRole)) {
+  // Check if user has access
+  let hasAccess = false;
+  if (Array.isArray(requiredRole)) {
+    hasAccess = requiredRole.includes(session.user.role);
+  } else {
+    hasAccess = !requiredRole || session.user.role === requiredRole;
+  }
+
+  if (status === 'unauthenticated' || !hasAccess) {
     return null; // Render nothing while redirecting
   }
 

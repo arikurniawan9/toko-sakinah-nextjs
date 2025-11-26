@@ -20,12 +20,18 @@ import ProductModal from '../../../components/produk/ProductModal';
 import ProductDetailModal from '../../../components/produk/ProductDetailModal';
 import ConfirmationModal from '../../../components/ConfirmationModal';
 import Breadcrumb from '../../../components/Breadcrumb';
+import ExportFormatSelector from '../../../components/export/ExportFormatSelector';
+import PDFPreviewModal from '../../../components/export/PDFPreviewModal';
 
 export default function ProductManagement() {
   const { userTheme } = useUserTheme();
   const darkMode = userTheme.darkMode;
   const { data: session } = useSession(); // Get session data
   const isAdmin = session?.user?.role === 'ADMIN'; // Determine if user is admin
+
+  // State untuk modal preview PDF
+  const [showPDFPreviewModal, setShowPDFPreviewModal] = useState(false);
+  const [pdfPreviewData, setPdfPreviewData] = useState(null);
 
   const {
     products,
@@ -74,6 +80,9 @@ export default function ProductManagement() {
 
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedProductForDetail, setSelectedProductForDetail] = useState(null);
+
+  // State untuk modal ekspor format
+  const [showExportFormatModal, setShowExportFormatModal] = useState(false);
 
   // State untuk modal konfirmasi import produk yang sama
   const [showImportConfirmModal, setShowImportConfirmModal] = useState(false);
@@ -202,68 +211,135 @@ export default function ProductManagement() {
     setShowDetailModal(true);
   };
 
-  const handleExport = async () => {
+  // Fungsi untuk membuka selector format ekspor
+  const openExportFormatSelector = () => {
+    setShowExportFormatModal(true);
+  };
+
+  // Fungsi untuk ekspor dengan format tertentu
+  const handleExportWithFormat = async (format) => {
     setExportLoading(true);
     try {
       const response = await fetch('/api/produk');
       if (!response.ok) throw new Error('Gagal mengambil data untuk export');
       const data = await response.json();
 
-      // Generate CSV with all price tiers
-      let csvContent = 'Nama,Kode,Stok,Kategori,Supplier,Deskripsi,Tanggal Dibuat,Tanggal Diubah,Harga Beli,Harga Jual Min,Harga Jual Max,Harga Jual\n';
-      data.products.forEach(product => {
+      // Siapkan data produk untuk ekspor
+      const exportData = data.products.flatMap(product => {
         const category = categories.find(cat => cat.id === product.categoryId);
         const supplier = suppliers.find(supp => supp.id === product.supplierId);
 
-        // If product has no price tiers, export as a single row
+        // Jika produk tidak memiliki tier harga, ekspor sebagai satu baris
         if (!product.priceTiers || product.priceTiers.length === 0) {
-          const row = [
-            `"${product.name.replace(/"/g, '""')}"`,
-            `"${product.productCode.replace(/"/g, '""')}"`,
-            product.stock,
-            `"${category?.name || ''}"`,
-            `"${supplier?.name || ''}"`,
-            `"${product.description ? product.description.replace(/"/g, '""') : ''}"`,
-            `"${new Date(product.createdAt).toLocaleDateString('id-ID')}"`,
-            `"${new Date(product.updatedAt).toLocaleDateString('id-ID')}"`,
-            product.purchasePrice || 0,
-            '', // Harga Jual Min
-            '', // Harga Jual Max
-            ''  // Harga Jual
-          ].join(',');
-          csvContent += row + '\n';
+          return [{
+            'Nama': product.name,
+            'Kode': product.productCode,
+            'Stok': product.stock,
+            'Kategori': category?.name || '',
+            'Supplier': supplier?.name || '',
+            'Deskripsi': product.description || '',
+            'Tanggal Dibuat': new Date(product.createdAt).toLocaleDateString('id-ID'),
+            'Tanggal Diubah': new Date(product.updatedAt).toLocaleDateString('id-ID'),
+            'Harga Beli': product.purchasePrice || 0,
+            'Harga Jual Min': '',
+            'Harga Jual Max': '',
+            'Harga Jual': ''
+          }];
         } else {
-          // Export each price tier as a separate row
-          product.priceTiers.forEach(tier => {
-            const row = [
-              `"${product.name.replace(/"/g, '""')}"`,
-              `"${product.productCode.replace(/"/g, '""')}"`,
-              product.stock,
-              `"${category?.name || ''}"`,
-              `"${supplier?.name || ''}"`,
-              `"${product.description ? product.description.replace(/"/g, '""') : ''}"`,
-              `"${new Date(product.createdAt).toLocaleDateString('id-ID')}"`,
-              `"${new Date(product.updatedAt).toLocaleDateString('id-ID')}"`,
-              product.purchasePrice || 0,
-              tier.minQty,
-              tier.maxQty || '', // Max quantity can be null
-              tier.price
-            ].join(',');
-            csvContent += row + '\n';
-          });
+          // Ekspor setiap tier harga sebagai baris terpisah
+          return product.priceTiers.map(tier => ({
+            'Nama': product.name,
+            'Kode': product.productCode,
+            'Stok': product.stock,
+            'Kategori': category?.name || '',
+            'Supplier': supplier?.name || '',
+            'Deskripsi': product.description || '',
+            'Tanggal Dibuat': new Date(product.createdAt).toLocaleDateString('id-ID'),
+            'Tanggal Diubah': new Date(product.updatedAt).toLocaleDateString('id-ID'),
+            'Harga Beli': product.purchasePrice || 0,
+            'Harga Jual Min': tier.minQty,
+            'Harga Jual Max': tier.maxQty || '',
+            'Harga Jual': tier.price
+          }));
         }
       });
 
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('download', `produk-${new Date().toISOString().slice(0, 10)}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setSuccess('Data produk berhasil diekspor');
+      if (format === 'excel') {
+        // Ekspor ke Excel
+        try {
+          const { utils, writeFile } = await import('xlsx');
+          const worksheet = utils.json_to_sheet(exportData);
+
+          // Atur lebar kolom untuk keterbacaan yang lebih baik
+          const colWidths = [
+            { wch: 20 }, // Nama
+            { wch: 12 }, // Kode
+            { wch: 8 },  // Stok
+            { wch: 12 }, // Kategori
+            { wch: 15 }, // Supplier
+            { wch: 30 }, // Deskripsi
+            { wch: 10 }, // Tanggal Dibuat
+            { wch: 10 }, // Tanggal Diubah
+            { wch: 15 }, // Harga Beli
+            { wch: 15 }, // Harga Jual Min
+            { wch: 15 }, // Harga Jual Max
+            { wch: 15 }  // Harga Jual
+          ];
+          worksheet['!cols'] = colWidths;
+
+          const workbook = utils.book_new();
+          utils.book_append_sheet(workbook, worksheet, 'Produk');
+
+          const fileName = `produk-${new Date().toISOString().slice(0, 10)}.xlsx`;
+          writeFile(workbook, fileName);
+        } catch (error) {
+          console.error('Error saat ekspor ke Excel:', error);
+          // Fallback ke CSV jika terjadi error
+          setTableError('Gagal ekspor ke Excel, silakan coba format lain');
+          setTimeout(() => setTableError(''), 5000);
+          return;
+        }
+      } else if (format === 'pdf') {
+        // Tampilkan pratinjau PDF sebelum download
+        setPdfPreviewData({
+          data: exportData,
+          title: 'Laporan Produk',
+          darkMode: darkMode
+        });
+        setShowPDFPreviewModal(true);
+      } else {
+        // Ekspor ke CSV (format default)
+        let csvContent = 'Nama,Kode,Stok,Kategori,Supplier,Deskripsi,Tanggal Dibuat,Tanggal Diubah,Harga Beli,Harga Jual Min,Harga Jual Max,Harga Jual\n';
+        exportData.forEach(row => {
+          const csvRow = [
+            `"${row['Nama'].replace(/"/g, '""')}"`,
+            `"${row['Kode'].replace(/"/g, '""')}"`,
+            row['Stok'],
+            `"${row['Kategori']}"`,
+            `"${row['Supplier']}"`,
+            `"${row['Deskripsi'].replace(/"/g, '""')}"`,
+            `"${row['Tanggal Dibuat']}"`,
+            `"${row['Tanggal Diubah']}"`,
+            row['Harga Beli'],
+            row['Harga Jual Min'],
+            row['Harga Jual Max'],
+            row['Harga Jual']
+          ].join(',');
+          csvContent += csvRow + '\n';
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `produk-${new Date().toISOString().slice(0, 10)}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+
+      setSuccess(`Data produk berhasil diekspor dalam format ${format.toUpperCase()}`);
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setTableError('Terjadi kesalahan saat export: ' + err.message);
@@ -271,6 +347,11 @@ export default function ProductManagement() {
     } finally {
       setExportLoading(false);
     }
+  };
+
+  // Fungsi untuk export (sekarang membuka selector format)
+  const handleExport = () => {
+    openExportFormatSelector();
   };
 
   const handleImport = async (e) => {
@@ -670,6 +751,24 @@ export default function ProductManagement() {
             </div>
           </div>
         )}
+
+        {/* Modal Export Format Selector */}
+        <ExportFormatSelector
+          isOpen={showExportFormatModal}
+          onClose={() => setShowExportFormatModal(false)}
+          onExport={handleExportWithFormat}
+          title="Produk"
+          darkMode={darkMode}
+        />
+
+        {/* Modal Preview PDF */}
+        <PDFPreviewModal
+          isOpen={showPDFPreviewModal}
+          onClose={() => setShowPDFPreviewModal(false)}
+          data={pdfPreviewData?.data}
+          title={pdfPreviewData?.title}
+          darkMode={darkMode}
+        />
       </main>
     </ProtectedRoute>
   );

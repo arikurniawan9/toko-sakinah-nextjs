@@ -1,6 +1,16 @@
 Nama,Kode,Stok,Kategori,Supplier,Deskripsi,Tanggal Dibuat,Tanggal Diubah,Harga Beli,Harga Jual Min,Harga Jual Max,Harga Jual
-"Kemeja Lengan Panjang","KLP-001",100,"Pakaian","Supplier A","Kemeja lengan panjang motif kotak","2025-01-01","2025-01-01",50000,1,10,75000
-"Kemeja Lengan Panjang","KLP-001",100,"Pakaian","Supplier A","Kemeja lengan panjang motif kotak","2025-01-01","2025-01-01",50000,11,20,70000
-"Kemeja Lengan Panjang","KLP-001",100,"Pakaian","Supplier A","Kemeja lengan panjang motif kotak","2025-01-01","2025-01-01",50000,21,"",65000
-"Celana Jeans","CJ-001",50,"Pakaian","Supplier B","Celana jeans model slim fit","2025-01-01","2025-01-01",80000,1,5,120000
-"Celana Jeans","CJ-001",50,"Pakaian","Supplier B","Celana jeans model slim fit","2025-01-01","2025-01-01",80000,6,"",100000
+"Smartphone Samsung Galaxy A14","SM-A14",50,"Electronics","PT Jaya Elektronik","Smartphone Android dengan kamera 50MP","2025-01-15","2025-01-15",2500000,1,2,3200000
+"Kemeja Denim Pria","KDP-001",100,"Fashion","PT Fashion Indo","Kemeja denim berkualitas tinggi","2025-01-15","2025-01-15",85000,1,5,150000
+"Laptop ASUS Vivobook 14","A412",25,"Electronics","PT Tech Solution","Laptop tipis dan ringan untuk produktivitas","2025-01-16","2025-01-16",6500000,1,1,7800000
+"Roti Tawar Tropicana Slim","RT-003",200,"Food","PT Tropicana Sehat","Roti gandum sehat tanpa gula","2025-01-16","2025-01-16",15000,1,10,22000
+"Sepatu Sport Nike Air Max","SN-MAX",60,"Footwear","PT Athlete Wear","Sepatu olahraga nyaman dan stylish","2025-01-17","2025-01-17",450000,1,3,580000
+"Buku Novel Best Seller","BN-BS001",75,"Books","PT Literasi Nusantara","Novel terlaris terbitan tahun ini","2025-01-17","2025-01-17",95000,1,1,135000
+"Kopi Arabica Gayo Premium","KA-GAYO",90,"Beverages","PT Coffee Plantation","Kopi organik dari dataran tinggi Aceh","2025-01-18","2025-01-18",45000,1,5,75000
+"Sampo Anti Ketombe","SANK-002",120,"Personal Care","PT Beauty Care","Sampo herbal untuk kulit kepala sehat","2025-01-18","2025-01-18",12000,1,20,18000
+"Tas Ransel Laptop Elegant","TR-ELEG",40,"Bags","PT Bag Collection","Tas ransel multifungsi untuk laptop","2025-01-19","2025-01-19",200000,1,2,300000
+"Mainan Edukatif LEGO Duplo","ML-DPL",30,"Toys","PT Fun Learning","Mainan edukatif untuk anak-anak","2025-01-19","2025-01-19",180000,1,1,250000
+"Susu Segar Ultra Milk","SUM-004",150,"Food","PT Dairy Indonesia","Susu segar UHT berkualitas","2025-01-20","2025-01-20",8000,1,50,12000
+"Pasta Gigi Herbal","PG-HRL",180,"Personal Care","PT Smile Care","Pasta gigi dengan ekstrak daun sirih","2025-01-20","2025-01-20",10000,1,10,15000
+"Obat Flu Biasa","OFB-004",200,"Pharmacy","PT Medika Health","Obat flu aman dan efektif","2025-01-21","2025-01-21",8000,1,1,12000
+"Celana Jeans Wanita","CJW-002",80,"Fashion","PT Mode Raya","Celana jeans wanita modern","2025-01-21","2025-01-21",120000,1,3,200000
+"Sabun Mandi Cair","SMC-003",110,"Personal Care","PT Hygiene Plus","Sabun cair dengan ekstrak lidah buaya","2025-01-22","2025-01-22",15000,1,8,22000

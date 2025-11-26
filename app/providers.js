@@ -9,6 +9,7 @@ import AutoLogoutProvider from '@/components/AutoLogoutProvider';
 
 import { DashboardCustomizationProvider } from '@/components/DashboardCustomizationContext';
 import { UserThemeProvider } from '@/components/UserThemeContext';
+import ShopNameUpdater from '@/components/ShopNameUpdater';
 
 export function Providers({ children }) {
   return (
@@ -19,6 +20,7 @@ export function Providers({ children }) {
             <NotificationProvider>
               <SessionProvider>
                 <AutoLogoutProvider>
+                  <ShopNameUpdater />
                   {children}
                 </AutoLogoutProvider>
               </SessionProvider>

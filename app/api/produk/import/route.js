@@ -187,10 +187,26 @@ export async function POST(request) {
           });
 
           if (!defaultSupplier) {
+            // Generate a unique code for the default supplier
+            const baseCode = "NO-SUP";
+            let uniqueCode = baseCode;
+            let counter = 1;
+
+            // Check if base code exists, increment if needed
+            while(await prisma.supplier.findFirst({
+              where: {
+                code: uniqueCode,
+                storeId: session.user.storeId
+              }
+            })) {
+              uniqueCode = `${baseCode}-${counter}`;
+              counter++;
+            }
+
             defaultSupplier = await prisma.supplier.create({
               data: {
                 name: "Tidak Ada",
-                code: "NO-SUP",
+                code: uniqueCode,
                 store: { connect: { id: session.user.storeId } }
               }
             });

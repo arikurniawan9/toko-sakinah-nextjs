@@ -7,6 +7,7 @@ const ThemeContext = createContext();
 export const ThemeProvider = ({ children }) => {
   const [themeColor, setThemeColor] = useState('#8B5CF6'); // Default purple color
   const [shopName, setShopName] = useState('Toko Sakinah');
+  const [currentShopName, setCurrentShopName] = useState(null); // Store the shop name from session
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -24,6 +25,7 @@ export const ThemeProvider = ({ children }) => {
       console.error('Failed to fetch theme settings:', error);
       // fallback to default color in case of error
       setThemeColor('#8B5CF6');
+      setShopName('Toko Sakinah');
     }
   }, []);
 
@@ -32,8 +34,11 @@ export const ThemeProvider = ({ children }) => {
   }, [fetchSettings]);
 
   const updateShopName = (newName) => {
-    setShopName(newName);
+    setCurrentShopName(newName); // Store session-based shop name
   };
+
+  // Determine the actual shop name to display (use session-based if available, otherwise default)
+  const displayShopName = currentShopName || shopName;
 
   // Update the theme color variable without affecting dark mode
   useEffect(() => {
@@ -41,7 +46,13 @@ export const ThemeProvider = ({ children }) => {
   }, [themeColor]);
 
   return (
-    <ThemeContext.Provider value={{ themeColor, shopName, updateShopName, fetchSettings }}>
+    <ThemeContext.Provider value={{
+      themeColor,
+      shopName: displayShopName,
+      updateShopName,
+      fetchSettings,
+      resetToDefaultShopName: () => setCurrentShopName(null) // Function to reset to default
+    }}>
       {children}
     </ThemeContext.Provider>
   );

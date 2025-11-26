@@ -221,10 +221,10 @@ export default function CategoryManagementPage() {
       sortable: true
     },
     {
-      key: 'productCount',
+      key: 'jumlahProduk',
       title: 'Jumlah Produk',
       sortable: true,
-      render: (value) => value || 0,
+      render: (value, row) => row._count?.products || 0,
     },
     {
       key: 'createdAt',

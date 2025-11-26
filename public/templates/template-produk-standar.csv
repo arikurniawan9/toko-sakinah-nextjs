@@ -1,6 +1,17 @@
-Kode,Nama,Kategori,Deskripsi,Harga Beli,Harga Jual
-"KLP-001","Kemeja Lengan Panjang","Pakaian","Kemeja lengan panjang motif kotak",50000,75000
-"CJ-001","Celana Jeans","Pakaian","Celana jeans model slim fit",80000,120000
-"TR-001","Tas Ransel","Aksesoris","Tas ransel untuk laptop 15 inci",120000,200000
-"BT-001","Buku Tulis","Alat Tulis","Buku tulis 38 lembar bergaris",5000,8000
-"SS-001","Sepatu Sandal","Sepatu","Sandal jepit pria",30000,50000
+Nama,Kode,Stok,Kategori,Supplier,Deskripsi,Tanggal Dibuat,Tanggal Diubah,Harga Beli,Harga Jual Min,Harga Jual Max,Harga Jual
+"Smartphone Oppo Reno 10",OPP-R10,25,"Electronics","PT Distributor Mobile","Smartphone dengan triple camera 64MP","2025-03-01","2025-03-01",3200000,1,3,3900000
+"Smartphone Oppo Reno 10",OPP-R10,25,"Electronics","PT Distributor Mobile","Smartphone dengan triple camera 64MP","2025-03-01","2025-03-01",3200000,4,10,3700000
+"Smartphone Oppo Reno 10",OPP-R10,25,"Electronics","PT Distributor Mobile","Smartphone dengan triple camera 64MP","2025-03-01","2025-03-01",3200000,11,"",3500000
+"Meja Makan Kayu Jati 6 Kursi",MMK-J6K,10,"Furniture","PT Mebel Kayu Jati","Meja makan premium dari kayu jati solid","2025-03-02","2025-03-02",3500000,1,1,4200000
+"Kipas Angin Dinding Remote",KADR-27,50,"Home Appliance","PT Elektronik Rumah","Kipas angin dinding dengan remote control","2025-03-03","2025-03-03",180000,1,8,220000
+"Kipas Angin Dinding Remote",KADR-27,50,"Home Appliance","PT Elektronik Rumah","Kipas angin dinding dengan remote control","2025-03-03","2025-03-03",180000,9,"",210000
+"Sepatu Sandal Pantofel Pria",SSP-PRIA,75,"Footwear","PT Fashion Sejuk","Sepatu sandal formal untuk pria","2025-03-04","2025-03-04",95000,1,5,140000
+"Sepatu Sandal Pantofel Pria",SSP-PRIA,75,"Footwear","PT Fashion Sejuk","Sepatu sandal formal untuk pria","2025-03-04","2025-03-04",95000,6,"",125000
+"Parfum Original Tester EDT",POTE-EDT,120,"Personal Care","PT Parfum Import","Parfum original tester EDT 100ml","2025-03-05","2025-03-05",45000,1,15,75000
+"Parfum Original Tester EDT",POTE-EDT,120,"Personal Care","PT Parfum Import","Parfum original tester EDT 100ml","2025-03-05","2025-03-05",45000,16,"",65000
+"Speaker Karaoke Portable",SKP-BTB,40,"Electronics","PT Audio Party","Speaker karaoke portable dengan mic wireless","2025-03-06","2025-03-06",850000,1,2,1000000
+"Speaker Karaoke Portable",SKP-BTB,40,"Electronics","PT Audio Party","Speaker karaoke portable dengan mic wireless","2025-03-06","2025-03-06",850000,3,"",950000
+"Kompor Gas 2 Tungku Inverter",KGT-INVR,60,"Home Appliance","PT Alat Dapur Modern","Kompor gas hemat gas dengan per api besar","2025-03-07","2025-03-07",280000,1,4,350000
+"Kompor Gas 2 Tungku Inverter",KGT-INVR,60,"Home Appliance","PT Alat Dapur Modern","Kompor gas hemat gas dengan per api besar","2025-03-07","2025-03-07",280000,5,"",330000
+"Boneka Edukasi Anak TK",BEAT-KIDS,90,"Toys","PT Mainan Edukatif","Boneka edukasi untuk perkembangan anak usia TK","2025-03-08","2025-03-08",75000,1,10,110000
+"Boneka Edukasi Anak TK",BEAT-KIDS,90,"Toys","PT Mainan Edukatif","Boneka edukasi untuk perkembangan anak usia TK","2025-03-08","2025-03-08",75000,11,"",95000

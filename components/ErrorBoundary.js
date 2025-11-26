@@ -1,4 +1,3 @@
-// components/ErrorBoundary.js
 'use client';
 
 import { Component } from 'react';
@@ -16,7 +15,7 @@ class ErrorBoundary extends Component {
 
   componentDidCatch(error, errorInfo) {
     // You can also log the error to an error reporting service
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    console.error('Error caught by boundary:', error, errorInfo);
     this.setState({
       error: error,
       errorInfo: errorInfo
@@ -27,13 +26,13 @@ class ErrorBoundary extends Component {
     if (this.state.hasError) {
       // You can render any custom fallback UI
       return (
-        <div className="flex items-center justify-center min-h-screen bg-red-50 dark:bg-red-900/20 p-4">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-red-600 dark:text-red-400 mb-4">Terjadi Kesalahan</h2>
-            <p className="text-red-500 dark:text-red-300 mb-4">Mohon maaf, terjadi kesalahan tak terduga dalam aplikasi.</p>
+        <div className="min-h-screen flex items-center justify-center bg-red-50 p-4">
+          <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6 text-center">
+            <h2 className="text-xl font-bold text-red-600 mb-2">Terjadi Kesalahan</h2>
+            <p className="text-gray-600 mb-4">Aplikasi mengalami masalah teknis. Silakan refresh halaman atau coba kembali.</p>
             <button 
               onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
             >
               Muat Ulang Halaman
             </button>
