@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Plus, Download, Upload, Trash2, Folder, Edit, Eye } from 'lucide-react';
+import { Search, Plus, Download, Upload, Trash2, Folder, Edit, Eye, Hash } from 'lucide-react';
 import ProtectedRoute from '../../../components/ProtectedRoute';
 import { useUserTheme } from '../../../components/UserThemeContext';
 import { useSession } from 'next-auth/react'; // Import useSession
@@ -22,6 +22,7 @@ import ConfirmationModal from '../../../components/ConfirmationModal';
 import Breadcrumb from '../../../components/Breadcrumb';
 import ExportFormatSelector from '../../../components/export/ExportFormatSelector';
 import PDFPreviewModal from '../../../components/export/PDFPreviewModal';
+import { generateProductBarcodePDF } from '../../../components/admin/ProductBarcodePDFGenerator';
 
 export default function ProductManagement() {
   const { userTheme } = useUserTheme();
@@ -354,6 +355,39 @@ export default function ProductManagement() {
     openExportFormatSelector();
   };
 
+  // Fungsi untuk mencetak barcode produk
+  const handlePrintBarcode = () => {
+    try {
+      // Jika tidak ada produk yang dipilih, cetak semua
+      const productsToPrint = selectedRows.length > 0
+        ? products.filter(p => selectedRows.includes(p.id))
+        : products;
+
+      if (productsToPrint.length === 0) {
+        toast.warn('Tidak ada produk untuk dicetak barcode-nya');
+        return;
+      }
+
+      // Panggil fungsi untuk menghasilkan PDF dengan barcode
+      generateProductBarcodePDF(productsToPrint, {
+        barcodeWidth: 50,      // Lebar barcode dalam mm
+        barcodeHeight: 15,     // Tinggi barcode dalam mm
+        labelWidth: 70,        // Lebar label dalam mm
+        labelHeight: 25,       // Tinggi label dalam mm
+        margin: 5,             // Margin dalam mm
+        fontSize: 8,           // Ukuran font dalam pt
+        darkMode: darkMode,
+        includeProductName: true,   // Sertakan nama produk
+        includeProductCode: true    // Sertakan kode produk
+      });
+
+      toast.success(`Berhasil mencetak barcode untuk ${productsToPrint.length} produk`);
+    } catch (error) {
+      console.error('Error printing barcode:', error);
+      toast.error('Gagal mencetak barcode: ' + error.message);
+    }
+  };
+
   const handleImport = async (e) => {
     if (!isAdmin) return; // Prevent import if not admin
 
@@ -589,6 +623,14 @@ export default function ProductManagement() {
                   >
                     <Folder className="h-4 w-4" />
                   </a>
+                </Tooltip>
+                <Tooltip content="Cetak barcode produk">
+                  <button
+                    onClick={handlePrintBarcode}
+                    className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${darkMode ? 'text-gray-200 bg-gray-800 hover:bg-gray-700' : 'text-gray-700 bg-gray-100 hover:bg-gray-200'}`}
+                  >
+                    <Hash className="h-4 w-4" />
+                  </button>
                 </Tooltip>
                 <Tooltip content="Export data ke file">
                   <button

@@ -25,8 +25,14 @@ export async function GET(request) {
     // Calculate offset for pagination
     const offset = (page - 1) * limit;
 
+    const storeId = session.user.storeId;
+    if (!storeId) {
+      return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
+    }
+
     // Build where condition for filtering
     const whereCondition = {
+      storeId: storeId, // <-- MULTI-TENANCY FIX
       AND: [
         // Search condition - search in amount, description, category name, or user name
         search ? {
@@ -130,9 +136,15 @@ export async function POST(request) {
       }
     }
 
+    const storeId = session.user.storeId;
+    if (!storeId) {
+      return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
+    }
+
     // Create expense
     const newExpense = await prisma.expense.create({
       data: {
+        storeId: storeId, // <-- MULTI-TENANCY FIX
         expenseCategoryId,
         amount,
         description: description || null,
@@ -181,13 +193,21 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'Jumlah pengeluaran harus lebih besar dari 0' }, { status: 400 });
     }
 
-    // Check if expense exists
-    const existingExpense = await prisma.expense.findUnique({
-      where: { id }
+    const storeId = session.user.storeId;
+    if (!storeId) {
+      return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
+    }
+
+    // Check if expense exists and belongs to the store
+    const existingExpense = await prisma.expense.findFirst({
+      where: { 
+        id: id,
+        storeId: storeId // <-- MULTI-TENANCY FIX
+      }
     });
 
     if (!existingExpense) {
-      return NextResponse.json({ error: 'Pengeluaran tidak ditemukan' }, { status: 404 });
+      return NextResponse.json({ error: 'Pengeluaran tidak ditemukan atau Anda tidak memiliki akses' }, { status: 404 });
     }
 
     // Convert date string to proper Date object if needed
@@ -201,7 +221,7 @@ export async function PUT(request) {
 
     // Update expense
     const updatedExpense = await prisma.expense.update({
-      where: { id },
+      where: { id }, // id is unique, so this is safe after the check above
       data: {
         expenseCategoryId,
         amount,
@@ -241,18 +261,26 @@ export async function DELETE(request) {
       return NextResponse.json({ error: 'ID pengeluaran wajib diisi' }, { status: 400 });
     }
 
-    // Check if expense exists
-    const existingExpense = await prisma.expense.findUnique({
-      where: { id }
+    const storeId = session.user.storeId;
+    if (!storeId) {
+      return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
+    }
+
+    // Check if expense exists and belongs to the store
+    const existingExpense = await prisma.expense.findFirst({
+      where: { 
+        id: id,
+        storeId: storeId // <-- MULTI-TENANCY FIX
+      }
     });
 
     if (!existingExpense) {
-      return NextResponse.json({ error: 'Pengeluaran tidak ditemukan' }, { status: 404 });
+      return NextResponse.json({ error: 'Pengeluaran tidak ditemukan atau Anda tidak memiliki akses' }, { status: 404 });
     }
 
     // Delete the expense
     await prisma.expense.delete({
-      where: { id }
+      where: { id } // id is unique, so this is safe after the check above
     });
 
     return NextResponse.json({

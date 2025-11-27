@@ -18,18 +18,24 @@ export async function GET(request) {
     const limit = parseInt(searchParams.get('limit')) || 10;
     const search = searchParams.get('search') || '';
 
+    const storeId = session.user.storeId;
+    if (!storeId) {
+      return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
+    }
+
     // Calculate offset for pagination
     const offset = (page - 1) * limit;
 
     // Build where condition for filtering
-    const whereCondition = search
-      ? {
-          OR: [
-            { name: { contains: search } },
-            { description: { contains: search } }
-          ]
-        }
-      : {};
+    const whereCondition = {
+      storeId: storeId, // <-- MULTI-TENANCY FIX
+      ...(search && {
+        OR: [
+          { name: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } }
+        ]
+      })
+    };
 
     // Get expense categories with pagination and include expense count
     const categories = await prisma.expenseCategory.findMany({
@@ -87,20 +93,31 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Nama kategori wajib diisi' }, { status: 400 });
     }
 
-    // Check if category name already exists
+    const storeId = session.user.storeId;
+    if (!storeId) {
+      return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
+    }
+
+    // Check if category name already exists for this store
     const existingCategory = await prisma.expenseCategory.findUnique({
-      where: { name }
+      where: { 
+        name_storeId: {
+          name: name,
+          storeId: storeId,
+        }
+      }
     });
 
     if (existingCategory) {
-      return NextResponse.json({ error: 'Nama kategori sudah digunakan' }, { status: 409 });
+      return NextResponse.json({ error: 'Nama kategori sudah digunakan di toko ini' }, { status: 409 });
     }
 
     // Create new expense category
     const newCategory = await prisma.expenseCategory.create({
       data: {
         name,
-        description: description || null
+        description: description || null,
+        storeId: storeId, // <-- MULTI-TENANCY FIX
       }
     });
 
@@ -128,30 +145,39 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'ID dan nama kategori wajib diisi' }, { status: 400 });
     }
 
-    // Check if category exists
-    const existingCategory = await prisma.expenseCategory.findUnique({
-      where: { id }
+    const storeId = session.user.storeId;
+    if (!storeId) {
+      return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
+    }
+
+    // Check if category exists and belongs to the store
+    const existingCategory = await prisma.expenseCategory.findFirst({
+      where: { 
+        id: id,
+        storeId: storeId, // <-- MULTI-TENANCY FIX
+      }
     });
 
     if (!existingCategory) {
-      return NextResponse.json({ error: 'Kategori pengeluaran tidak ditemukan' }, { status: 404 });
+      return NextResponse.json({ error: 'Kategori pengeluaran tidak ditemukan atau Anda tidak memiliki akses' }, { status: 404 });
     }
 
-    // Check if new name already exists (excluding current category)
+    // Check if new name already exists for this store (excluding current category)
     const duplicateName = await prisma.expenseCategory.findFirst({
       where: {
         name,
+        storeId: storeId, // <-- MULTI-TENANCY FIX
         id: { not: id } // Exclude current category
       }
     });
 
     if (duplicateName) {
-      return NextResponse.json({ error: 'Nama kategori sudah digunakan' }, { status: 409 });
+      return NextResponse.json({ error: 'Nama kategori sudah digunakan di toko ini' }, { status: 409 });
     }
 
     // Update expense category
     const updatedCategory = await prisma.expenseCategory.update({
-      where: { id },
+      where: { id }, // id is unique, check above is sufficient
       data: {
         name,
         description: description || null
@@ -183,32 +209,42 @@ export async function DELETE(request) {
       id = body.id;
     }
 
+    const storeId = session.user.storeId;
+    if (!storeId) {
+      return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
+    }
+
     if (!id) {
       return NextResponse.json({ error: 'ID kategori wajib diisi' }, { status: 400 });
     }
 
-    // Check if category exists
-    const existingCategory = await prisma.expenseCategory.findUnique({
-      where: { id },
+    // Check if category exists and belongs to the store
+    const existingCategory = await prisma.expenseCategory.findFirst({
+      where: { 
+        id: id,
+        storeId: storeId, // <-- MULTI-TENANCY FIX
+      },
       include: {
-        expenses: true // Include related expenses to check if any exist
+        _count: {
+          select: { expenses: true }
+        }
       }
     });
 
     if (!existingCategory) {
-      return NextResponse.json({ error: 'Kategori pengeluaran tidak ditemukan' }, { status: 404 });
+      return NextResponse.json({ error: 'Kategori pengeluaran tidak ditemukan atau Anda tidak memiliki akses' }, { status: 404 });
     }
 
     // Check if category has any associated expenses
-    if (existingCategory.expenses && existingCategory.expenses.length > 0) {
+    if (existingCategory._count.expenses > 0) {
       return NextResponse.json({
-        error: `Tidak dapat menghapus kategori karena terdapat ${existingCategory.expenses.length} pengeluaran yang terkait`
+        error: `Tidak dapat menghapus kategori karena terdapat ${existingCategory._count.expenses} pengeluaran yang terkait`
       }, { status: 400 });
     }
 
     // Delete the expense category
     await prisma.expenseCategory.delete({
-      where: { id }
+      where: { id } // id is unique, check above is sufficient
     });
 
     return NextResponse.json({

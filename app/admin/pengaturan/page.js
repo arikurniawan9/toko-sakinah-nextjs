@@ -20,56 +20,111 @@ export default function PengaturanIndex() {
   const [activeTab, setActiveTab] = useState('toko'); // Default to 'toko' tab
 
   // Import komponen langsung di sini
-  const TokoSettings = () => (
-    <div className={`p-6 rounded-xl shadow ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-      <h3 className={`text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Pengaturan Toko</h3>
+  const TokoSettings = () => {
+    const [settings, setSettings] = useState({ shopName: '', address: '', phone: '' });
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
 
-      <div className="space-y-4">
-        <div>
-          <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Nama Toko</label>
-          <input
-            type="text"
-            className={`w-full px-3 py-2 border rounded-md ${
-              darkMode
-                ? 'bg-gray-700 border-gray-600 text-white'
-                : 'bg-white border-gray-300 text-gray-900'
-            }`}
-            placeholder="Nama toko Anda"
-          />
+    useEffect(() => {
+      const fetchSettings = async () => {
+        setLoading(true);
+        try {
+          const response = await fetch('/api/pengaturan');
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.error || 'Gagal mengambil pengaturan');
+          }
+          setSettings(data);
+        } catch (error) {
+          toast.error(error.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchSettings();
+    }, []);
+
+    const handleInputChange = (e) => {
+      const { name, value } = e.target;
+      setSettings(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSave = async () => {
+      setSaving(true);
+      try {
+        const response = await fetch('/api/pengaturan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(settings),
+        });
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || 'Gagal menyimpan pengaturan');
+        }
+        toast.success('Pengaturan berhasil disimpan!');
+        // Optionally refresh theme context if needed
+        window.location.reload(); // Simple way to refresh all contexts
+      } catch (error) {
+        toast.error(error.message);
+      } finally {
+        setSaving(false);
+      }
+    };
+    
+    if (loading) {
+      return (
+        <div className="flex justify-center items-center p-6">
+          <Loader2 className="w-8 h-8 animate-spin" />
         </div>
+      );
+    }
 
-        <div>
-          <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Alamat</label>
-          <textarea
-            rows="3"
-            className={`w-full px-3 py-2 border rounded-md ${
-              darkMode
-                ? 'bg-gray-700 border-gray-600 text-white'
-                : 'bg-white border-gray-300 text-gray-900'
-            }`}
-            placeholder="Alamat toko Anda"
-          ></textarea>
+    return (
+      <div className={`p-6 rounded-xl shadow ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+        <h3 className={`text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Pengaturan Toko</h3>
+        <div className="space-y-4">
+          <div>
+            <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Nama Toko</label>
+            <input
+              type="text"
+              name="shopName"
+              value={settings.shopName || ''}
+              onChange={handleInputChange}
+              className={`w-full px-3 py-2 border rounded-md ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              placeholder="Nama toko Anda"
+            />
+          </div>
+          <div>
+            <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Alamat</label>
+            <textarea
+              rows="3"
+              name="address"
+              value={settings.address || ''}
+              onChange={handleInputChange}
+              className={`w-full px-3 py-2 border rounded-md ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              placeholder="Alamat toko Anda"
+            ></textarea>
+          </div>
+          <div>
+            <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Telepon</label>
+            <input
+              type="text"
+              name="phone"
+              value={settings.phone || ''}
+              onChange={handleInputChange}
+              className={`w-full px-3 py-2 border rounded-md ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              placeholder="Nomor telepon toko"
+            />
+          </div>
+          <button onClick={handleSave} disabled={saving} className={`flex items-center justify-center px-4 py-2 rounded-md text-white ${darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-600 hover:bg-blue-700'} disabled:bg-blue-400`}>
+            {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+            {saving ? 'Menyimpan...' : 'Simpan Pengaturan Toko'}
+          </button>
         </div>
-
-        <div>
-          <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Telepon</label>
-          <input
-            type="text"
-            className={`w-full px-3 py-2 border rounded-md ${
-              darkMode
-                ? 'bg-gray-700 border-gray-600 text-white'
-                : 'bg-white border-gray-300 text-gray-900'
-            }`}
-            placeholder="Nomor telepon toko"
-          />
-        </div>
-
-        <button className={`px-4 py-2 rounded-md text-white ${darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-600 hover:bg-blue-700'}`}>
-          Simpan Pengaturan Toko
-        </button>
       </div>
-    </div>
-  );
+    );
+  };
 
   const SistemSettings = () => {
     const [loading, setLoading] = useState({

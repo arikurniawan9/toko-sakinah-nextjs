@@ -1,0 +1,16 @@
+.env.local :
+
+# Database
+
+DATABASE_URL="postgres://ed4354f25faa70f86b7f0cfbe85abf55508025ea54e9aa9513541fe1ae6871ce:sk_rL_ppICqbPbRVr82k19G6@db.prisma.io:5432/postgres?sslmode=require"
+
+.env :
+
+# Database
+
+DATABASE_URL="prisma+postgres://accelerate.prisma-data.net/?api_key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqd3RfaWQiOjEsInNlY3VyZV9rZXkiOiJza19TbjFvMGI3Ym53alNTdmt6VHo0bk8iLCJhcGlfa2V5IjoiMDFLQTZKRFpERENFUERUU1NZQ1JGSFcxREMiLCJ0ZW5hbnRfaWQiOiJlZDQzNTRmMjVmYWE3MGY4NmI3ZjBjZmJlODVhYmY1NTUwODAyNWVhNTRlOWFhOTUxMzU0MWZlMWFlNjg3MWNlIiwiaW50ZXJuYWxfc2VjcmV0IjoiNDRiNzU1YTYtMDQyOS00YTYyLTljMWQtNzRiNDM5YjFmYTAwIn0.Vo_inyPvLzauMS8vS0GHV_2Jcfe6KGU8eXxVo_0Y8XY"
+
+# Authentication
+
+NEXTAUTH_URL="https://toko-sakinah-nextjs.vercel.app/"
+NEXTAUTH_SECRET="Ql5v5qFILcOuJ36jAXZz5fe5ejHVvT/H86OCpq+TzG8="

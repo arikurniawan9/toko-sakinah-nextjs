@@ -13,14 +13,22 @@ export async function GET(request) {
   }
 
   try {
+    // Ambil storeId dari session untuk filter
+    const storeId = session.user.storeId;
+    if (!storeId) {
+      return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
+    }
+
     // Ambil query parameter
     const { searchParams } = new URL(request.url);
     const memberId = searchParams.get('memberId');
     const limit = parseInt(searchParams.get('limit') || '10');
     const page = parseInt(searchParams.get('page') || '1');
 
-    // Buat filter berdasarkan memberId jika disediakan
-    const filter = {};
+    // Buat filter berdasarkan storeId dan memberId jika disediakan
+    const filter = {
+      storeId: storeId,
+    };
     if (memberId) {
       filter.memberId = memberId;
     }

@@ -22,14 +22,14 @@ export default function RiwayatPenjualan() {
     const fetchTransactions = async () => {
       try {
         setLoading(true);
-        const response = await fetch('/api/transactions/sales');
+        const response = await fetch('/api/transaksi');
         
         if (!response.ok) {
           throw new Error('Failed to fetch transactions');
         }
         
         const data = await response.json();
-        setTransactions(data);
+        setTransactions(data.transactions);
       } catch (err) {
         console.error('Error fetching transactions:', err);
         setError('Failed to load transactions: ' + err.message);
@@ -44,9 +44,9 @@ export default function RiwayatPenjualan() {
   // Filter transactions based on search and date range
   const filteredTransactions = transactions.filter(transaction => {
     const matchesSearch = 
-      transaction.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transaction.cashierName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transaction.customerName.toLowerCase().includes(searchTerm.toLowerCase());
+      (transaction.invoiceNumber?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (transaction.cashier?.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (transaction.member?.name?.toLowerCase() || '').includes(searchTerm.toLowerCase());
     
     const transactionDate = new Date(transaction.date);
     const startDate = dateRange.start ? new Date(dateRange.start) : null;
@@ -220,13 +220,13 @@ export default function RiwayatPenjualan() {
                         #{transaction.id.substring(0, 8)}
                       </td>
                       <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>
-                        {transaction.cashierName}
+                        {transaction.cashier?.name || 'N/A'}
                       </td>
                       <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>
                         {formatDate(transaction.date)}
                       </td>
                       <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                        {formatCurrency(transaction.totalAmount)}
+                        {formatCurrency(transaction.total)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(transaction.status)}`}>
@@ -298,11 +298,11 @@ export default function RiwayatPenjualan() {
                 <div className="grid grid-cols-2 gap-4 print:hidden">
                   <div>
                     <label className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Kasir</label>
-                    <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedTransaction.cashierName}</p>
+                    <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedTransaction.cashier?.name || 'N/A'}</p>
                   </div>
                   <div>
                     <label className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Pelanggan</label>
-                    <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedTransaction.customerName}</p>
+                    <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedTransaction.member?.name || 'Pelanggan Umum'}</p>
                   </div>
                 </div>
                 
@@ -317,7 +317,7 @@ export default function RiwayatPenjualan() {
                   </div>
                   <div>
                     <label className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Total Keseluruhan</label>
-                    <p className={`mt-1 text-sm font-bold ${darkMode ? 'text-green-400' : 'text-green-600'}`}>{formatCurrency(selectedTransaction.totalAmount)}</p>
+                    <p className={`mt-1 text-sm font-bold ${darkMode ? 'text-green-400' : 'text-green-600'}`}>{formatCurrency(selectedTransaction.total)}</p>
                   </div>
                 </div>
                 
@@ -382,16 +382,16 @@ export default function RiwayatPenjualan() {
                                 <div class="transaction-info">
                                   <p>ID: #${selectedTransaction.id.substring(0, 8)}</p>
                                   <p>${formatDate(selectedTransaction.date)}</p>
-                                  <p>Kasir: ${selectedTransaction.cashierName}</p>
-                                  ${selectedTransaction.customerName !== '-' ? `<p>Pelanggan: ${selectedTransaction.customerName}</p>` : ''}
+                                  <p>Kasir: ${selectedTransaction.cashier?.name || 'N/A'}</p>
+                                  ${selectedTransaction.customerName !== '-' ? `<p>Pelanggan: ${selectedTransaction.member?.name || 'Pelanggan Umum'}</p>` : ''}
                                 </div>
                               </div>
                               
                               <div class="items">
-                                ${selectedTransaction.items?.map(item => `
+                                ${selectedTransaction.saleDetails?.map(item => `
                                   <div class="item-row">
                                     <div>
-                                      <span>${item.productName.substring(0, 15)}${item.productName.length > 15 ? '...' : ''}</span>
+                                      <span>${item.product.name.substring(0, 15)}${item.product.name.length > 15 ? '...' : ''}</span>
                                       <span style="font-size: 9px;">(${item.quantity} x ${formatCurrency(item.price)})</span>
                                     </div>
                                     <span>${formatCurrency(item.subtotal)}</span>
@@ -402,7 +402,7 @@ export default function RiwayatPenjualan() {
                               <div style="margin: 5px 0;">
                                 <div class="summary-row">
                                   <span>Total Awal:</span>
-                                  <span>${formatCurrency((selectedTransaction.totalAmount || 0) + (selectedTransaction.discount || 0))}</span>
+                                  <span>${formatCurrency((selectedTransaction.total || 0) + (selectedTransaction.discount || 0))}</span>
                                 </div>
                                 ${(selectedTransaction.discount || 0) > 0 ? `<div class="summary-row discount">
                                   <span>Diskon Member:</span>
@@ -414,7 +414,7 @@ export default function RiwayatPenjualan() {
                                 </div>` : ''}
                                 ${(selectedTransaction.tax || 0) > 0 ? `<div class="summary-row">
                                   <span>PPN ${(() => {
-                                    const taxRate = selectedTransaction.totalAmount ? (selectedTransaction.tax / selectedTransaction.totalAmount) * 100 : 0;
+                                    const taxRate = selectedTransaction.total ? (selectedTransaction.tax / selectedTransaction.total) * 100 : 0;
                                     return taxRate.toFixed(0);
                                   })()}%:</span>
                                   <span>${formatCurrency(selectedTransaction.tax)}</span>
@@ -426,7 +426,7 @@ export default function RiwayatPenjualan() {
                               <div class="total">
                                 <div class="summary-row">
                                   <span>Total:</span>
-                                  <span>${formatCurrency(selectedTransaction.totalAmount)}</span>
+                                  <span>${formatCurrency(selectedTransaction.total)}</span>
                                 </div>
                               </div>
                               
@@ -469,10 +469,10 @@ export default function RiwayatPenjualan() {
                   {/* Tabel item untuk tampilan cetak */}
                   <div className="print:block hidden">
                     <div className="space-y-1">
-                      {selectedTransaction.items?.map((item, index) => (
+                      {selectedTransaction.saleDetails?.map((item, index) => (
                         <div key={index} className="flex justify-between border-b pb-1">
                           <div>
-                            <span className="text-sm">{item.productName}</span>
+                            <span className="text-sm">{item.product.name}</span>
                             <span className="text-xs block">({item.quantity} x {formatCurrency(item.price)})</span>
                           </div>
                           <span className="text-sm">{formatCurrency(item.subtotal)}</span>
@@ -483,7 +483,7 @@ export default function RiwayatPenjualan() {
                     <div className="pt-1">
                       <div className="flex justify-between text-sm">
                         <span>Total Awal:</span>
-                        <span>{formatCurrency((selectedTransaction.totalAmount || 0) + (selectedTransaction.discount || 0))}</span>
+                        <span>{formatCurrency((selectedTransaction.total || 0) + (selectedTransaction.discount || 0))}</span>
                       </div>
                       {(selectedTransaction.discount || 0) > 0 && (
                         <div className="flex justify-between text-sm font-bold">
@@ -499,7 +499,7 @@ export default function RiwayatPenjualan() {
                       )}
                       {(selectedTransaction.tax || 0) > 0 && (
                         <div className="flex justify-between text-sm">
-                          <span>PPN {((selectedTransaction.tax || 0) > 0 ? ((selectedTransaction.tax / (selectedTransaction.totalAmount || 1)) * 100).toFixed(0) : 0)}%:</span>
+                          <span>PPN {((selectedTransaction.tax || 0) > 0 ? ((selectedTransaction.tax / (selectedTransaction.total || 1)) * 100).toFixed(0) : 0)}%:</span>
                           <span>{formatCurrency(selectedTransaction.tax)}</span>
                         </div>
                       )}
@@ -508,7 +508,7 @@ export default function RiwayatPenjualan() {
                     <div className="border-t pt-2 mt-2">
                       <div className="flex justify-between font-bold text-base">
                         <span>Total:</span>
-                        <span>{formatCurrency(selectedTransaction.totalAmount)}</span>
+                        <span>{formatCurrency(selectedTransaction.total)}</span>
                       </div>
                       
                       <div className="pt-1">
@@ -536,9 +536,9 @@ export default function RiwayatPenjualan() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
-                        {selectedTransaction.items?.map((item, index) => (
+                        {selectedTransaction.saleDetails?.map((item, index) => (
                           <tr key={index}>
-                            <td className={`px-4 py-2 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>{item.productName}</td>
+                            <td className={`px-4 py-2 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>{item.product.name}</td>
                             <td className={`px-4 py-2 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>{item.quantity}</td>
                             <td className={`px-4 py-2 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>{formatCurrency(item.price)}</td>
                             <td className={`px-4 py-2 text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(item.subtotal)}</td>
