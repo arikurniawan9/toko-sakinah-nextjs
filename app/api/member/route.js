@@ -19,16 +19,28 @@ export async function GET(request) {
     const page = parseInt(searchParams.get('page') || '1');
     const search = searchParams.get('search') || '';
 
+    // Determine the storeId from the user's session
+    const storeId = session.user.storeId;
+    if (!storeId) {
+      return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
+    }
+
     const skip = (page - 1) * limit;
 
-    const whereClause = search 
+    const baseWhereClause = {
+      storeId: storeId,
+    };
+
+    const whereClause = search
       ? {
+          ...baseWhereClause,
           OR: [
-            { name: { contains: search } },
-            { phone: { contains: search } },
+            { name: { contains: search, mode: 'insensitive' } },
+            { phone: { contains: search, mode: 'insensitive' } },
+            { code: { contains: search, mode: 'insensitive' } },
           ],
         }
-      : {};
+      : baseWhereClause;
 
     const [members, total] = await Promise.all([
       prisma.member.findMany({
@@ -103,7 +115,7 @@ export async function POST(request) {
       const storeUser = await prisma.storeUser.findFirst({
         where: {
           userId: session.user.id,
-          status: 'ACTIVE',
+          status: 'AKTIF',
         },
         select: {
           storeId: true

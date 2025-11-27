@@ -97,6 +97,32 @@ async function main() {
     console.log('Toko sudah ada');
   }
 
+  // Buat member "Pelanggan Umum" untuk setiap toko
+  const allStores = await prisma.store.findMany();
+  for (const store of allStores) {
+    const existingGeneralMember = await prisma.member.findFirst({
+      where: {
+        storeId: store.id,
+        name: 'Pelanggan Umum',
+      },
+    });
+
+    if (!existingGeneralMember) {
+      await prisma.member.create({
+        data: {
+          storeId: store.id,
+          name: 'Pelanggan Umum',
+          code: `UMUM-${store.code}`, // Unique code for the general member
+          phone: '0000', // Default phone
+          address: 'N/A',
+          membershipType: 'GENERAL', // Special type for general customer
+          discount: 0,
+        },
+      });
+      console.log(`Member 'Pelanggan Umum' dibuat untuk toko ${store.name}`);
+    }
+  }
+
   // Buat user admin toko (jika belum ada)
   const existingAdminToko = await prisma.user.findUnique({
     where: { username: 'admintoko' }
