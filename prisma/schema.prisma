@@ -12,6 +12,7 @@ model User {
   name           String
   username       String     @unique
   employeeNumber String?    @unique
+  code           String?    @unique
   gender         String?
   address        String?
   phone          String?

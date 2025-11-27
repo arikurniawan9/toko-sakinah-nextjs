@@ -49,28 +49,11 @@ function authMiddleware(req) {
 
       // Untuk role per toko (bukan global), pastikan memiliki akses ke toko tertentu
       if (!GLOBAL_ROLES.includes(token.role) && !token.storeId) {
-        // Jika user belum memiliki akses ke toko, coba ambil toko yang tersedia untuk user
-        // dan arahkan ke toko pertama, atau tampilkan unauthorized
+        // Jika user belum memiliki akses ke toko, arahkan ke halaman unauthorized
+        // untuk mencegah loop redirect yang terjadi jika langsung mengarah ke dashboard
         if (!pathname.startsWith('/api/')) { // Hanya untuk halaman UI, bukan API
-          // Kita tidak bisa mengakses database langsung dari middleware untuk mencari toko
-          // Jadi kita tetap arahkan ke dashboard default tergantung role, dan biarkan
-          // halaman tersebut menangani kasus tidak ada toko
-          let defaultPath = '/unauthorized';
-
-          switch(token.role) {
-            case 'ADMIN':
-              defaultPath = '/admin';
-              break;
-            case 'CASHIER':
-              defaultPath = '/kasir';
-              break;
-            case 'ATTENDANT':
-              defaultPath = '/pelayan';
-              break;
-          }
-
           const url = req.nextUrl.clone();
-          url.pathname = defaultPath;
+          url.pathname = '/unauthorized';
           return NextResponse.redirect(url);
         }
       }

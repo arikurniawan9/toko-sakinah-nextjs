@@ -139,13 +139,16 @@ export async function GET(request) {
       },
     });
 
-    const bestSellingProducts = topProductsQuery.map(topProduct => {
+    const bestSellingProducts = topProductsQuery.reduce((acc, topProduct) => {
       const detail = productDetails.find(p => p.id === topProduct.productId);
-      return {
-        ...detail,
-        quantitySold: topProduct._sum.quantity,
-      };
-    }).sort((a, b) => b.quantitySold - a.quantitySold);
+      if (detail) { // Only include products that were actually found
+        acc.push({
+          ...detail,
+          quantitySold: topProduct._sum.quantity,
+        });
+      }
+      return acc;
+    }, []).sort((a, b) => b.quantitySold - a.quantitySold);
 
 
     return NextResponse.json({

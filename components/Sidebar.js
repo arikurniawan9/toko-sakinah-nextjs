@@ -167,7 +167,7 @@ const Sidebar = ({ children }) => {
       >
         {/* Logo */}
         <div className={`flex items-center justify-center h-16 px-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`} style={{ borderColor: darkMode ? '' : themeColor }}>
-          <h1 style={{ color: themeColor }} className={`text-xl font-bold ${isCollapsed && !isMobile ? 'hidden' : ''}`}>{shopName}</h1>
+          <h1 style={{ color: themeColor }} className={`text-xl font-bold ${isCollapsed && !isMobile ? 'hidden' : ''}`}>{session?.user?.storeAccess?.name || shopName}</h1>
           <ShoppingBag style={{ color: themeColor }} className={`${!isCollapsed || isMobile ? 'hidden' : ''}`} />
         </div>
 

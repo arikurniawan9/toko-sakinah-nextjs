@@ -50,7 +50,7 @@ export async function POST(request) {
         storeId,
         role,
         assignedBy: assignedBy || session.user.id,
-        status: 'ACTIVE',
+        status: 'AKTIF',
       },
       include: {
         user: {

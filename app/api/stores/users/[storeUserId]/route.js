@@ -34,10 +34,10 @@ export async function DELETE(request, { params }) {
       }
     }
 
-    // Untuk keamanan, tidak benar-benar hapus, tapi set status ke INACTIVE
+    // Untuk keamanan, tidak benar-benar hapus, tapi set status ke TIDAK AKTIF
     await prisma.storeUser.update({
       where: { id: storeUserId },
-      data: { status: 'INACTIVE' }
+      data: { status: 'TIDAK AKTIF' }
     });
 
     return NextResponse.json({ 

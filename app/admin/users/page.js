@@ -129,6 +129,11 @@ export default function UserManagement() {
       sortable: true
     },
     {
+      key: 'code',
+      title: 'Kode Pengguna',
+      sortable: true
+    },
+    {
       key: 'name',
       title: 'Nama Lengkap',
       sortable: true
@@ -237,7 +242,7 @@ export default function UserManagement() {
             showExport={false}
             showItemsPerPage={true}
             pagination={paginationData}
-            mobileColumns={['code', 'name', 'role', 'status']}
+            mobileColumns={['employeeNumber', 'code', 'name', 'role', 'status']}
             rowActions={renderRowActions}
             onDeleteMultiple={() => handleDelete(selectedRows)}
             selectedRowsCount={selectedRows.length}

@@ -23,9 +23,8 @@ export async function GET(request) {
     // For multi-tenant system, get store ID from session
     const storeId = session.user.storeId;
 
-    if (!storeId) {
-      return NextResponse.json({ error: 'Store ID not found in session' }, { status: 400 });
-    }
+    // Build a where clause that is either empty (for admins) or filters by storeId
+    const whereClause = storeId ? { storeId } : {};
 
     // Get the start and end of the current day in UTC
     const now = new Date();
@@ -35,7 +34,7 @@ export async function GET(request) {
     // 1. Get total transactions today for this store
     const transactionsCount = await prisma.sale.count({
       where: {
-        storeId, // Filter by store ID
+        ...whereClause,
         createdAt: {
           gte: startOfDay,
           lte: endOfDay,
@@ -49,7 +48,7 @@ export async function GET(request) {
         total: true,
       },
       where: {
-        storeId, // Filter by store ID
+        ...whereClause,
         createdAt: {
           gte: startOfDay,
           lte: endOfDay,
@@ -64,7 +63,7 @@ export async function GET(request) {
             quantity: true,
         },
         where: {
-            storeId, // Filter by store ID
+            ...whereClause,
             sale: {
                 createdAt: {
                     gte: startOfDay,

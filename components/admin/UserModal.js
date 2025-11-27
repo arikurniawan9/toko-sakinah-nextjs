@@ -103,19 +103,44 @@ const UserModal = ({
                               ? 'bg-gray-700 border-gray-600 text-white'
                               : 'border-pastel-purple-300 text-gray-900'
                           }`}
-                          placeholder="Masukkan username"
-                          required
-                        />
-                      </div>
-                    </div>
-                    
-                    
-                    <div className="mb-4">
-                      <label htmlFor="code" className={`block text-sm font-medium ${
-                        darkMode ? 'text-gray-300' : 'text-gray-700'
-                      } mb-1`}>
-                        Kode Pengguna
-                      </label>
+                                                    placeholder="Masukkan username"
+                                                    required
+                                                  />
+                                                </div>
+                                              </div>
+                          
+                                              <div className="mb-4">
+                                                <label htmlFor="employeeNumber" className={`block text-sm font-medium ${
+                                                  darkMode ? 'text-gray-300' : 'text-gray-700'
+                                                } mb-1`}>
+                                                  Kode Karyawan
+                                                </label>
+                                                <div className="relative">
+                                                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                    <User className="h-5 w-5 text-theme-purple-400" />
+                                                  </div>
+                                                  <input
+                                                    type="text"
+                                                    name="employeeNumber"
+                                                    id="employeeNumber"
+                                                    value={formData.employeeNumber}
+                                                    onChange={handleInputChange}
+                                                    className={`w-full px-3 py-2 pl-10 border rounded-md shadow-sm focus:outline-none focus:ring-pastel-purple-500 focus:border-pastel-purple-500 sm:text-sm ${
+                                                      darkMode
+                                                        ? 'bg-gray-700 border-gray-600 text-white'
+                                                        : 'border-pastel-purple-300 text-gray-900'
+                                                    }`}
+                                                    placeholder="Kode Karyawan (opsional, unik)"
+                                                  />
+                                                </div>
+                                              </div>
+                                              
+                                              <div className="mb-4">
+                                                <label htmlFor="code" className={`block text-sm font-medium ${
+                                                  darkMode ? 'text-gray-300' : 'text-gray-700'
+                                                } mb-1`}>
+                                                  Kode Pengguna
+                                                </label>
                       <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                           <Building className="h-5 w-5 text-theme-purple-400" />

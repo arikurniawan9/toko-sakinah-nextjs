@@ -124,7 +124,7 @@ async function main() {
           userId: adminToko.id,
           storeId: firstStore.id,
           role: 'ADMIN',
-          status: 'ACTIVE',
+          status: 'AKTIF',
           assignedBy: (await prisma.user.findUnique({ where: { username: 'manager' } })).id,
         },
       });
