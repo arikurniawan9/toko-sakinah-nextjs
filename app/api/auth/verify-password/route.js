@@ -1,28 +1,23 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
-import { getSession } from '@/lib/auth';
 
 export async function POST(request) {
   try {
-    const session = await getSession();
-    
-    // Pastikan pengguna sudah login
-    if (!session || !session.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized', valid: false },
-        { status: 401 }
-      );
+    const session = await getServerSession(authOptions);
+
+    // Endpoint ini harus bisa diakses oleh pengguna yang sudah login
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { userId, password } = await request.json();
-    
-    // Pastikan userId sesuai dengan user yang sedang login
-    if (!userId || userId !== session.user.id) {
-      return NextResponse.json(
-        { error: 'Invalid user', valid: false },
-        { status: 400 }
-      );
+
+    // Validasi bahwa userId adalah milik pengguna yang sedang login
+    if (userId !== session.user.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Ambil user dari database
@@ -31,24 +26,15 @@ export async function POST(request) {
     });
 
     if (!user) {
-      return NextResponse.json(
-        { error: 'User not found', valid: false },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     // Verifikasi password
     const isValid = await bcrypt.compare(password, user.password);
-    
-    return NextResponse.json({ 
-      valid: isValid,
-      message: isValid ? 'Password valid' : 'Password invalid'
-    });
+
+    return NextResponse.json({ valid: isValid });
   } catch (error) {
     console.error('Error verifying password:', error);
-    return NextResponse.json(
-      { error: 'Internal server error', valid: false },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

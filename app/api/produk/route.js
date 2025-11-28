@@ -37,7 +37,8 @@ const productUpdateSchema = productSchema.extend({
 // GET /api/produk - Get all products with pagination, search, and filtering
 export async function GET(request) {
   const session = await getSession();
-  if (!session || session.user.role !== 'ADMIN') {
+  // Allow both ADMIN and CASHIER roles to access products
+  if (!session || !['ADMIN', 'CASHIER'].includes(session.user.role)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
