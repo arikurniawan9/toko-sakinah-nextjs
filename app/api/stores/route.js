@@ -163,6 +163,7 @@ export async function POST(request) {
         data: {
           name: admin.name,
           username: admin.username,
+          employeeNumber: admin.employeeNumber || null, // Tambahkan employeeNumber, bisa null jika tidak disediakan
           password: hashedPassword,
           role: 'ADMIN',
           status: 'AKTIF',
@@ -175,6 +176,7 @@ export async function POST(request) {
           userId: newAdmin.id,
           storeId: newStore.id,
           role: 'ADMIN',
+          status: 'ACTIVE', // Gunakan 'ACTIVE' sesuai dengan default di skema Prisma
           assignedBy: session.user.id,
         },
       });

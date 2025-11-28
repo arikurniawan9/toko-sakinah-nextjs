@@ -25,6 +25,7 @@ export default function CreateStorePage() {
   const [adminData, setAdminData] = useState({
     name: '',
     username: '',
+    employeeNumber: '',
     password: '',
     confirmPassword: ''
   });
@@ -318,10 +319,31 @@ export default function CreateStorePage() {
                       onChange={handleAdminChange}
                       required
                       className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                        darkMode 
-                          ? 'bg-gray-600 border-gray-500 text-white' 
+                        darkMode
+                          ? 'bg-gray-600 border-gray-500 text-white'
                           : 'bg-white border-gray-300 text-gray-900'
                       }`}
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="employeeNumber" className={`block text-sm font-medium mb-1 ${
+                      darkMode ? 'text-white' : 'text-gray-700'
+                    }`}>
+                      Kode Pegawai
+                    </label>
+                    <input
+                      type="text"
+                      id="employeeNumber"
+                      name="employeeNumber"
+                      value={adminData.employeeNumber}
+                      onChange={handleAdminChange}
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        darkMode
+                          ? 'bg-gray-600 border-gray-500 text-white'
+                          : 'bg-white border-gray-300 text-gray-900'
+                      }`}
+                      placeholder="Kode pegawai (opsional)"
                     />
                   </div>
 
@@ -339,8 +361,8 @@ export default function CreateStorePage() {
                       onChange={handleAdminChange}
                       required
                       className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                        darkMode 
-                          ? 'bg-gray-600 border-gray-500 text-white' 
+                        darkMode
+                          ? 'bg-gray-600 border-gray-500 text-white'
                           : 'bg-white border-gray-300 text-gray-900'
                       }`}
                     />

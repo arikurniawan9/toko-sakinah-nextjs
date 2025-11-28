@@ -21,6 +21,7 @@ export default function EditStorePage() {
     email: '',
     status: 'ACTIVE',
     adminUsername: '', // Added for editable admin username
+    adminEmployeeNumber: '', // Added for editable admin employee number
   });
   const [adminUser, setAdminUser] = useState(null); // To store admin user details
   const [loading, setLoading] = useState(true);
@@ -52,6 +53,7 @@ export default function EditStorePage() {
           email: fetchedStore.email || '',
           status: fetchedStore.status || 'ACTIVE',
           adminUsername: fetchedStore.adminUser?.username || '', // Initialize admin username
+          adminEmployeeNumber: fetchedStore.adminUser?.employeeNumber || '', // Initialize admin employee number
         });
         setAdminUser(fetchedStore.adminUser); // Set admin user details
       } else {
@@ -92,6 +94,7 @@ export default function EditStorePage() {
             email: formData.email,
             status: formData.status,
             adminUsername: formData.adminUsername, // Include adminUsername
+            employeeNumber: formData.adminEmployeeNumber, // Include adminEmployeeNumber
         }),
       });
 
@@ -272,6 +275,21 @@ export default function EditStorePage() {
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
                   placeholder="Username untuk admin toko"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="adminEmployeeNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                  Kode Pegawai Admin
+                </label>
+                <input
+                  type="text"
+                  id="adminEmployeeNumber"
+                  name="adminEmployeeNumber"
+                  value={formData.adminEmployeeNumber}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                  placeholder="Kode pegawai untuk admin toko"
                 />
               </div>
 

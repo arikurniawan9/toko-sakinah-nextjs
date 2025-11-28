@@ -28,6 +28,7 @@ export async function GET(request, { params }) {
                 id: true,
                 username: true,
                 name: true,
+                employeeNumber: true, // Tambahkan employeeNumber
               },
             },
           },
@@ -62,7 +63,7 @@ export async function PUT(request, { params }) {
     const password = request.headers.get('X-Manager-Password');
 
     const body = await request.json();
-    const { name, description, address, phone, email, status, adminUsername, resetAdminPassword } = body;
+    const { name, description, address, phone, email, status, adminUsername, employeeNumber, resetAdminPassword } = body;
 
     // Jika permintaan untuk menghapus (mengubah status ke INACTIVE) dan verifikasi password diperlukan
     if (status === 'INACTIVE' && password) {
@@ -110,6 +111,14 @@ export async function PUT(request, { params }) {
         await globalPrisma.user.update({
             where: { id: currentAdmin.id },
             data: { username: adminUsername },
+        });
+    }
+
+    // Handle admin employee number update
+    if (employeeNumber !== undefined && currentAdmin) {
+        await globalPrisma.user.update({
+            where: { id: currentAdmin.id },
+            data: { employeeNumber: employeeNumber || null }, // Set to null if empty string
         });
     }
 
