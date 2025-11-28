@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
+import JsBarcode from 'jsbarcode';
 
-// Fungsi untuk menghasilkan PDF dengan barcode produk
+// Fungsi untuk menghasilkan PDF dengan barcode produk dalam format standar
 export const generateProductBarcodePDF = (products, options = {}) => {
   const {
     barcodeWidth = 50,  // Lebar barcode dalam mm
@@ -44,40 +45,42 @@ export const generateProductBarcodePDF = (products, options = {}) => {
     }
 
     try {
-      // Gambar barcode langsung di PDF
-      drawBarcodeInPDF(doc, product.productCode,
-        currentX + (labelWidth - barcodeWidth) / 2, // Center barcode horizontally
+      // Gambar barcode standar menggunakan JsBarcode
+      drawStandardBarcodeInPDF(doc, product.productCode,
+        currentX + (labelWidth - barcodeWidth) / 2, // Center barcode secara horizontal
         currentY,
         barcodeWidth,
         barcodeHeight
       );
 
-      // Menambahkan teks produk di bawah barcode
-      doc.setFontSize(fontSize);
-      doc.setTextColor(0); // Hitam
+      // Menambahkan teks produk di bawah barcode jika diperlukan
+      if (includeProductName || includeProductCode) {
+        doc.setFontSize(fontSize);
+        doc.setTextColor(0); // Hitam
 
-      if (includeProductName) {
-        // Membuat nama produk menjadi lebih pendek jika terlalu panjang
-        const productName = product.name.length > 20 ?
-          product.name.substring(0, 17) + '...' :
-          product.name;
+        if (includeProductName) {
+          // Membuat nama produk menjadi lebih pendek jika terlalu panjang
+          const productName = product.name.length > 20 ?
+            product.name.substring(0, 17) + '...' :
+            product.name;
 
-        doc.text(
-          productName,
-          currentX + labelWidth / 2,
-          currentY + barcodeHeight + 5,
-          { align: 'center' }
-        );
-      }
+          doc.text(
+            productName,
+            currentX + labelWidth / 2,
+            currentY + barcodeHeight + 5,
+            { align: 'center' }
+          );
+        }
 
-      if (includeProductCode) {
-        doc.setFontSize(fontSize - 2); // Sedikit lebih kecil dari nama produk
-        doc.text(
-          product.productCode,
-          currentX + labelWidth / 2,
-          currentY + barcodeHeight + 8 + (includeProductName ? 2 : 0),
-          { align: 'center' }
-        );
+        if (includeProductCode) {
+          doc.setFontSize(fontSize - 2); // Sedikit lebih kecil dari nama produk
+          doc.text(
+            product.productCode,
+            currentX + labelWidth / 2,
+            currentY + barcodeHeight + 8 + (includeProductName ? 2 : 0),
+            { align: 'center' }
+          );
+        }
       }
 
     } catch (error) {
@@ -129,62 +132,90 @@ export const generateProductBarcodePDF = (products, options = {}) => {
   doc.save(`barcode-produk-${new Date().toISOString().slice(0, 10)}.pdf`);
 };
 
-// Fungsi untuk menggambar barcode langsung di PDF
-const drawBarcodeInPDF = (doc, code, x, y, width, height) => {
-  // Membuat barcode yang lebih menyerupai barcode nyata
+// Fungsi untuk menggambar barcode standar langsung di PDF
+const drawStandardBarcodeInPDF = (doc, code, x, y, width, height) => {
+  // Buat elemen canvas sementara untuk menggambar barcode
+  const canvas = document.createElement('canvas');
+
+  try {
+    // Konversi mm ke px untuk canvas (72 dpi standar)
+    // 1 mm = 2.834645669 px (72 dpi / 25.4 mm per inch)
+    const mmToPx = 2.834645669;
+
+    // Pilih format barcode berdasarkan karakter dalam kode
+    let format = 'CODE128'; // Default ke CODE128 karena mendukung semua karakter ASCII
+
+    // Jika kode hanya berisi angka dan panjangnya 13 digit, gunakan EAN-13
+    if (/^\d{13}$/.test(code)) {
+      format = 'EAN13';
+    }
+    // Jika kode hanya berisi angka dan panjangnya 12 digit, gunakan EAN-12 (UPC-A)
+    else if (/^\d{12}$/.test(code)) {
+      format = 'EAN12';
+    }
+    // Jika kode hanya berisi angka dan panjangnya 8 digit, gunakan EAN-8
+    else if (/^\d{8}$/.test(code)) {
+      format = 'EAN8';
+    }
+    // Jika kode hanya berisi angka, gunakan CODE39
+    else if (/^\d+$/.test(code)) {
+      format = 'CODE39';
+    }
+    // Jika kode mengandung karakter alfanumerik dan simbol khusus, tetap gunakan CODE128
+    else if (/^[0-9A-Za-z\-\.\$\/\+\%]+$/.test(code)) {
+      format = 'CODE128';
+    }
+
+    // Generate barcode menggunakan JsBarcode dengan format yang sesuai
+    JsBarcode(canvas, code, {
+      format: format,      // Format barcode yang ditentukan berdasarkan isi kode
+      width: 1.5,         // Lebar bar
+      height: height * mmToPx, // Tinggi barcode dalam px
+      displayValue: false, // Kita akan menambahkan teks secara manual
+      fontOptions: '',
+      fontSize: 10,
+      textMargin: 0,
+      margin: 0,
+      marginWidth: 0,
+      marginTop: 0,
+      marginBottom: 0,
+      marginLeft: 0,
+      marginRight: 0
+    });
+
+    // Gambar barcode dari canvas ke PDF
+    if (canvas.width > 0 && canvas.height > 0) {
+      // Gambar barcode ke PDF
+      doc.addImage(canvas.toDataURL(), 'PNG', x, y, width, height);
+    } else {
+      // Fallback jika canvas kosong - buat barcode manual sederhana
+      drawFallbackBarcode(doc, code, x, y, width, height);
+    }
+  } catch (error) {
+    console.error('Error drawing barcode with JsBarcode:', error);
+    // Jika JsBarcode gagal, gunakan fallback
+    drawFallbackBarcode(doc, code, x, y, width, height);
+  }
+};
+
+// Fallback untuk menggambar barcode jika JsBarcode gagal
+const drawFallbackBarcode = (doc, code, x, y, width, height) => {
   doc.setFillColor(0); // Warna hitam untuk barcode
 
-  // Buat pola yang menyerupai barcode standar berdasarkan kode produk
+  // Fallback sederhana: hanya gambar beberapa bar hitam dan putih
   const codeStr = code.toString();
+  const barCount = 20; // Jumlah bar dalam fallback
+  const barWidth = width / barCount;
 
-  // Kita gunakan algoritma sederhana untuk membuat pola yang konsisten
-  // berdasarkan karakter dalam kode
-  const elements = [];
-  let patternValue = 1; // Nilai awal untuk pembuatan pola
+  for (let i = 0; i < barCount; i++) {
+    // Tentukan apakah ini bar hitam atau spasi putih berdasarkan pola dari kode
+    const codeIndex = i % codeStr.length;
+    const charValue = codeStr.charCodeAt(codeIndex);
+    const isBar = (i + charValue) % 2 === 0;
 
-  // Buat pola berdasarkan setiap karakter dalam kode
-  for (let i = 0; i < codeStr.length; i++) {
-    const charCode = codeStr.charCodeAt(i);
-
-    // Buat beberapa elemen (bar atau spasi) untuk setiap karakter
-    for (let j = 0; j < 4; j++) {
-      // Hasilkan jenis elemen (bar atau spasi) dan lebar berdasarkan pola
-      const elementValue = (charCode * 7 + j * 11 + patternValue) % 17;
-      const isBar = elementValue % 2 === 0;
-      const elementWidth = 1 + (elementValue % 3); // Lebar bervariasi antara 1-3
-      const elementHeight = height * (0.7 + (elementValue % 4) * 0.1); // Variasi tinggi
-
-      elements.push({
-        isBar,
-        width: elementWidth,
-        height: elementHeight
-      });
-
-      // Perbarui patternValue untuk mempengaruhi elemen berikutnya
-      patternValue = (patternValue * 3 + elementValue) % 100;
-    }
-  }
-
-  // Skalakan elemen-elemen ke ukuran yang sesuai dengan lebar yang tersedia
-  const totalElementWidth = elements.reduce((sum, el) => sum + el.width, 0);
-  const scale = width / totalElementWidth;
-
-  // Gambar setiap elemen
-  let currentX = x;
-  for (const element of elements) {
-    if (element.isBar) {
+    if (isBar) {
       // Gambar bar hitam
-      const scaledWidth = element.width * scale;
-      const scaledHeight = element.height;
-      doc.rect(currentX, y, scaledWidth * 0.9, scaledHeight, 'F'); // 0.9 untuk memberi sedikit celah antar bar
+      doc.rect(x + i * barWidth, y, barWidth * 0.8, height, 'F');
     }
-
-    // Pindahkan posisi X tergantung apakah ini bar atau spasi
-    currentX += element.width * scale;
   }
-
-  // Tambahkan teks kode di bawah barcode
-  doc.setFontSize(6);
-  doc.setTextColor(0); // Hitam
-  doc.text(code, x + width / 2, y + height + 3, { align: 'center' });
 };

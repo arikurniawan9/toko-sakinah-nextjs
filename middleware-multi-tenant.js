@@ -10,7 +10,7 @@ const GLOBAL_ROLES = [ROLES.MANAGER, ROLES.WAREHOUSE];
 const rolePermissions = {
   '/manager': [ROLES.MANAGER],
   '/warehouse': [ROLES.WAREHOUSE],
-  '/admin': [ROLES.ADMIN],
+  '/admin': [ROLES.ADMIN], // Ini harus bisa diakses baik oleh global admin maupun store admin
   '/kasir': [ROLES.CASHIER],
   '/pelayan': [ROLES.ATTENDANT],
 };
@@ -25,7 +25,32 @@ function authMiddleware(req) {
     if (pathname.startsWith(path)) {
       const allowedRoles = rolePermissions[path];
 
-      if (!token || !allowedRoles.includes(token.role)) {
+      if (!token) {
+        // Jika tidak ada token, arahkan ke halaman login
+        const url = req.nextUrl.clone();
+        url.pathname = '/login';
+        return NextResponse.redirect(url);
+      }
+
+      // Untuk halaman admin, kita perlu membedakan antara admin global dan admin toko
+      if (pathname.startsWith('/admin')) {
+        // Jika user adalah global admin (MANAGER), perbolehkan akses
+        if (token.role === ROLES.MANAGER) {
+          // Manager dapat mengakses admin dashboard jika mereka memiliki storeId tertentu
+        }
+        // Jika user adalah admin toko, perbolehkan akses jika mereka memiliki storeId
+        else if (token.role === ROLES.ADMIN && token.storeId) {
+          // Admin toko dapat mengakses dashboard admin jika mereka memiliki akses ke toko
+        }
+        // Jika user bukan MANAGER dan bukan ADMIN dengan storeId, tolak akses
+        else if (token.role !== ROLES.MANAGER && (token.role !== ROLES.ADMIN || !token.storeId)) {
+          const url = req.nextUrl.clone();
+          url.pathname = '/unauthorized';
+          return NextResponse.redirect(url);
+        }
+      }
+      // Untuk halaman lainnya, gunakan validasi role sederhana
+      else if (!allowedRoles.includes(token.role)) {
         // Jika user memiliki global role, arahkan ke halaman yang sesuai
         if (token?.role === ROLES.MANAGER) {
           if (pathname.startsWith('/admin') || pathname.startsWith('/kasir') || pathname.startsWith('/pelayan')) {
@@ -49,12 +74,17 @@ function authMiddleware(req) {
 
       // Untuk role per toko (bukan global), pastikan memiliki akses ke toko tertentu
       if (!GLOBAL_ROLES.includes(token.role) && !token.storeId) {
-        // Jika user belum memiliki akses ke toko, arahkan ke halaman unauthorized
-        // untuk mencegah loop redirect yang terjadi jika langsung mengarah ke dashboard
-        if (!pathname.startsWith('/api/')) { // Hanya untuk halaman UI, bukan API
-          const url = req.nextUrl.clone();
-          url.pathname = '/unauthorized';
-          return NextResponse.redirect(url);
+        // Kecualikan halaman admin untuk admin toko yang seharusnya bisa mengakses dashboard
+        if (pathname.startsWith('/admin') && token.role === ROLES.ADMIN) {
+          // Admin toko akan diarahkan ke dashboard admin toko masing-masing
+        } else {
+          // Jika user belum memiliki akses ke toko, arahkan ke halaman unauthorized
+          // untuk mencegah loop redirect yang terjadi jika langsung mengarah ke dashboard
+          if (!pathname.startsWith('/api/')) { // Hanya untuk halaman UI, bukan API
+            const url = req.nextUrl.clone();
+            url.pathname = '/unauthorized';
+            return NextResponse.redirect(url);
+          }
         }
       }
 

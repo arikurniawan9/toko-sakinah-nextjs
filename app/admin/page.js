@@ -34,9 +34,20 @@ const formatCurrency = (value) => {
 };
 
 export default function AdminDashboard() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const { userTheme } = useUserTheme();
   const darkMode = userTheme.darkMode;
+
+  // Redirect jika session belum loading atau user tidak memiliki akses toko
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user) {
+      // Pastikan user adalah admin dan memiliki akses ke toko
+      if (session.user.role !== 'ADMIN' || !session.user.storeId) {
+        // Jika bukan admin toko, redirect ke halaman unauthorized
+        window.location.href = '/unauthorized';
+      }
+    }
+  }, [status, session]);
 
   const [startDate, setStartDate] = useState(subDays(new Date(), 6));
   const [endDate, setEndDate] = useState(new Date());
