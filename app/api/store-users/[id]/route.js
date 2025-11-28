@@ -79,7 +79,7 @@ export async function PUT(request, { params }) {
     }
 
     const { id } = params;
-    const { name, username, employeeNumber, password, role } = await request.json();
+    const { name, username, employeeNumber, password, role, code } = await request.json();
 
     // Validation
     if (!id) {

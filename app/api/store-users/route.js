@@ -31,73 +31,61 @@ export async function GET(request) {
     const page = parseInt(searchParams.get('page')) || 1;
     const limit = parseInt(searchParams.get('limit')) || 10;
     const search = searchParams.get('search') || '';
+    const role = searchParams.get('role') || '';
 
     // Calculate offset for pagination
     const offset = (page - 1) * limit;
 
-    let users;
-    let totalCount;
+    const whereClause = {
+      storeId,
+    };
 
-    const searchLower = `%${search.toLowerCase()}%`;
+    if (role) {
+      whereClause.role = role;
+    }
 
     if (search) {
-      // Fetch users with raw query for case-insensitive search for the current store
-      users = await prisma.$queryRaw`
-        SELECT u.id, u.name, u.username, u.employeeNumber, u.code, su.role, u.status, u.createdAt, u.updatedAt
-        FROM User u
-        JOIN StoreUser su ON u.id = su.userId
-        WHERE su.storeId = ${storeId}
-        AND (LOWER(u.name) LIKE ${searchLower} OR LOWER(u.username) LIKE ${searchLower} OR LOWER(u.code) LIKE ${searchLower})
-        ORDER BY u.createdAt DESC
-        LIMIT ${limit} OFFSET ${offset}
-      `;
-
-      // Count total users matching the search for the current store
-      const countResult = await prisma.$queryRaw`
-        SELECT COUNT(*) as count
-        FROM User u
-        JOIN StoreUser su ON u.id = su.userId
-        WHERE su.storeId = ${storeId}
-        AND (LOWER(u.name) LIKE ${searchLower} OR LOWER(u.username) LIKE ${searchLower} OR LOWER(u.code) LIKE ${searchLower})
-      `;
-      totalCount = Number(countResult[0].count);
-
-    } else {
-      // Standard Prisma findMany when no search term for the current store
-      users = await prisma.storeUser.findMany({
-        where: {
-          storeId,
-        },
-        select: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              username: true,
-              employeeNumber: true,
-              code: true,
-              status: true,
-              createdAt: true,
-              updatedAt: true,
-            }
-          },
-          role: true,
-        },
-        skip: offset,
-        take: limit,
-        orderBy: { user: { createdAt: 'desc' } },
-      });
-
-      // Transform the results to match the expected format
-      users = users.map(storeUser => ({
-        ...storeUser.user,
-        role: storeUser.role,
-      }));
-
-      totalCount = await prisma.storeUser.count({
-        where: { storeId }
-      });
+      whereClause.user = {
+        OR: [
+          { name: { contains: search, mode: 'insensitive' } },
+          { username: { contains: search, mode: 'insensitive' } },
+          { code: { contains: search, mode: 'insensitive' } },
+        ],
+      };
     }
+    
+    const usersData = await prisma.storeUser.findMany({
+      where: whereClause,
+      select: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            employeeNumber: true,
+            code: true,
+            status: true,
+            createdAt: true,
+            updatedAt: true,
+          }
+        },
+        role: true,
+      },
+      skip: offset,
+      take: limit,
+      orderBy: { user: { createdAt: 'desc' } },
+    });
+
+    const totalCount = await prisma.storeUser.count({
+      where: whereClause,
+    });
+
+    // Transform the results to match the expected format
+    const users = usersData.map(storeUser => ({
+      ...storeUser.user,
+      role: storeUser.role,
+    }));
+
 
     return NextResponse.json({
       users,
