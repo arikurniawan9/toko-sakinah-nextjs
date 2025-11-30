@@ -58,27 +58,30 @@ export const generateProductBarcodePDF = (products, options = {}) => {
         doc.setFontSize(fontSize);
         doc.setTextColor(0); // Hitam
 
+        let yPos = currentY + barcodeHeight + 5;
+
+        if (includeProductCode) {
+          doc.setFontSize(fontSize); // Ukuran font untuk kode produk
+          doc.text(
+            product.productCode,
+            currentX + labelWidth / 2,
+            yPos,
+            { align: 'center' }
+          );
+          yPos += 3; // Pindahkan posisi y ke bawah untuk nama produk
+        }
+        
         if (includeProductName) {
-          // Membuat nama produk menjadi lebih pendek jika terlalu panjang
-          const productName = product.name.length > 20 ?
-            product.name.substring(0, 17) + '...' :
+          // Ukuran font lebih kecil untuk nama produk
+          doc.setFontSize(fontSize - 2); 
+          const productName = product.name.length > 25 ?
+            product.name.substring(0, 22) + '...' :
             product.name;
 
           doc.text(
             productName,
             currentX + labelWidth / 2,
-            currentY + barcodeHeight + 5,
-            { align: 'center' }
-          );
-        }
-
-        if (includeProductCode) {
-          doc.setFontSize(fontSize + 2); // Ukuran font diperbesar
-          const spacedProductCode = product.productCode.split('').join(' '); // Tambahkan spasi antar karakter
-          doc.text(
-            spacedProductCode,
-            currentX + labelWidth / 2,
-            currentY + barcodeHeight + 5, // Posisikan lebih jauh dari barcode
+            yPos, // Gunakan posisi y yang sudah disesuaikan
             { align: 'center' }
           );
         }
