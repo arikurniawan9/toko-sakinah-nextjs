@@ -20,6 +20,10 @@ export const ThemeProvider = ({ children }) => {
         if (data.shopName) {
             setShopName(data.shopName);
         }
+      } else if (response.status === 401) {
+        // Jika unauthorized, gunakan default values tanpa error
+        setThemeColor('#8B5CF6');
+        setShopName('Toko Sakinah');
       }
     } catch (error) {
       console.error('Failed to fetch theme settings:', error);

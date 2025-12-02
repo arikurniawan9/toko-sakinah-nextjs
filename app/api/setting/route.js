@@ -7,16 +7,28 @@ import { authOptions } from '../../../lib/authOptions';
 export async function GET(request) {
   const session = await getServerSession(authOptions);
 
-  if (!session || !['CASHIER', 'ADMIN'].includes(session.user.role)) {
+  if (!session || !['CASHIER', 'ADMIN', 'MANAGER'].includes(session.user.role)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   // Cek apakah pengguna memiliki akses ke toko
-  if (!session.user.storeId) {
+  // Untuk MANAGER, mungkin tidak memiliki storeId langsung tetapi bisa mengakses beberapa toko
+  if (!session.user.storeId && session.user.role !== 'MANAGER') {
     return NextResponse.json({ error: 'User tidak memiliki akses ke toko' }, { status: 400 });
   }
 
   try {
+    // Jika user adalah MANAGER tetapi tidak memiliki storeId, kembalikan error spesifik
+    if (!session.user.storeId && session.user.role === 'MANAGER') {
+      // Tidak ada toko spesifik yang dipilih, kembalikan nilai default
+      return NextResponse.json({
+        shopName: 'Toko Sakinah',
+        address: '',
+        phone: '',
+        themeColor: '#3c8dbc'
+      }, { status: 200 });
+    }
+
     // Ambil pengaturan toko berdasarkan storeId yang sedang aktif
     let setting = await prisma.setting.findUnique({
       where: { storeId: session.user.storeId }
@@ -44,18 +56,24 @@ export async function GET(request) {
 export async function PUT(request) {
   const session = await getServerSession(authOptions);
 
-  if (!session || session.user.role !== 'ADMIN') {
+  if (!session || !['ADMIN', 'MANAGER'].includes(session.user.role)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   // Cek apakah pengguna memiliki akses ke toko
-  if (!session.user.storeId) {
+  // Untuk MANAGER, mungkin tidak memiliki storeId langsung tetapi bisa mengakses beberapa toko
+  if (!session.user.storeId && session.user.role !== 'MANAGER') {
     return NextResponse.json({ error: 'User tidak memiliki akses ke toko' }, { status: 400 });
   }
 
   try {
     const body = await request.json();
     const { shopName, address, phone } = body;
+
+    // Jika user adalah MANAGER tetapi tidak memiliki storeId, return error
+    if (!session.user.storeId && session.user.role === 'MANAGER') {
+      return NextResponse.json({ error: 'MANAGER harus memilih toko terlebih dahulu sebelum mengubah pengaturan' }, { status: 400 });
+    }
 
     // Cek apakah setting sudah ada untuk toko ini
     const existingSetting = await prisma.setting.findUnique({

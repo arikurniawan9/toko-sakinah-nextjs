@@ -223,6 +223,7 @@ export async function POST(request) {
       const newSale = await tx.sale.create({
         data: {
           invoiceNumber: newInvoiceNumber,
+          storeId: session.user.storeId, // Tambahkan storeId dari session user
           cashierId: session.user.id,
           attendantId: attendantId,
           memberId: memberId,
@@ -236,6 +237,7 @@ export async function POST(request) {
           status: status || 'PAID', // Gunakan status yang dikirim, default ke 'PAID'
           saleDetails: {
             create: items.map(item => ({
+              storeId: session.user.storeId, // Tambahkan storeId ke detail penjualan
               productId: item.productId,
               quantity: item.quantity,
               price: item.price,
@@ -277,6 +279,7 @@ export async function POST(request) {
         if (remainingAmount > 0) {
           await tx.receivable.create({
             data: {
+              storeId: session.user.storeId, // Tambahkan storeId dari session user
               saleId: newSale.id,
               memberId: memberId,
               amountDue: total, // Total asli

@@ -20,6 +20,19 @@ function authMiddleware(req) {
   const { pathname } = req.nextUrl;
   const { token } = req.nextauth;
 
+  // Validasi token dan informasi tambahan untuk keamanan
+  if (token) {
+    // Validasi waktu token untuk mencegah penggunaan token lama
+    const tokenAge = Date.now() - (token.tokenCreationTime || 0);
+    const maxTokenAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+    if (tokenAge > maxTokenAge) {
+      const url = req.nextUrl.clone();
+      url.pathname = '/login';
+      return NextResponse.redirect(url);
+    }
+  }
+
   // Jika path adalah untuk role tertentu, validasi akses
   for (const path in rolePermissions) {
     if (pathname.startsWith(path)) {
@@ -100,8 +113,18 @@ function authMiddleware(req) {
 
   // Validasi akses API routes untuk sistem multi-tenant
   if (pathname.startsWith('/api/') && !pathname.startsWith('/api/auth/')) {
-    // Untuk API routes, kita akan melakukan validasi lebih lanjut di masing-masing route
-    // Middleware ini hanya memastikan bahwa user terautentikasi
+    // Tambahkan validasi tambahan untuk API routes
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Validasi waktu token untuk API juga
+    const tokenAge = Date.now() - (token.tokenCreationTime || 0);
+    const maxTokenAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+    if (tokenAge > maxTokenAge) {
+      return NextResponse.json({ error: 'Token expired' }, { status: 401 });
+    }
   }
 
   return NextResponse.next();

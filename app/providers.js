@@ -11,6 +11,7 @@ import { DashboardCustomizationProvider } from '@/components/DashboardCustomizat
 import { UserThemeProvider } from '@/components/UserThemeContext';
 import ShopNameUpdater from '@/components/ShopNameUpdater';
 
+// Providers lengkap untuk aplikasi yang memerlukan otentikasi
 export function Providers({ children }) {
   return (
     <ErrorBoundary>
@@ -28,6 +29,19 @@ export function Providers({ children }) {
           </UserThemeProvider>
         </ThemeProvider>
       </DashboardCustomizationProvider>
+    </ErrorBoundary>
+  );
+}
+
+// Versi ringan dari providers untuk halaman publik
+export function LightProviders({ children }) {
+  return (
+    <ErrorBoundary>
+      <ThemeProvider>
+        <SessionProvider>
+          {children}
+        </SessionProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

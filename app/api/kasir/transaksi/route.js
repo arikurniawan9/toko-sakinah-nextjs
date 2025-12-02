@@ -41,6 +41,7 @@ export async function GET(request) {
     // Build where clause
     let whereClause = {
       cashierId: session.user.id, // Only transactions by this cashier
+      storeId: session.user.storeId, // Also filter by store ID to maintain multi-tenant isolation
     };
 
     // Add date filter if provided

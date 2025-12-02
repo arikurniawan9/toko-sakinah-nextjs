@@ -7,7 +7,6 @@ import Link from 'next/link';
 import { ROLES } from '@/lib/constants';
 import { ShoppingCart, Users, BarChart3, Settings, CreditCard } from 'lucide-react';
 import AppHeader from '@/components/AppHeader';
-import SalesChart from '@/components/charts/SalesChart';
 import { useNotification } from '@/components/notifications/NotificationProvider';
 
 export default function Home() {
@@ -84,10 +83,6 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Sales Chart */}
-              <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow mb-8">
-                <SalesChart data={salesData} title="Grafik Penjualan Minggu Ini" />
-              </div>
             </div>
           </div>
         )}

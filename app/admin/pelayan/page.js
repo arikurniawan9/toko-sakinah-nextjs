@@ -8,7 +8,7 @@ import { useUserForm } from '@/lib/hooks/useUserForm';
 import { useUserTable } from '@/lib/hooks/useUserTable';
 import UserModal from '@/components/admin/UserModal';
 import ConfirmationModal from '@/components/ConfirmationModal';
-import { AlertTriangle, Plus, Edit, Trash2, Eye } from 'lucide-react';
+import { AlertTriangle, Plus, Edit, Trash2, Eye, CheckCircle } from 'lucide-react';
 import DataTable from '@/components/DataTable';
 import Breadcrumb from '@/components/Breadcrumb';
 import Link from 'next/link';
@@ -58,6 +58,7 @@ export default function PelayanManagement() {
   const [itemsToDelete, setItemsToDelete] = useState([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const [selectedRows, setSelectedRows] = useState([]);
+  const [successMessage, setSuccessMessage] = useState('');
 
   const handleSelectRow = (id) => {
     setSelectedRows(prev =>
@@ -79,7 +80,10 @@ export default function PelayanManagement() {
   };
 
   const handleDelete = (ids) => {
-    if (!isAdmin) return;
+    if (!isAdmin) {
+      setTableError('Hanya admin yang dapat menonaktifkan pelayan');
+      return;
+    }
     setItemsToDelete(ids);
     setShowDeleteModal(true);
   };
@@ -96,8 +100,14 @@ export default function PelayanManagement() {
         body: JSON.stringify({ ids: itemsToDelete }),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Gagal menghapus pelayan');
+      if (!response.ok) throw new Error(result.error || 'Gagal menonaktifkan pelayan');
 
+      // Beri feedback bahwa pelayan berhasil dinonaktifkan
+      const message = itemsToDelete.length > 1
+        ? `Berhasil menonaktifkan ${itemsToDelete.length} pelayan`
+        : `Berhasil menonaktifkan 1 pelayan`;
+
+      setSuccessMessage(message);
       setSelectedRows([]);
       fetchAttendants(); // Refresh data
     } catch (err) {
@@ -115,6 +125,13 @@ export default function PelayanManagement() {
       return () => clearTimeout(timer);
     }
   }, [tableError]);
+
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(''), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -143,40 +160,79 @@ export default function PelayanManagement() {
         </span>
       )
     },
-    {
-      key: 'createdAt',
-      title: 'Tanggal Dibuat',
-      render: (value) => new Date(value).toLocaleDateString('id-ID'),
-      sortable: true
-    },
   ];
 
-  const renderRowActions = (row) => (
-    <>
-       <Link href={`/admin/pelayan/${row.id}`} passHref>
+  const renderRowActions = (row) => {
+    // Jika status user adalah TIDAK_AKTIF atau INACTIVE, tampilkan tombol Aktifkan
+    const isInactive = row.status === 'TIDAK_AKTIF' || row.status === 'INACTIVE';
+
+    if (isInactive) {
+      return (
+        <>
+          <Link href={`/admin/pelayan/${row.id}`} passHref>
+            <button
+              className="p-1 text-gray-500 hover:text-gray-700 mr-2"
+              title="Lihat Detail"
+            >
+              <Eye size={18} />
+            </button>
+          </Link>
+          <button
+            onClick={async () => {
+              try {
+                const response = await fetch(`/api/store-users/${row.id}/activate`, {
+                  method: 'PATCH'
+                });
+
+                if (response.ok) {
+                  const result = await response.json();
+                  // Tampilkan pesan sukses
+                  // Di sini Anda bisa menambahkan toast notification jika diinginkan
+                  fetchAttendants(); // Refresh data
+                } else {
+                  const error = await response.json();
+                  setTableError(error.error || 'Gagal mengaktifkan pelayan');
+                }
+              } catch (error) {
+                setTableError('Terjadi kesalahan saat mengaktifkan pelayan');
+              }
+            }}
+            className="p-1 text-green-500 hover:text-green-700 mr-2"
+            title="Aktifkan Pelayan"
+          >
+            <CheckCircle size={18} />
+          </button>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <Link href={`/admin/pelayan/${row.id}`} passHref>
+          <button
+            className="p-1 text-gray-500 hover:text-gray-700 mr-2"
+            title="Lihat Detail"
+          >
+            <Eye size={18} />
+          </button>
+        </Link>
         <button
-          className="p-1 text-gray-500 hover:text-gray-700 mr-2"
-          title="Lihat Detail"
+          onClick={() => openModalForEdit(row, true)}
+          className="p-1 text-blue-500 hover:text-blue-700 mr-2"
+          title="Edit"
         >
-          <Eye size={18} />
+          <Edit size={18} />
         </button>
-      </Link>
-      <button
-        onClick={() => openModalForEdit(row)}
-        className="p-1 text-blue-500 hover:text-blue-700 mr-2"
-        title="Edit"
-      >
-        <Edit size={18} />
-      </button>
-      <button
-        onClick={() => handleDelete([row.id])}
-        className="p-1 text-red-500 hover:text-red-700"
-        title="Hapus"
-      >
-        <Trash2 size={18} />
-      </button>
-    </>
-  );
+        <button
+          onClick={() => handleDelete([row.id])}
+          className="p-1 text-red-500 hover:text-red-700"
+          title="Hapus"
+        >
+          <Trash2 size={18} />
+        </button>
+      </>
+    );
+  };
 
   const paginationData = {
     currentPage,
@@ -225,6 +281,12 @@ export default function PelayanManagement() {
           />
         </div>
 
+        {successMessage && (
+          <div className="fixed bottom-4 right-4 z-50 flex items-center p-4 rounded-lg bg-green-500/10 text-green-400 shadow-lg">
+            <CheckCircle className="h-5 w-5 mr-3" />
+            <p className="text-sm font-medium">{successMessage}</p>
+          </div>
+        )}
         {(tableError || formError) && (
           <div className="fixed bottom-4 right-4 z-50 flex items-center p-4 rounded-lg bg-red-500/10 text-red-400 shadow-lg">
             <AlertTriangle className="h-5 w-5 mr-3" />
@@ -251,7 +313,7 @@ export default function PelayanManagement() {
               onClose={() => setShowDeleteModal(false)}
               onConfirm={handleConfirmDelete}
               title={`Konfirmasi Nonaktifkan ${itemsToDelete.length} Pelayan`}
-              message={`Apakah Anda yakin ingin menonaktifkan pelayan yang dipilih dari toko ini? Tindakan ini tidak dapat dibatalkan.`}
+              message={`Apakah Anda yakin ingin menonaktifkan pelayan yang dipilih dari toko ini? Pelayan tidak akan dapat login ke toko ini sampai diaktifkan kembali. Tindakan ini tidak dapat dibatalkan.`}
               isLoading={isDeleting}
             />
           </>

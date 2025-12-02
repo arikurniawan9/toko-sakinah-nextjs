@@ -490,10 +490,10 @@ export default function KasirTransaksiPage() {
       try {
         const [membersRes, attendantsRes] = await Promise.all([
           fetch("/api/member?simple=true"),  // Gunakan parameter simple untuk mendapatkan array langsung
-          fetch("/api/pelayan?simple=true"),  // Gunakan parameter simple untuk mendapatkan array langsung
+          fetch("/api/store-users?role=ATTENDANT"),  // Gunakan endpoint store-users dengan filter role ATTENDANT
         ]);
         const membersData = await membersRes.json();  // Ini sekarang langsung array
-        const attendantsData = await attendantsRes.json();  // Ini sekarang langsung array
+        const attendantsData = await attendantsRes.json();  // Ini sekarang berisi data dari response lengkap dengan pagination
 
         const allMembers = membersData || [];
         setMembers(allMembers);
@@ -503,7 +503,9 @@ export default function KasirTransaksiPage() {
         );
         setDefaultMember(generalCustomer);
 
-        setAttendants(attendantsData || []);
+        // Proses data pelayan dari response store-users (sudah dalam format yang benar)
+        const allAttendants = attendantsData.users || [];
+        setAttendants(allAttendants || []);
       } catch (error) {
         console.error("Error fetching initial data:", error);
       }

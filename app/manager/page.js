@@ -4,15 +4,15 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useReducer, useCallback, useMemo, lazy, Suspense, useRef, useState } from 'react';
 import { ROLES } from '@/lib/constants';
-import { 
-  Plus, 
-  Settings, 
-  Users, 
-  ShoppingCart, 
-  BarChart3, 
-  Package, 
-  Store, 
-  TrendingUp, 
+import {
+  Plus,
+  Settings,
+  Users,
+  ShoppingCart,
+  BarChart3,
+  Package,
+  Store,
+  TrendingUp,
   AlertTriangle,
   CreditCard,
   FileText,
@@ -20,7 +20,6 @@ import {
 } from 'lucide-react';
 import { useUserTheme } from '@/components/UserThemeContext';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import SalesChart from '@/components/charts/SalesChart';
 import { useDashboardCustomization } from '@/components/DashboardCustomizationContext';
 import { useNotification } from '@/components/notifications/NotificationProvider';
 
@@ -110,7 +109,12 @@ export default function ManagerDashboard() {
   // Memoized fetch functions that use ref to get current state values
   const fetchDashboardData = useCallback(async () => {
     try {
-      const response = await fetch('/api/dashboard/manager-summary');
+      const response = await fetch('/api/dashboard/manager-summary', {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Authorization': `Bearer ${session?.user?.token || ''}` // Include auth token if available
+        }
+      });
 
       if (!response.ok) {
         if (response.status === 401) {
@@ -132,11 +136,12 @@ export default function ManagerDashboard() {
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+      showNotification('Gagal memuat data dashboard', 'error');
       if (error.message.includes('401') || error.message.includes('403')) {
         router.push('/login');
       }
     }
-  }, [router]);
+  }, [router, session, showNotification]);
 
   const fetchStores = useCallback(async () => {
     dispatch({ type: 'SET_LOADING', payload: true });
@@ -149,7 +154,13 @@ export default function ManagerDashboard() {
         sortKey: currentState.sortConfig.key,
         sortDirection: currentState.sortConfig.direction,
       }).toString();
-      const response = await fetch(`/api/stores?${query}`);
+
+      const response = await fetch(`/api/stores?${query}`, {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Authorization': `Bearer ${session?.user?.token || ''}` // Include auth token if available
+        }
+      });
 
       if (!response.ok) {
         if (response.status === 401) {
@@ -168,13 +179,14 @@ export default function ManagerDashboard() {
       dispatch({ type: 'SET_TOTAL_ITEMS', payload: data.totalItems || 0 });
     } catch (error) {
       console.error('Error fetching stores:', error);
+      showNotification('Gagal memuat data toko', 'error');
       if (error.message.includes('401') || error.message.includes('403')) {
         router.push('/login');
       }
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
-  }, [router]);
+  }, [router, session, showNotification]);
 
   // Memoized handler functions
   const handleSearch = useCallback((term) => {
@@ -213,33 +225,7 @@ export default function ManagerDashboard() {
     </span>
   ), []);
 
-  // Memoized columns
-  const columns = useMemo(() => [
-    {
-      key: 'number',
-      title: 'No',
-      render: (_, __, index) => (state.currentPage - 1) * state.itemsPerPage + index + 1
-    },
-    { key: 'name', title: 'Nama Toko', sortable: true },
-    { key: 'address', title: 'Alamat' },
-    { key: 'status', title: 'Status', sortable: true, render: StatusRenderer },
-    {
-      key: 'actions',
-      title: 'Aksi',
-      render: (store) => (
-        <div className="flex space-x-2">
-          <button
-            onClick={() => dispatch({ type: 'SET_MODAL_OPEN', payload: { isOpen: true, storeId: store.id } })}
-            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-          >
-            Edit
-          </button>
-        </div>
-      )
-    },
-  ], [state.currentPage, state.itemsPerPage, StatusRenderer, router]);
-
-  // Memoized pagination data
+    // Memoized pagination data
   const pagination = useMemo(() => {
     const totalPages = Math.ceil(state.totalItems / state.itemsPerPage);
 
@@ -269,7 +255,7 @@ export default function ManagerDashboard() {
   // Hydration-safe loading and authentication checks
   if (status === 'loading' || !isMounted) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <LoadingSpinner />
       </div>
     );
@@ -282,7 +268,7 @@ export default function ManagerDashboard() {
 
   if (state.loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <LoadingSpinner />
       </div>
     );
@@ -435,21 +421,6 @@ export default function ManagerDashboard() {
           </div>
         )}
 
-        {/* Sales Chart Widget */}
-        {dashboardLayout.find(w => w.id === 'sales-chart' && w.visible) && (
-          <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Ringkasan Penjualan (7 Hari Terakhir)</h3>
-              <button
-                onClick={() => updateWidgetVisibility('sales-chart', false)}
-                className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
-              >
-                ×
-              </button>
-            </div>
-            <SalesChart data={salesData} />
-          </div>
-        )}
       </div>
 
       {/* Quick Access Menu */}
@@ -503,26 +474,26 @@ export default function ManagerDashboard() {
                     <div className="flex items-center">
                       <div className="flex-shrink-0">
                         <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
-                          activity.type === 'SALE' ? 'bg-green-100 dark:bg-green-800' : 
-                          activity.type === 'STOCK' ? 'bg-yellow-100 dark:bg-yellow-800' : 
+                          activity.type === 'SALE' ? 'bg-green-100 dark:bg-green-800' :
+                          activity.type === 'STOCK' ? 'bg-yellow-100 dark:bg-yellow-800' :
                           'bg-blue-100 dark:bg-blue-800'
                         }`}>
                           {activity.type === 'SALE' ? (
                             <ShoppingCart className={`h-4 w-4 ${
-                              activity.type === 'SALE' ? 'text-green-800 dark:text-green-100' : 
-                              activity.type === 'STOCK' ? 'text-yellow-800 dark:text-yellow-100' : 
+                              activity.type === 'SALE' ? 'text-green-800 dark:text-green-100' :
+                              activity.type === 'STOCK' ? 'text-yellow-800 dark:text-yellow-100' :
                               'text-blue-800 dark:text-blue-100'
                             }`} />
                           ) : activity.type === 'STOCK' ? (
                             <Package className={`h-4 w-4 ${
-                              activity.type === 'SALE' ? 'text-green-800 dark:text-green-100' : 
-                              activity.type === 'STOCK' ? 'text-yellow-800 dark:text-yellow-100' : 
+                              activity.type === 'SALE' ? 'text-green-800 dark:text-green-100' :
+                              activity.type === 'STOCK' ? 'text-yellow-800 dark:text-yellow-100' :
                               'text-blue-800 dark:text-blue-100'
                             }`} />
                           ) : (
                             <Activity className={`h-4 w-4 ${
-                              activity.type === 'SALE' ? 'text-green-800 dark:text-green-100' : 
-                              activity.type === 'STOCK' ? 'text-yellow-800 dark:text-yellow-100' : 
+                              activity.type === 'SALE' ? 'text-green-800 dark:text-green-100' :
+                              activity.type === 'STOCK' ? 'text-yellow-800 dark:text-yellow-100' :
                               'text-blue-800 dark:text-blue-100'
                             }`} />
                           )}
@@ -605,7 +576,7 @@ export default function ManagerDashboard() {
                         ${store.status === 'ACTIVE' ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100' : 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100'}`}>
                         {store.status}
                       </span>
-                      <button 
+                      <button
                         onClick={() => dispatch({ type: 'SET_MODAL_OPEN', payload: { isOpen: true, storeId: store.id } })}
                         className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
                       >
@@ -635,7 +606,7 @@ export default function ManagerDashboard() {
           />
         </Suspense>
       )}
-      
+
       {/* Create Store Modal */}
       {state.isCreateModalOpen && (
         <Suspense fallback={<div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">

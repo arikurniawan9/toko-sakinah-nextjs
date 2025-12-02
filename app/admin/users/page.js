@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useUserTheme } from '@/components/UserThemeContext';
 import { useSession } from 'next-auth/react';
@@ -185,11 +186,66 @@ export default function UserManagement() {
 
   const renderRowActions = (row) => {
     const isCurrentUser = row.id === session?.user?.id;
+    const isInactive = row.status === 'TIDAK_AKTIF' || row.status === 'INACTIVE';
+    const isAttendant = row.role === 'ATTENDANT';
     const disabledClass = isCurrentUser ? 'opacity-50 cursor-not-allowed' : '';
     const buttonTitle = isCurrentUser ? "Anda tidak dapat mengubah data sendiri" : "";
 
+    // Jika user adalah pelayan, tambahkan tombol detail
+    const renderDetailButton = () => (
+      <Link href={`/admin/pelayan/${row.id}`} passHref>
+        <button
+          className={`p-1 text-gray-500 hover:text-gray-700 ${disabledClass}`}
+          title={isCurrentUser ? buttonTitle : "Lihat Detail"}
+          disabled={isCurrentUser}
+        >
+          <Eye size={18} />
+        </button>
+      </Link>
+    );
+
+    // Jika status user adalah TIDAK_AKTIF atau INACTIVE, tampilkan tombol Aktifkan
+    if (isInactive) {
+      return (
+        <>
+          {isAttendant && renderDetailButton()}
+          <button
+            onClick={async () => {
+              if (isCurrentUser) {
+                setTableError('Anda tidak dapat mengaktifkan akun sendiri');
+                return;
+              }
+
+              try {
+                const response = await fetch(`/api/store-users/${row.id}/activate`, {
+                  method: 'PATCH'
+                });
+
+                if (response.ok) {
+                  const result = await response.json();
+                  fetchUsers(); // Refresh data
+                } else {
+                  const error = await response.json();
+                  setTableError(error.error || 'Gagal mengaktifkan user');
+                }
+              } catch (error) {
+                setTableError('Terjadi kesalahan saat mengaktifkan user');
+              }
+            }}
+            className={`p-1 text-green-500 hover:text-green-700 ${disabledClass}`}
+            title={isCurrentUser ? buttonTitle : "Aktifkan User"}
+            disabled={isCurrentUser}
+          >
+            <CheckCircle size={18} />
+          </button>
+        </>
+      );
+    }
+
+    // Jika user aktif, tampilkan tombol edit dan hapus
     return (
       <>
+        {isAttendant && renderDetailButton()}
         <button
           onClick={() => !isCurrentUser && openModalForEdit(row)}
           className={`p-1 text-blue-500 hover:text-blue-700 mr-2 ${disabledClass}`}

@@ -1,4 +1,5 @@
 // app/api/dashboard/kasir-summary/route.js
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';

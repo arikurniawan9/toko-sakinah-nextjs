@@ -15,8 +15,8 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only allow ADMIN and MANAGER to access this endpoint
-    if (session.user.role !== ROLES.ADMIN && session.user.role !== ROLES.MANAGER) {
+    // Allow CASHIER, ADMIN, and MANAGER to access this endpoint
+    if (!['CASHIER', 'ADMIN', 'MANAGER'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -114,7 +114,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only allow ADMIN and MANAGER to create users
+    // Only allow ADMIN and MANAGER to create users (CASHIER shouldn't be able to create users)
     if (session.user.role !== ROLES.ADMIN && session.user.role !== ROLES.MANAGER) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -189,7 +189,7 @@ export async function POST(request) {
         password: hashedPassword,
         address,
         phone,
-        role: 'USER', // Set role in user table as 'USER' to indicate it's a general user account (not to be confused with store role)
+        role: role, // Set role in user table to match the store role
         status: 'AKTIF',
       }
     });
@@ -226,7 +226,7 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only allow ADMIN and MANAGER to update users
+    // Only allow ADMIN and MANAGER to update users (CASHIER shouldn't be able to update users)
     if (session.user.role !== ROLES.ADMIN && session.user.role !== ROLES.MANAGER) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -320,6 +320,7 @@ export async function PUT(request) {
       username: username.trim(),
       employeeNumber: employeeNumber ? employeeNumber.trim() : null,
       code: code ? code.trim() : null,
+      role: role, // Also update role in User table to match store role
     };
 
     // Add password if provided
@@ -327,7 +328,7 @@ export async function PUT(request) {
       updateUserData.password = await bcrypt.hash(password, 10);
     }
 
-    // Update the user (don't update the role in User table, only in StoreUser)
+    // Update the user
     const updatedUser = await prisma.user.update({
       where: { id },
       data: updateUserData
@@ -377,7 +378,7 @@ export async function DELETE(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only allow ADMIN and MANAGER to delete users
+    // Only allow ADMIN and MANAGER to delete users (CASHIER shouldn't be able to delete users)
     if (session.user.role !== ROLES.ADMIN && session.user.role !== ROLES.MANAGER) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -413,8 +414,8 @@ export async function DELETE(request) {
       );
     }
 
-    // Delete the store-user relationships (soft delete approach)
-    const deletedStoreUsers = await prisma.storeUser.updateMany({
+    // Update status in storeUser table
+    const updatedStoreUsers = await prisma.storeUser.updateMany({
       where: {
         userId: { in: ids },
         storeId: storeId,
@@ -424,9 +425,37 @@ export async function DELETE(request) {
       }
     });
 
+    // Also update status in the main User table
+    // Check if user is inactive in ALL stores before changing main user status
+    const userIdsToUpdate = [];
+    for (const userId of ids) {
+      const activeStoreUsers = await prisma.storeUser.findMany({
+        where: {
+          userId: userId,
+          status: { not: 'TIDAK AKTIF' } // Find if user is active in any store
+        }
+      });
+
+      // Only update main user status if user is inactive in ALL stores
+      if (activeStoreUsers.length === 0) {
+        userIdsToUpdate.push(userId);
+      }
+    }
+
+    if (userIdsToUpdate.length > 0) {
+      await prisma.user.updateMany({
+        where: {
+          id: { in: userIdsToUpdate }
+        },
+        data: {
+          status: 'TIDAK_AKTIF' // Change main user status to inactive
+        }
+      });
+    }
+
     return NextResponse.json({
-      message: `Berhasil menonaktifkan ${deletedStoreUsers.count} user dari toko ini`,
-      deletedCount: deletedStoreUsers.count
+      message: `Berhasil menonaktifkan ${updatedStoreUsers.count} user dari toko ini`,
+      deletedCount: updatedStoreUsers.count
     });
   } catch (error) {
     console.error('Error deleting users:', error);

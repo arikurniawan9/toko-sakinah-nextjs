@@ -50,6 +50,7 @@ export async function GET(request, { params }) {
         name: true,
         username: true,
         employeeNumber: true,
+        status: true, // Include status field
         createdAt: true,
       },
     });

@@ -28,6 +28,16 @@ const ShopSettings = () => {
           phone: data.phone || '',
           themeColor: data.themeColor || '#3c8dbc',
         });
+      } else if (response.status === 401) {
+        // Jika unauthorized, mungkin user tidak memiliki akses ke toko tertentu
+        toast.error('Anda tidak memiliki akses ke pengaturan toko ini');
+        // Gunakan default values
+        setSettings({
+          shopName: '',
+          address: '',
+          phone: '',
+          themeColor: '#3c8dbc',
+        });
       }
     } catch (error) {
       console.error('Error fetching settings:', error);
@@ -52,6 +62,8 @@ const ShopSettings = () => {
 
       if (response.ok) {
         toast.success('Pengaturan toko berhasil diperbarui');
+      } else if (response.status === 401) {
+        toast.error('Anda tidak memiliki izin untuk memperbarui pengaturan toko ini');
       } else {
         const error = await response.json();
         toast.error(error.error || 'Gagal memperbarui pengaturan');

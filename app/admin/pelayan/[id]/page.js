@@ -111,15 +111,83 @@ export default function PelayanDetail() {
               <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{attendant.username}</p>
             </div>
           </div>
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div className="flex items-center">
               <Hash className={`h-4 w-4 mr-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
               <span className={`${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Kode Karyawan: {attendant.employeeNumber || '-'}</span>
             </div>
             <div className="flex items-center">
+              <div className="mr-2">
+                <span className={`px-2 py-1 rounded-full text-xs ${
+                  attendant.status === 'AKTIF' || attendant.status === 'ACTIVE'
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                    : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                }`}>
+                  Status: {attendant.status}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center">
               <Calendar className={`h-4 w-4 mr-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
               <span className={`${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Bergabung pada: {new Date(attendant.createdAt).toLocaleDateString('id-ID')}</span>
             </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="mt-6 flex space-x-4">
+            {attendant.status === 'AKTIF' || attendant.status === 'ACTIVE' ? (
+              <button
+                onClick={async () => {
+                  if (window.confirm('Apakah Anda yakin ingin menonaktifkan pelayan ini?')) {
+                    try {
+                      const response = await fetch(`/api/store-users`, {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ids: [attendant.id] }),
+                      });
+
+                      if (response.ok) {
+                        // Refresh the page to update status
+                        window.location.reload();
+                      } else {
+                        const error = await response.json();
+                        alert(`Gagal menonaktifkan pelayan: ${error.error}`);
+                      }
+                    } catch (err) {
+                      alert(`Terjadi kesalahan: ${err.message}`);
+                    }
+                  }
+                }}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Nonaktifkan Pelayan
+              </button>
+            ) : (
+              <button
+                onClick={async () => {
+                  if (window.confirm('Apakah Anda yakin ingin mengaktifkan kembali pelayan ini?')) {
+                    try {
+                      const response = await fetch(`/api/store-users/${attendant.id}/activate`, {
+                        method: 'PATCH',
+                      });
+
+                      if (response.ok) {
+                        // Refresh the page to update status
+                        window.location.reload();
+                      } else {
+                        const error = await response.json();
+                        alert(`Gagal mengaktifkan pelayan: ${error.error}`);
+                      }
+                    } catch (err) {
+                      alert(`Terjadi kesalahan: ${err.message}`);
+                    }
+                  }
+                }}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                Aktifkan Pelayan
+              </button>
+            )}
           </div>
         </div>
 

@@ -1,4 +1,5 @@
 // app/api/dashboard/manager-summary/route.js
+export const dynamic = 'force-dynamic';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';

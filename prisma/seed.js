@@ -30,35 +30,12 @@ async function main() {
     console.log('Akun manager sudah ada');
   }
 
-  // Buat user warehouse (jika belum ada)
-  const existingWarehouse = await prisma.user.findUnique({
-    where: { username: 'warehouse' }
-  });
-
-  if (!existingWarehouse) {
-    await prisma.user.create({
-      data: {
-        name: 'Admin Gudang',
-        username: 'warehouse',
-        employeeNumber: 'WH001',
-        gender: 'Laki-laki',
-        phone: '081234567891',
-        password: await bcrypt.hash('password123', 10),
-        role: 'WAREHOUSE',
-        status: 'AKTIF',
-      },
-    });
-    console.log('Akun warehouse berhasil dibuat');
-  } else {
-    console.log('Akun warehouse sudah ada');
-  }
-
   // Buat beberapa toko (jika belum ada)
   const existingStore = await prisma.store.findFirst();
 
   if (!existingStore) {
-    await prisma.store.create({
-      data: {
+    const storesToCreate = [
+      {
         name: 'Toko Pusat',
         code: 'TK001', // Tambahkan kode unik
         description: 'Toko utama perusahaan',
@@ -67,10 +44,7 @@ async function main() {
         email: 'tokopusat@toko.com',
         status: 'ACTIVE',
       },
-    });
-
-    await prisma.store.create({
-      data: {
+      {
         name: 'Toko Cabang Barat',
         code: 'TK002', // Tambahkan kode unik
         description: 'Toko cabang di wilayah barat',
@@ -79,10 +53,7 @@ async function main() {
         email: 'toko.barat@toko.com',
         status: 'ACTIVE',
       },
-    });
-
-    await prisma.store.create({
-      data: {
+      {
         name: 'Toko Cabang Timur',
         code: 'TK003', // Tambahkan kode unik
         description: 'Toko cabang di wilayah timur',
@@ -90,9 +61,16 @@ async function main() {
         phone: '021-11223344',
         email: 'toko.timur@toko.com',
         status: 'ACTIVE',
-      },
-    });
-    console.log('Toko-toko berhasil dibuat');
+      }
+    ];
+
+    for (const storeData of storesToCreate) {
+      await prisma.store.create({
+        data: storeData,
+      });
+      console.log(`Toko "${storeData.name}" berhasil dibuat`);
+    }
+    console.log('Tokok-toko berhasil dibuat');
   } else {
     console.log('Toko sudah ada');
   }
@@ -120,60 +98,9 @@ async function main() {
         },
       });
       console.log(`Member 'Pelanggan Umum' dibuat untuk toko ${store.name}`);
+    } else {
+      console.log(`Member 'Pelanggan Umum' sudah ada untuk toko ${store.name}`);
     }
-  }
-
-  // Buat user admin toko (jika belum ada)
-  const existingAdminToko = await prisma.user.findUnique({
-    where: { username: 'admintoko' }
-  });
-
-  if (!existingAdminToko) {
-    const adminToko = await prisma.user.create({
-      data: {
-        name: 'Admin Toko',
-        username: 'admintoko',
-        employeeNumber: 'ADM001',
-        gender: 'Perempuan',
-        phone: '081234567892',
-        password: await bcrypt.hash('password123', 10),
-        role: 'ADMIN',
-        status: 'AKTIF',
-      },
-    });
-
-    // Ambil toko pertama untuk assign user
-    const firstStore = await prisma.store.findFirst();
-    if (firstStore) {
-      await prisma.storeUser.create({
-        data: {
-          userId: adminToko.id,
-          storeId: firstStore.id,
-          role: 'ADMIN',
-          status: 'AKTIF',
-          assignedBy: (await prisma.user.findUnique({ where: { username: 'manager' } })).id,
-        },
-      });
-    }
-    console.log('Akun admin toko berhasil dibuat');
-  } else {
-    console.log('Akun admin toko sudah ada');
-  }
-
-  // Buat warehouse (jika belum ada)
-  const existingWarehouseRecord = await prisma.warehouse.findFirst();
-  if (!existingWarehouseRecord) {
-    await prisma.warehouse.create({
-      data: {
-        name: 'Gudang Pusat',
-        description: 'Gudang pusat untuk seluruh toko',
-        address: 'Jl. Gudang No. 1, Jakarta',
-        phone: '021-55566677',
-      },
-    });
-    console.log('Gudang berhasil dibuat');
-  } else {
-    console.log('Gudang sudah ada');
   }
 
   console.log('Database seeding selesai!');

@@ -29,6 +29,13 @@ const ThermalReceipt = ({ receiptData, darkMode }) => {
               address: settingData.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
               phone: settingData.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
             });
+          } else if (settingResponse.status === 401) {
+            // Jika unauthorized, gunakan environment variables atau default
+            setStoreInfo({
+              name: process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+              address: process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
+              phone: process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
+            });
           } else {
             // Gunakan environment variables atau default jika API gagal
             setStoreInfo({
@@ -49,6 +56,13 @@ const ThermalReceipt = ({ receiptData, darkMode }) => {
               name: settingData.shopName || process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
               address: settingData.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
               phone: settingData.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
+            });
+          } else if (settingResponse.status === 401) {
+            // Jika unauthorized, gunakan default values
+            setStoreInfo({
+              name: process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+              address: process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
+              phone: process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
             });
           }
         } catch (fallbackError) {
