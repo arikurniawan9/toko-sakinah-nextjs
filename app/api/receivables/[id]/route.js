@@ -11,6 +11,11 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Cek apakah pengguna memiliki storeId
+  if (!session.user.storeId) {
+    return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
+  }
+
   try {
     const receivableId = params.id;
     const body = await request.json();
@@ -20,9 +25,12 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Jumlah pembayaran harus lebih besar dari 0' }, { status: 400 });
     }
 
-    // Ambil data hutang
+    // Ambil data hutang dengan verifikasi bahwa itu milik toko yang sesuai
     const receivable = await prisma.receivable.findUnique({
-      where: { id: receivableId },
+      where: {
+        id: receivableId,
+        storeId: session.user.storeId, // Hanya bisa mengakses receivable dari toko sendiri
+      },
       include: {
         sale: {
           include: {
@@ -33,7 +41,7 @@ export async function PUT(request, { params }) {
     });
 
     if (!receivable) {
-      return NextResponse.json({ error: 'Hutang tidak ditemukan' }, { status: 404 });
+      return NextResponse.json({ error: 'Hutang tidak ditemukan atau bukan milik toko Anda' }, { status: 404 });
     }
 
     // Hitung jumlah yang masih harus dibayar
@@ -58,7 +66,10 @@ export async function PUT(request, { params }) {
 
     // Update status hutang
     const updatedReceivable = await prisma.receivable.update({
-      where: { id: receivableId },
+      where: {
+        id: receivableId,
+        storeId: session.user.storeId, // Pastikan hanya mengupdate receivable dari toko sendiri
+      },
       data: {
         amountPaid: newAmountPaid,
         status: newStatus,
@@ -71,7 +82,10 @@ export async function PUT(request, { params }) {
     // Jika pelunasan penuh, update status transaksi menjadi PAID
     if (newStatus === 'PAID') {
       await prisma.sale.update({
-        where: { id: receivable.saleId },
+        where: {
+          id: receivable.saleId,
+          storeId: session.user.storeId, // Pastikan hanya mengupdate sale dari toko sendiri
+        },
         data: { status: 'PAID' }
       });
     }

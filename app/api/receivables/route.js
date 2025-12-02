@@ -11,6 +11,11 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Cek apakah pengguna memiliki storeId
+  if (!session.user.storeId) {
+    return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
@@ -22,7 +27,9 @@ export async function GET(request) {
     const skip = (page - 1) * limit;
 
     // Bangun where clause
-    let whereClause = {};
+    let whereClause = {
+      storeId: session.user.storeId, // Filter hanya untuk toko yang sesuai dengan session
+    };
 
     if (status) {
       // Jika status diberikan dalam format string terpisah koma, ubah ke array

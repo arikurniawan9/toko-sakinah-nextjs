@@ -36,6 +36,8 @@ export async function GET(request, { params }) {
             username: true,
             employeeNumber: true,
             code: true,
+            address: true,
+            phone: true,
             status: true,
             createdAt: true,
             updatedAt: true,

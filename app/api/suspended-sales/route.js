@@ -12,6 +12,9 @@ export async function GET(request) {
 
   try {
     const suspendedSales = await prisma.suspendedSale.findMany({
+      where: {
+        storeId: session.user.storeId, // Filter by store of the current user
+      },
       orderBy: {
         createdAt: 'desc',
       },
@@ -50,6 +53,7 @@ export async function POST(request) {
         notes,
         memberId,
         cartItems: JSON.stringify(cartItems), // Serialize cart items to a string
+        storeId: session.user.storeId, // Tambahkan storeId dari session user
       },
     });
 
@@ -76,7 +80,10 @@ export async function DELETE(request) {
     }
 
     await prisma.suspendedSale.delete({
-      where: { id },
+      where: {
+        id,
+        storeId: session.user.storeId, // Pastikan hanya menghapus suspended sale dari toko yang sesuai
+      },
     });
 
     return NextResponse.json({ message: 'Suspended sale deleted successfully' });

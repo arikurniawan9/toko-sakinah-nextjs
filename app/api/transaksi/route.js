@@ -94,7 +94,7 @@ export async function GET(request) {
 }
 
 // Function to generate a unique invoice number with format: YYYYMMDDXXXXX (year-month-date-5digit_urut)
-async function generateInvoiceNumber() {
+async function generateInvoiceNumber(storeId) {
   const date = new Date();
   const year = date.getFullYear().toString();
   const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -114,6 +114,7 @@ async function generateInvoiceNumber() {
       invoiceNumber: {
         startsWith: datePrefix
       },
+      storeId: storeId, // Pastikan menghitung per toko
       createdAt: {
         gte: todayStart,
         lte: todayEnd
@@ -123,13 +124,16 @@ async function generateInvoiceNumber() {
 
   // Nomor urut dimulai dari 1 setiap hari
   const sequenceNumber = (existingSalesCount + 1).toString().padStart(5, '0'); // 5 digit dengan leading zeros
-  
+
   // Gabungkan format: YYYYMMDD + 5 digit urut
   const invoiceNumber = `${datePrefix}${sequenceNumber}`;
 
   // Pastikan nomor unik (jaga-jaga jika ada konflik)
-  const existingSale = await prisma.sale.findUnique({
-    where: { invoiceNumber },
+  const existingSale = await prisma.sale.findFirst({
+    where: {
+      invoiceNumber: invoiceNumber,
+      storeId: storeId, // Pastikan memeriksa invoice number unik per toko
+    },
   });
 
   if (existingSale) {
@@ -201,7 +205,7 @@ export async function POST(request) {
   }
 
   try {
-    const newInvoiceNumber = await generateInvoiceNumber();
+    const newInvoiceNumber = await generateInvoiceNumber(session.user.storeId);
 
     const sale = await prisma.$transaction(async (tx) => {
       // 1. Validasi ulang stok sebelum membuat transaksi untuk mencegah race condition

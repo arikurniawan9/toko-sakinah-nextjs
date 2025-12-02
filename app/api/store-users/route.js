@@ -64,6 +64,8 @@ export async function GET(request) {
             username: true,
             employeeNumber: true,
             code: true,
+            address: true,
+            phone: true,
             status: true,
             createdAt: true,
             updatedAt: true,
@@ -315,11 +317,14 @@ export async function PUT(request) {
     }
 
     // Prepare update data for user table
+    const { address, phone } = await request.json(); // Extract address and phone from request
     const updateUserData = {
       name: name.trim(),
       username: username.trim(),
       employeeNumber: employeeNumber ? employeeNumber.trim() : null,
       code: code ? code.trim() : null,
+      address: address || null, // Add address field
+      phone: phone || null, // Add phone field
       role: role, // Also update role in User table to match store role
     };
 

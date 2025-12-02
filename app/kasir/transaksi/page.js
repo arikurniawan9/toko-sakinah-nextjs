@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Home, Printer, Plus, AlertTriangle } from "lucide-react";
+import { Home, Printer, Plus, AlertTriangle, CheckCircle } from "lucide-react";
 
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useUserTheme } from '../../../components/UserThemeContext';
@@ -16,6 +16,7 @@ import AttendantSelection from "@/components/kasir/transaksi/AttendantSelection"
 import Receipt from "@/components/kasir/transaksi/Receipt";
 import ThermalReceipt from "@/components/kasir/transaksi/ThermalReceipt";
 import ConfirmationModal from "@/components/ConfirmationModal";
+import SuccessModal from "@/components/SuccessModal";
 import SuspendSaleModal from "@/components/kasir/transaksi/SuspendSaleModal";
 import SuspendedSalesListModal from "@/components/kasir/transaksi/SuspendedSalesListModal";
 import TransactionActions from "@/components/kasir/transaksi/TransactionActions";
@@ -59,6 +60,9 @@ export default function KasirTransaksiPage() {
   const [showReceivablesModal, setShowReceivablesModal] = useState(false);
   const [showAllReceivablesModal, setShowAllReceivablesModal] = useState(false);
   const [showLowStockModal, setShowLowStockModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [successDetails, setSuccessDetails] = useState(null);
 
   // --- Cart Logic ---
   const removeFromCart = useCallback((productId) => {
@@ -208,7 +212,14 @@ export default function KasirTransaksiPage() {
       if (response.ok) {
         // Hitung sisa yang harus dibayar
         const remainingAmount = calculation.grandTotal - payment;
-        alert(`Transaksi hutang berhasil disimpan.\nNomor Invoice: ${result.invoiceNumber || result.id}\nJumlah DP: ${formatCurrency(payment)}\nSisa Hutang: ${formatCurrency(remainingAmount)}`);
+        // Tampilkan modal sukses untuk transaksi hutang
+        setSuccessMessage('Transaksi Hutang Berhasil Disimpan');
+        setSuccessDetails(
+          `Nomor Invoice: ${result.invoiceNumber || result.id}\n` +
+          `Jumlah DP: ${formatCurrency(payment)}\n` +
+          `Sisa Hutang: ${formatCurrency(remainingAmount)}`
+        );
+        setShowSuccessModal(true);
 
         // Reset form setelah transaksi hutang
         setCart([]);
@@ -428,7 +439,10 @@ export default function KasirTransaksiPage() {
       });
 
       if (response.ok) {
-        alert("Penjualan berhasil ditangguhkan.");
+        // Tampilkan modal sukses untuk penjualan yang ditangguhkan
+        setSuccessMessage('Penjualan Berhasil Ditangguhkan');
+        setSuccessDetails(null);
+        setShowSuccessModal(true);
         // Reset state
         setCart([]);
         setSelectedMember(null);
@@ -471,7 +485,10 @@ export default function KasirTransaksiPage() {
           "Gagal menghapus penjualan yang ditangguhkan dari database."
         );
       }
-      alert(`Penjualan "${suspendedSale.name}" berhasil dilanjutkan.`);
+      // Tampilkan modal sukses untuk penjualan yang dilanjutkan
+      setSuccessMessage(`Penjualan "${suspendedSale.name}" Berhasil Dilanjutkan`);
+      setSuccessDetails(null);
+      setShowSuccessModal(true);
     } catch (error) {
       console.error("Error deleting suspended sale:", error);
       alert(error.message);
@@ -651,7 +668,10 @@ export default function KasirTransaksiPage() {
       const result = await response.json();
 
       if (response.ok) {
-        alert('Member baru berhasil ditambahkan');
+        // Tampilkan modal sukses untuk member baru yang berhasil ditambahkan
+        setSuccessMessage('Member Baru Berhasil Ditambahkan');
+        setSuccessDetails(null);
+        setShowSuccessModal(true);
         // Tambahkan member baru ke daftar member
         setMembers(prev => [...prev, result]);
         // Pilih member yang baru ditambahkan
@@ -1033,6 +1053,15 @@ export default function KasirTransaksiPage() {
           </div>
         </div>
       )}
+
+      {/* Success Modal */}
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        message={successMessage}
+        details={successDetails}
+        darkMode={darkMode}
+      />
     </ProtectedRoute>
   );
 }

@@ -1,6 +1,6 @@
 // utils/thermalPrint.js
-export const printThermalReceipt = (receiptData) => {
-  return new Promise((resolve, reject) => {
+export const printThermalReceipt = async (receiptData) => {
+  return new Promise(async (resolve, reject) => {
     try {
       // Format currency function
       const formatCurrencyForPrint = (amount) => {
@@ -18,9 +18,47 @@ export const printThermalReceipt = (receiptData) => {
         return text.length > maxLength ? text.substring(0, maxLength - 3) + '...' : text;
       };
 
+      // Ambil informasi toko
+      let storeInfo = {
+        name: 'TOKO SAKINAH',
+        address: 'Jl. Raya No. 123, Kota Anda',
+        phone: '0812-3456-7890',
+      };
+
+      try {
+        const response = await fetch('/api/stores/current');
+        if (response.ok) {
+          const data = await response.json();
+          storeInfo = {
+            name: data.name || process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+            address: data.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
+            phone: data.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
+          };
+        } else {
+          // Coba endpoint lama sebagai fallback
+          const settingResponse = await fetch('/api/setting');
+          if (settingResponse.ok) {
+            const settingData = await settingResponse.json();
+            storeInfo = {
+              name: settingData.shopName || process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+              address: settingData.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
+              phone: settingData.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
+            };
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching store info for receipt:', error);
+        // Gunakan environment variables atau default jika API gagal
+        storeInfo = {
+          name: process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+          address: process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
+          phone: process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
+        };
+      }
+
       // Buat jendela baru untuk cetak thermal
       const printWindow = window.open('', '_blank', 'width=300,height=600');
-      
+
       // HTML untuk thermal receipt dengan ukuran kertas 72mm
       const receiptHTML = `
         <!DOCTYPE html>
@@ -73,17 +111,17 @@ export const printThermalReceipt = (receiptData) => {
         </head>
         <body>
           <div class="text-center">
-            <h2 class="text-lg font-bold uppercase">TOKO SAKINAH</h2>
-            <p class="text-xs">Jl. Raya No. 123, Kota Anda</p>
-            <p class="text-xs">0812-3456-7890</p>
+            <h2 class="text-lg font-bold uppercase">${storeInfo.name}</h2>
+            <p class="text-xs">${storeInfo.address}</p>
+            <p class="text-xs">${storeInfo.phone}</p>
           </div>
           
           <div class="my-2 border-t border-b py-1">
             <div class="flex justify-between text-xs">
               <span>No. Invoice: ${receiptData.invoiceNumber}</span>
-              <span>${new Date(receiptData.date).toLocaleString('id-ID', { 
-                day: '2-digit', 
-                month: '2-digit', 
+              <span>${new Date(receiptData.date).toLocaleString('id-ID', {
+                day: '2-digit',
+                month: '2-digit',
                 year: '2-digit',
                 hour: '2-digit',
                 minute: '2-digit'
@@ -93,6 +131,11 @@ export const printThermalReceipt = (receiptData) => {
               <span>Kasir: ${limitTextForPrint(receiptData.cashier?.name || 'N/A', 10)}</span>
               <span>Pelayan: ${limitTextForPrint(receiptData.attendant?.name || 'N/A', 10)}</span>
             </div>
+            ${receiptData.customer && receiptData.customer.name && receiptData.customer.name !== 'Umum' && receiptData.customer.name !== 'Pelanggan Umum' ? `
+              <div class="text-xs mt-1">
+                <span>Member: ${limitTextForPrint(receiptData.customer.name, 15)}</span>
+              </div>
+            ` : ''}
           </div>
           
           <div class="my-2">
@@ -120,9 +163,29 @@ export const printThermalReceipt = (receiptData) => {
               <span>Subtotal</span>
               <span>${formatCurrencyForPrint(receiptData.subTotal || 0)}</span>
             </div>
-            ${receiptData.totalDiscount > 0 ? `
+
+            <!-- Detail Diskon -->
+            ${receiptData.itemDiscount > 0 ? `
               <div class="flex justify-between text-sm">
-                <span>Diskon</span>
+                <span>Diskon Item</span>
+                <span>-${formatCurrencyForPrint(receiptData.itemDiscount || 0)}</span>
+              </div>
+            ` : ''}
+            ${receiptData.memberDiscount > 0 ? `
+              <div class="flex justify-between text-sm">
+                <span>Diskon Member</span>
+                <span>-${formatCurrencyForPrint(receiptData.memberDiscount || 0)}</span>
+              </div>
+            ` : ''}
+            ${receiptData.additionalDiscount > 0 ? `
+              <div class="flex justify-between text-sm">
+                <span>Diskon Tambahan</span>
+                <span>-${formatCurrencyForPrint(receiptData.additionalDiscount || 0)}</span>
+              </div>
+            ` : ''}
+            ${receiptData.totalDiscount > 0 ? `
+              <div class="flex justify-between text-sm border-t border-black pt-1">
+                <span>Total Diskon</span>
                 <span>-${formatCurrencyForPrint(receiptData.totalDiscount || 0)}</span>
               </div>
             ` : ''}
@@ -134,6 +197,20 @@ export const printThermalReceipt = (receiptData) => {
               <span>Bayar</span>
               <span>${formatCurrencyForPrint(receiptData.payment || 0)}</span>
             </div>
+            <!-- Tampilkan status pembayaran -->
+            <div class="flex justify-between text-sm font-bold">
+              ${receiptData.status === 'UNPAID' ? '<span class="text-red-500">Status: HUTANG</span>' :
+                receiptData.status === 'PARTIALLY_PAID' ? '<span class="text-yellow-500">Status: DP</span>' :
+                '<span class="text-green-500">Status: LUNAS</span>'}
+              <span></span>
+            </div>
+            <!-- Tampilkan sisa hutang jika statusnya hutang -->
+            ${receiptData.payment < receiptData.grandTotal && receiptData.grandTotal > 0 ? `
+              <div class="flex justify-between text-sm">
+                <span>Sisa Hutang</span>
+                <span>${formatCurrencyForPrint(Math.max(0, receiptData.grandTotal - receiptData.payment))}</span>
+              </div>
+            ` : ''}
             <div class="flex justify-between text-sm">
               <span>Kembali</span>
               <span>${formatCurrencyForPrint(receiptData.change || 0)}</span>
