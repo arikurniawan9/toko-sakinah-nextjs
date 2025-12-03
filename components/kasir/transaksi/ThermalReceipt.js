@@ -8,36 +8,74 @@ const ThermalReceipt = ({ receiptData, darkMode }) => {
   });
 
   useEffect(() => {
-    // Ambil data toko dari API
-    const fetchStoreInfo = async () => {
-      try {
-        const response = await fetch('/api/stores/current');
-        if (response.ok) {
-          const data = await response.json();
-          setStoreInfo({
-            name: data.name || process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
-            address: data.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
-            phone: data.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
-          });
-        } else {
-          // Coba endpoint lama sebagai fallback
-          const settingResponse = await fetch('/api/setting');
-          if (settingResponse.ok) {
-            const settingData = await settingResponse.json();
+    // Prioritaskan informasi toko dari receiptData, jika tidak tersedia baru ambil dari API
+    if (receiptData.storeName && receiptData.storeAddress && receiptData.storePhone) {
+      setStoreInfo({
+        name: receiptData.storeName,
+        address: receiptData.storeAddress,
+        phone: receiptData.storePhone,
+      });
+    } else {
+      // Ambil data toko dari API
+      const fetchStoreInfo = async () => {
+        try {
+          const response = await fetch('/api/stores/current');
+          if (response.ok) {
+            const data = await response.json();
             setStoreInfo({
-              name: settingData.shopName || process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
-              address: settingData.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
-              phone: settingData.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
-            });
-          } else if (settingResponse.status === 401) {
-            // Jika unauthorized, gunakan environment variables atau default
-            setStoreInfo({
-              name: process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
-              address: process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
-              phone: process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
+              name: data.name || process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+              address: data.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
+              phone: data.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
             });
           } else {
-            // Gunakan environment variables atau default jika API gagal
+            // Coba endpoint lama sebagai fallback
+            const settingResponse = await fetch('/api/setting');
+            if (settingResponse.ok) {
+              const settingData = await settingResponse.json();
+              setStoreInfo({
+                name: settingData.shopName || process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+                address: settingData.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
+                phone: settingData.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
+              });
+            } else if (settingResponse.status === 401) {
+              // Jika unauthorized, gunakan environment variables atau default
+              setStoreInfo({
+                name: process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+                address: process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
+                phone: process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
+              });
+            } else {
+              // Gunakan environment variables atau default jika API gagal
+              setStoreInfo({
+                name: process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+                address: process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
+                phone: process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching store info:', error);
+          // Coba endpoint alternatif jika terjadi error
+          try {
+            const settingResponse = await fetch('/api/setting');
+            if (settingResponse.ok) {
+              const settingData = await settingResponse.json();
+              setStoreInfo({
+                name: settingData.shopName || process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+                address: settingData.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
+                phone: settingData.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
+              });
+            } else if (settingResponse.status === 401) {
+              // Jika unauthorized, gunakan default values
+              setStoreInfo({
+                name: process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+                address: process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
+                phone: process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
+              });
+            }
+          } catch (fallbackError) {
+            console.error('Error fetching store info from fallback:', fallbackError);
+            // Gunakan default jika terjadi error
             setStoreInfo({
               name: process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
               address: process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
@@ -45,40 +83,11 @@ const ThermalReceipt = ({ receiptData, darkMode }) => {
             });
           }
         }
-      } catch (error) {
-        console.error('Error fetching store info:', error);
-        // Coba endpoint alternatif jika terjadi error
-        try {
-          const settingResponse = await fetch('/api/setting');
-          if (settingResponse.ok) {
-            const settingData = await settingResponse.json();
-            setStoreInfo({
-              name: settingData.shopName || process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
-              address: settingData.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
-              phone: settingData.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
-            });
-          } else if (settingResponse.status === 401) {
-            // Jika unauthorized, gunakan default values
-            setStoreInfo({
-              name: process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
-              address: process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
-              phone: process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
-            });
-          }
-        } catch (fallbackError) {
-          console.error('Error fetching store info from fallback:', fallbackError);
-          // Gunakan default jika terjadi error
-          setStoreInfo({
-            name: process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
-            address: process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
-            phone: process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
-          });
-        }
-      }
-    };
+      };
 
-    fetchStoreInfo();
-  }, []);
+      fetchStoreInfo();
+    }
+  }, [receiptData.storeName, receiptData.storeAddress, receiptData.storePhone]);
 
   if (!receiptData) {
     return null;
@@ -117,6 +126,7 @@ const ThermalReceipt = ({ receiptData, darkMode }) => {
     date,
     customer,
     paymentMethod,
+    referenceNumber,
     status
   } = receiptData;
 
@@ -234,6 +244,8 @@ const ThermalReceipt = ({ receiptData, darkMode }) => {
           )}
           <span></span>
         </div>
+
+
         {/* Tampilkan sisa hutang jika statusnya hutang */}
         {payment < grandTotal && grandTotal > 0 && (
           <div className="flex justify-between text-sm">
@@ -250,6 +262,20 @@ const ThermalReceipt = ({ receiptData, darkMode }) => {
       <div className="my-2 border-t border-black pt-1">
         <div className="text-xs text-center">
           <div className="mb-1">Metode: {paymentMethod || 'CASH'}</div>
+          {/* Tampilkan nomor referensi jika metode pembayaran bukan tunai */}
+          {paymentMethod && paymentMethod !== 'CASH' && referenceNumber && (
+            <div className="mb-1">No. Ref: {referenceNumber}</div>
+          )}
+          {/* Tampilkan nomor referensi pembayaran hutang jika ada */}
+          {receiptData.receivableReferenceNumber && (
+            <>
+              {receiptData.receivableReferenceNumber.split(',').map((ref, index) => (
+                <div key={index} className="mb-1">
+                  No. Ref Hutang: {ref.trim()}
+                </div>
+              ))}
+            </>
+          )}
           <div>Terima kasih telah berbelanja!</div>
           <div className="text-xs mt-1">Barang yg sdh dibeli</div>
           <div className="text-xs">tidak dpt ditukar/dikembalikan</div>

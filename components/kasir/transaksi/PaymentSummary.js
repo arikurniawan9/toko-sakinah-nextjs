@@ -2,7 +2,8 @@
 'use client';
 
 import { CreditCard, Save, Wallet, Coins } from 'lucide-react';
-import { memo } from 'react';
+import { memo, useState, useCallback } from 'react';
+import ReferenceModal from './ReferenceModal';
 
 const PaymentSummary = memo(({
   calculation,
@@ -12,6 +13,8 @@ const PaymentSummary = memo(({
   setPaymentMethod,
   initiatePaidPayment,
   initiateUnpaidPayment,
+  referenceNumber,
+  setReferenceNumber,
   loading,
   darkMode,
   additionalDiscount,
@@ -20,6 +23,9 @@ const PaymentSummary = memo(({
   selectedMember,
   selectedAttendant
 }) => {
+  const [showReferenceModal, setShowReferenceModal] = useState(false);
+  const [localReferenceNumber, setLocalReferenceNumber] = useState('');
+
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -44,6 +50,34 @@ const PaymentSummary = memo(({
   const quickPaymentAmount = (amount) => {
     setPayment(amount);
   };
+
+  // Fungsi untuk menangani pembayaran yang bergantung pada metode pembayaran
+  const handlePaymentSubmission = useCallback(() => {
+    if (paymentMethod === 'CASH') {
+      // Langsung tampilkan modal konfirmasi untuk pembayaran tunai
+      if (payment >= grandTotal) {
+        initiatePaidPayment();
+      } else {
+        initiateUnpaidPayment();
+      }
+    } else {
+      // Tampilkan modal referensi untuk QRIS atau Transfer
+      setShowReferenceModal(true);
+    }
+  }, [paymentMethod, payment, grandTotal, initiatePaidPayment, initiateUnpaidPayment]);
+
+  // Fungsi untuk submit referensi dan melanjutkan pembayaran
+  const handleReferenceSubmit = useCallback((refNumber) => {
+    setReferenceNumber(localReferenceNumber); // Use local reference number
+    setShowReferenceModal(false);
+
+    // Lanjutkan ke proses pembayaran berdasarkan status pembayaran
+    if (payment >= grandTotal) {
+      initiatePaidPayment();
+    } else {
+      initiateUnpaidPayment();
+    }
+  }, [payment, grandTotal, localReferenceNumber, setReferenceNumber, initiatePaidPayment, initiateUnpaidPayment]);
 
   return (
     <>
@@ -226,7 +260,14 @@ const PaymentSummary = memo(({
 
           <div className="flex space-x-2">
             <button
-              onClick={initiateUnpaidPayment}
+              onClick={() => {
+                if (paymentMethod === 'CASH') {
+                  initiateUnpaidPayment();
+                } else {
+                  setReferenceNumber('');
+                  setShowReferenceModal(true);
+                }
+              }}
               disabled={isUnpaidDisabled}
               className="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -243,7 +284,7 @@ const PaymentSummary = memo(({
               )}
             </button>
             <button
-              onClick={initiatePaidPayment}
+              onClick={handlePaymentSubmission}
               disabled={isPaidDisabled}
               className="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -266,6 +307,17 @@ const PaymentSummary = memo(({
           </div>
         </div>
       </div>
+
+      <ReferenceModal
+        isOpen={showReferenceModal}
+        onClose={() => setShowReferenceModal(false)}
+        onSubmit={handleReferenceSubmit}
+        paymentMethod={paymentMethod}
+        darkMode={darkMode}
+        referenceNumber={localReferenceNumber}
+        setReferenceNumber={setLocalReferenceNumber}
+        loading={loading}
+      />
     </>
   );
 });

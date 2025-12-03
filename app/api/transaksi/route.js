@@ -166,7 +166,8 @@ export async function POST(request) {
     memberId,
     attendantId,
     paymentMethod, // Add payment method
-    status // Tambahkan status transaksi
+    status, // Tambahkan status transaksi
+    referenceNumber // Tambahkan reference number untuk pembayaran non-tunai
   } = body;
 
   if (!items || items.length === 0) {
@@ -239,6 +240,7 @@ export async function POST(request) {
           payment: payment,
           change: change,
           status: status || 'PAID', // Gunakan status yang dikirim, default ke 'PAID'
+          referenceNumber: referenceNumber || null, // Simpan reference number jika ada
           saleDetails: {
             create: items.map(item => ({
               storeId: session.user.storeId, // Tambahkan storeId ke detail penjualan
@@ -298,7 +300,7 @@ export async function POST(request) {
     });
 
     // Log audit untuk pembuatan transaksi penjualan
-    await logCreate(session.user.id, 'Sale', sale.id, sale, request);
+    await logCreate(session.user.id, 'Sale', sale.id, sale, request, session.user.storeId);
 
     // Debug log untuk melihat invoice number yang dihasilkan
     console.log("Sale object created:", {

@@ -16,6 +16,7 @@ export default function RiwayatKasirPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedDate, setSelectedDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [pagination, setPagination] = useState({
     page: 1,
@@ -23,24 +24,28 @@ export default function RiwayatKasirPage() {
     total: 0,
     limit: 10
   });
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  const fetchTransactions = async (page = 1, date = '', search = '') => {
+  const fetchTransactions = async (page = 1, date = '', endDate = '', search = '', limit = itemsPerPage) => {
     setLoading(true);
     try {
-      let url = `/api/kasir/transaksi?page=${page}&limit=${pagination.limit}`;
+      let url = `/api/kasir/transaksi?page=${page}&limit=${limit}`;
       if (date) {
         url += `&date=${date}`;
+      }
+      if (endDate) {
+        url += `&endDate=${endDate}`;
       }
       if (search) {
         url += `&search=${encodeURIComponent(search)}`;
       }
-      
+
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error('Gagal memuat riwayat transaksi');
       }
       const data = await response.json();
-      
+
       setTransactions(data.sales || []);
       setPagination({
         page: data.pagination.page,
@@ -56,7 +61,45 @@ export default function RiwayatKasirPage() {
     }
   };
 
-  const handlePrintReceipt = (transaction) => {
+  const handlePrintReceipt = async (transaction) => {
+    // Ambil informasi toko untuk dimasukkan ke dalam receipt
+    let storeInfo = {
+      name: 'TOKO SAKINAH',
+      address: 'Jl. Raya No. 123, Kota Anda',
+      phone: '0812-3456-7890',
+    };
+
+    try {
+      const storeResponse = await fetch('/api/stores/current');
+      if (storeResponse.ok) {
+        const storeData = await storeResponse.json();
+        storeInfo = {
+          name: storeData.name || process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+          address: storeData.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
+          phone: storeData.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
+        };
+      } else {
+        // Coba endpoint setting sebagai fallback
+        const settingResponse = await fetch('/api/setting');
+        if (settingResponse.ok) {
+          const settingData = await settingResponse.json();
+          storeInfo = {
+            name: settingData.shopName || process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+            address: settingData.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
+            phone: settingData.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
+          };
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching store info for receipt:', error);
+      // Gunakan environment variables atau default jika API gagal
+      storeInfo = {
+        name: process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+        address: process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
+        phone: process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
+      };
+    }
+
     // Transform the transaction data to the format expected by printThermalReceipt
     const receiptPayload = {
       id: transaction.id,
@@ -76,6 +119,9 @@ export default function RiwayatKasirPage() {
         originalPrice: item.price, // Assuming price from history is the final price
         priceAfterItemDiscount: item.price,
       })),
+      storeName: storeInfo.name,
+      storeAddress: storeInfo.address,
+      storePhone: storeInfo.phone,
     };
 
     printThermalReceipt(receiptPayload)
@@ -83,26 +129,21 @@ export default function RiwayatKasirPage() {
       .catch((error) => console.error("Gagal mencetak struk dari riwayat:", error));
   };
 
-  const handleDateChange = (e) => {
-    setSelectedDate(e.target.value);
-    // Reset to first page when date changes
-    setPagination(prev => ({ ...prev, page: 1 }));
-  };
 
-  // Fetch transactions when page, date, or search term changes with debounce for search
+  // Fetch transactions when page, date, endDate, search term, or itemsPerPage changes with debounce for search
   useEffect(() => {
     if (searchTerm) {
       // When searching, always start from first page
       const delayDebounce = setTimeout(() => {
-        fetchTransactions(1, selectedDate, searchTerm);
+        fetchTransactions(1, selectedDate, endDate, searchTerm, itemsPerPage);
       }, 300); // Debounce search to avoid too many API calls
 
       return () => clearTimeout(delayDebounce);
     } else {
-      // If search term is empty, fetch with pagination and date filter
-      fetchTransactions(pagination.page, selectedDate, '');
+      // If search term is empty, fetch with pagination, date filter, and items per page
+      fetchTransactions(pagination.page, selectedDate, endDate, '', itemsPerPage);
     }
-  }, [searchTerm, selectedDate, pagination.page]);
+  }, [searchTerm, selectedDate, endDate, pagination.page, itemsPerPage]);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -142,46 +183,49 @@ export default function RiwayatKasirPage() {
                   <p className={`mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Daftar transaksi yang telah Anda proses.</p>
                 </div>
               </div>
-              <div className="group relative">
-                <button
-                  onClick={() => window.location.href = '/kasir'}
-                  className={`p-2 rounded-md ${
-                    darkMode
-                      ? 'bg-purple-600 hover:bg-purple-700 text-white'
-                      : 'bg-purple-600 hover:bg-purple-700 text-white'
-                  } transition-colors`}
-                  title="Dashboard"
-                >
-                  <Home size={20} />
-                </button>
-                <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 hidden group-hover:block bg-gray-800 text-white text-xs py-1 px-2 rounded">
-                  Dashboard
-                </span>
-              </div>
             </div>
 
             {/* Filters */}
-            <div className={`mb-6 p-6 rounded-xl shadow border ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center">
-                  <Calendar className={`mr-2 h-5 w-5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+            <div className={`mb-6 p-4 rounded-xl shadow border ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                <div className="md:col-span-2 flex items-center">
+                  <label className={`mr-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Dari:</label>
                   <input
                     type="date"
                     value={selectedDate}
-                    onChange={handleDateChange}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                    onChange={(e) => {
+                      setSelectedDate(e.target.value);
+                      // Reset to first page when date changes
+                      setPagination(prev => ({ ...prev, page: 1 }));
+                    }}
+                    className={`w-full px-3 py-1.5 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
                       darkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-300 bg-white text-gray-900'
                     }`}
                   />
                 </div>
-                <div className="flex items-center">
+                <div className="md:col-span-2 flex items-center">
+                  <label className={`mr-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Sampai:</label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => {
+                      setEndDate(e.target.value);
+                      // Reset to first page when date changes
+                      setPagination(prev => ({ ...prev, page: 1 }));
+                    }}
+                    className={`w-full px-3 py-1.5 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                      darkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-300 bg-white text-gray-900'
+                    }`}
+                  />
+                </div>
+                <div className="md:col-span-5 flex items-center">
                   <Search className={`mr-2 h-5 w-5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
                   <input
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder="Cari berdasarkan nomor invoice..."
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                    className={`w-full px-3 py-1.5 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
                       darkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-300 bg-white text-gray-900'
                     }`}
                   />
@@ -196,6 +240,24 @@ export default function RiwayatKasirPage() {
                       &times;
                     </button>
                   )}
+                </div>
+                <div className="md:col-span-3 flex items-center">
+                  <label className={`mr-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Item:</label>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setPagination(prev => ({ ...prev, page: 1 })); // Reset to first page when changing items per page
+                    }}
+                    className={`w-20 px-3 py-1.5 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                      darkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-300 bg-white text-gray-900'
+                    }`}
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
                 </div>
               </div>
             </div>
@@ -282,7 +344,7 @@ export default function RiwayatKasirPage() {
                                   <UndoTransactionButton
                                     saleId={transaction.id}
                                     invoiceNumber={transaction.invoiceNumber}
-                                    onUndo={() => fetchTransactions(pagination.page, selectedDate, searchTerm)}
+                                    onUndo={() => fetchTransactions(pagination.page, selectedDate, endDate, searchTerm, itemsPerPage)}
                                     darkMode={darkMode}
                                   />
                                 )}
@@ -296,16 +358,16 @@ export default function RiwayatKasirPage() {
 
                   {/* Pagination */}
                   {pagination.totalPages > 1 && (
-                    <div className={`px-6 py-4 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                      <div className="flex items-center justify-between">
+                    <div className={`px-4 py-3 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
                         <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                           Menampilkan {((pagination.page - 1) * pagination.limit) + 1} - {Math.min(pagination.page * pagination.limit, pagination.total)} dari {pagination.total} transaksi
                         </div>
-                        <div className="flex space-x-2">
+                        <div className="flex items-center space-x-2">
                           <button
                             onClick={() => goToPage(pagination.page - 1)}
                             disabled={pagination.page === 1}
-                            className={`px-3 py-1 rounded ${
+                            className={`px-3 py-1.5 text-sm rounded ${
                               pagination.page === 1
                                 ? (darkMode ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed')
                                 : (darkMode ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-800')
@@ -313,13 +375,13 @@ export default function RiwayatKasirPage() {
                           >
                             Sebelumnya
                           </button>
-                          <span className={`px-3 py-1 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                          <span className={`px-3 py-1.5 text-sm ${darkMode ? 'text-white bg-gray-700' : 'text-gray-800 bg-gray-200'} rounded`}>
                             {pagination.page} dari {pagination.totalPages}
                           </span>
                           <button
                             onClick={() => goToPage(pagination.page + 1)}
                             disabled={pagination.page === pagination.totalPages}
-                            className={`px-3 py-1 rounded ${
+                            className={`px-3 py-1.5 text-sm rounded ${
                               pagination.page === pagination.totalPages
                                 ? (darkMode ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed')
                                 : (darkMode ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-800')

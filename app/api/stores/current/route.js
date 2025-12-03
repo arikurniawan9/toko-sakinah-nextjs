@@ -19,11 +19,11 @@ export async function GET(request) {
   try {
     // Ambil informasi toko berdasarkan storeId dari session
     const store = await prisma.store.findUnique({
-      where: { 
-        id: session.user.storeId 
+      where: {
+        id: session.user.storeId
       },
       include: {
-        setting: true // Include setting if available
+        settings: true // Include setting if available
       }
     });
 
@@ -33,11 +33,12 @@ export async function GET(request) {
 
     // Return store information along with any available settings
     const storeInfo = {
-      name: store.setting?.shopName || store.name,
-      address: store.setting?.address || store.address,
-      phone: store.setting?.phone || store.phone,
+      name: store.name, // Gunakan nama asli toko dari database
+      address: store.settings?.address || store.address,
+      phone: store.settings?.phone || store.phone,
       email: store.email,
       code: store.code,
+      id: store.id, // Tambahkan ID toko
       description: store.description,
     };
 

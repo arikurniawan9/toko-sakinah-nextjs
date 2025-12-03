@@ -18,42 +18,45 @@ export const printThermalReceipt = async (receiptData) => {
         return text.length > maxLength ? text.substring(0, maxLength - 3) + '...' : text;
       };
 
-      // Ambil informasi toko
+      // Gunakan informasi toko dari receiptData jika tersedia, jika tidak ambil dari API
       let storeInfo = {
-        name: 'TOKO SAKINAH',
-        address: 'Jl. Raya No. 123, Kota Anda',
-        phone: '0812-3456-7890',
+        name: receiptData.storeName || 'TOKO SAKINAH',
+        address: receiptData.storeAddress || 'Jl. Raya No. 123, Kota Anda',
+        phone: receiptData.storePhone || '0812-3456-7890',
       };
 
-      try {
-        const response = await fetch('/api/stores/current');
-        if (response.ok) {
-          const data = await response.json();
-          storeInfo = {
-            name: data.name || process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
-            address: data.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
-            phone: data.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
-          };
-        } else {
-          // Coba endpoint lama sebagai fallback
-          const settingResponse = await fetch('/api/setting');
-          if (settingResponse.ok) {
-            const settingData = await settingResponse.json();
+      // Jika informasi toko belum tersedia dari receiptData, ambil dari API
+      if (!receiptData.storeName || !receiptData.storeAddress || !receiptData.storePhone) {
+        try {
+          const response = await fetch('/api/stores/current');
+          if (response.ok) {
+            const data = await response.json();
             storeInfo = {
-              name: settingData.shopName || process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
-              address: settingData.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
-              phone: settingData.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
+              name: data.name || process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+              address: data.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
+              phone: data.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
             };
+          } else {
+            // Coba endpoint lama sebagai fallback
+            const settingResponse = await fetch('/api/setting');
+            if (settingResponse.ok) {
+              const settingData = await settingResponse.json();
+              storeInfo = {
+                name: settingData.shopName || process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+                address: settingData.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
+                phone: settingData.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
+              };
+            }
           }
+        } catch (error) {
+          console.error('Error fetching store info for receipt:', error);
+          // Gunakan environment variables atau default jika API gagal
+          storeInfo = {
+            name: process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+            address: process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
+            phone: process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
+          };
         }
-      } catch (error) {
-        console.error('Error fetching store info for receipt:', error);
-        // Gunakan environment variables atau default jika API gagal
-        storeInfo = {
-          name: process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
-          address: process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
-          phone: process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
-        };
       }
 
       // Buat jendela baru untuk cetak thermal
@@ -115,7 +118,7 @@ export const printThermalReceipt = async (receiptData) => {
             <p class="text-xs">${storeInfo.address}</p>
             <p class="text-xs">${storeInfo.phone}</p>
           </div>
-          
+
           <div class="my-2 border-t border-b py-1">
             <div class="flex justify-between text-xs">
               <span>No. Invoice: ${receiptData.invoiceNumber}</span>
@@ -137,7 +140,7 @@ export const printThermalReceipt = async (receiptData) => {
               </div>
             ` : ''}
           </div>
-          
+
           <div class="my-2">
             ${receiptData.items.map(item => `
               <div class="text-xs mb-1">
@@ -149,7 +152,7 @@ export const printThermalReceipt = async (receiptData) => {
                   <span class="text-right">@${formatCurrencyForPrint(item.originalPrice || 0)}</span>
                   <span class="w-16 text-right">${formatCurrencyForPrint(item.originalPrice * item.quantity || 0)}</span>
                 </div>
-                ${item.originalPrice !== item.priceAfterItemDiscount ? 
+                ${item.originalPrice !== item.priceAfterItemDiscount ?
                   `<div class="flex justify-between text-right text-xs italic">
                     <span></span>
                     <span class="text-right">Pot:${formatCurrencyForPrint(item.originalPrice - item.priceAfterItemDiscount)}</span>
@@ -157,7 +160,7 @@ export const printThermalReceipt = async (receiptData) => {
               </div>
             `).join('')}
           </div>
-          
+
           <div class="my-2 border-t pt-1">
             <div class="flex justify-between text-sm font-semibold">
               <span>Subtotal</span>
@@ -204,6 +207,7 @@ export const printThermalReceipt = async (receiptData) => {
                 '<span class="text-green-500">Status: LUNAS</span>'}
               <span></span>
             </div>
+
             <!-- Tampilkan sisa hutang jika statusnya hutang -->
             ${receiptData.payment < receiptData.grandTotal && receiptData.grandTotal > 0 ? `
               <div class="flex justify-between text-sm">
@@ -216,10 +220,19 @@ export const printThermalReceipt = async (receiptData) => {
               <span>${formatCurrencyForPrint(receiptData.change || 0)}</span>
             </div>
           </div>
-          
+
           <div class="my-2 border-t pt-1">
             <div class="text-xs text-center">
               <div class="mb-1">Metode: ${receiptData.paymentMethod || 'CASH'}</div>
+              <!-- Tampilkan nomor referensi jika metode pembayaran bukan tunai -->
+              ${receiptData.paymentMethod && receiptData.paymentMethod !== 'CASH' && receiptData.referenceNumber ? `
+                <div class="mb-1">No. Ref: ${limitTextForPrint(receiptData.referenceNumber, 20)}</div>
+              ` : ''}
+              <!-- Tampilkan nomor referensi pembayaran hutang jika ada -->
+              ${receiptData.receivableReferenceNumber ?
+                receiptData.receivableReferenceNumber.split(',').map((ref, index) =>
+                  '<div class="mb-1">No. Ref Hutang: ' + limitTextForPrint(ref.trim(), 20) + '</div>'
+                ).join('') : ''}
               <div>Terima kasih telah berbelanja!</div>
               <div class="text-xs mt-1">Barang yg sdh dibeli</div>
               <div class="text-xs">tidak dpt ditukar/dikembalikan</div>
@@ -231,12 +244,12 @@ export const printThermalReceipt = async (receiptData) => {
 
       printWindow.document.write(receiptHTML);
       printWindow.document.close();
-      
+
       // Tunggu sampai dokumen selesai dimuat
       printWindow.onload = () => {
         // Fokus ke jendela cetak
         printWindow.focus();
-        
+
         // Setelah jendela selesai dimuat, cetak
         setTimeout(() => {
           printWindow.print();

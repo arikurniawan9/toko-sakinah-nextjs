@@ -11,6 +11,7 @@ const ReceivablesModal = ({ isOpen, onClose, memberId, darkMode }) => {
   const [selectedReceivable, setSelectedReceivable] = useState(null);
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState('CASH');
+  const [referenceNumber, setReferenceNumber] = useState('');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   useEffect(() => {
@@ -58,7 +59,8 @@ const ReceivablesModal = ({ isOpen, onClose, memberId, darkMode }) => {
         },
         body: JSON.stringify({
           amountPaid: paymentAmount,
-          paymentMethod
+          paymentMethod,
+          ...(paymentMethod !== 'CASH' && referenceNumber && { referenceNumber })
         }),
       });
 
@@ -66,6 +68,7 @@ const ReceivablesModal = ({ isOpen, onClose, memberId, darkMode }) => {
         toast.success('Pembayaran hutang berhasil dicatat');
         setShowPaymentModal(false);
         setPaymentAmount(0);
+        setReferenceNumber(''); // Reset reference number after successful payment
         setSelectedReceivable(null);
         fetchReceivables(); // Refresh data
       } else {
@@ -175,11 +178,13 @@ const ReceivablesModal = ({ isOpen, onClose, memberId, darkMode }) => {
                             onClick={() => {
                               setSelectedReceivable(receivable);
                               setPaymentAmount(remainingAmount);
+                              setPaymentMethod('CASH'); // Reset to default payment method
+                              setReferenceNumber(''); // Reset reference number when opening modal
                               setShowPaymentModal(true);
                             }}
                             className={`px-3 py-1 text-sm rounded-md ${
-                              darkMode 
-                                ? 'bg-purple-600 hover:bg-purple-700 text-white' 
+                              darkMode
+                                ? 'bg-purple-600 hover:bg-purple-700 text-white'
                                 : 'bg-purple-600 hover:bg-purple-700 text-white'
                             }`}
                           >
@@ -263,7 +268,13 @@ const ReceivablesModal = ({ isOpen, onClose, memberId, darkMode }) => {
                   <select
                     id="paymentMethod"
                     value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    onChange={(e) => {
+                      setPaymentMethod(e.target.value);
+                      // Reset reference number when payment method changes to CASH
+                      if (e.target.value === 'CASH') {
+                        setReferenceNumber('');
+                      }
+                    }}
                     className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
                       darkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-300 bg-white text-gray-900'
                     }`}
@@ -272,6 +283,25 @@ const ReceivablesModal = ({ isOpen, onClose, memberId, darkMode }) => {
                     <option value="TRANSFER">TRANSFER</option>
                   </select>
                 </div>
+
+                {/* Tampilkan input nomor referensi hanya untuk pembayaran non-tunai */}
+                {paymentMethod !== 'CASH' && (
+                  <div>
+                    <label htmlFor="referenceNumberInput" className={`block text-sm mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                      Nomor Referensi
+                    </label>
+                    <input
+                      type="text"
+                      id="referenceNumberInput"
+                      value={referenceNumber}
+                      onChange={(e) => setReferenceNumber(e.target.value)}
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                        darkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-300 bg-white text-gray-900'
+                      }`}
+                      placeholder="Masukkan nomor referensi"
+                    />
+                  </div>
+                )}
               </div>
             </div>
             
@@ -290,10 +320,13 @@ const ReceivablesModal = ({ isOpen, onClose, memberId, darkMode }) => {
                 Proses Pembayaran
               </button>
               <button
-                onClick={() => setShowPaymentModal(false)}
+                onClick={() => {
+                  setShowPaymentModal(false);
+                  setReferenceNumber(''); // Reset reference number when modal is closed
+                }}
                 className={`px-4 py-2 rounded-md font-medium ${
-                  darkMode 
-                    ? 'border border-gray-600 bg-gray-700 hover:bg-gray-600 text-white' 
+                  darkMode
+                    ? 'border border-gray-600 bg-gray-700 hover:bg-gray-600 text-white'
                     : 'border border-gray-300 bg-white hover:bg-gray-50 text-gray-700'
                 }`}
               >

@@ -55,6 +55,7 @@ export default function KasirTransaksiPage() {
   const [receiptData, setReceiptData] = useState(null);
   const [additionalDiscount, setAdditionalDiscount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState("CASH");
+  const [referenceNumber, setReferenceNumber] = useState("");
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [showReceivablesModal, setShowReceivablesModal] = useState(false);
@@ -63,6 +64,7 @@ export default function KasirTransaksiPage() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [successDetails, setSuccessDetails] = useState(null);
+  const [storeInfo, setStoreInfo] = useState({ name: '', id: '' });
 
   // --- Cart Logic ---
   const removeFromCart = useCallback((productId) => {
@@ -191,6 +193,7 @@ export default function KasirTransaksiPage() {
           attendantId: selectedAttendant.id,
           memberId: selectedMember.id,
           paymentMethod: paymentMethod,
+          referenceNumber: paymentMethod !== 'CASH' ? referenceNumber : null, // Include reference number for QRIS/Transfer
           items: cart.map((item) => ({
             productId: item.productId,
             quantity: item.quantity,
@@ -229,6 +232,7 @@ export default function KasirTransaksiPage() {
         setCalculation(null);
         setSearchTerm("");
         setAdditionalDiscount(0);
+        setReferenceNumber(""); // Reset reference number after successful transaction
       } else {
         alert(`Gagal: ${result.error}`);
       }
@@ -238,7 +242,7 @@ export default function KasirTransaksiPage() {
     } finally {
       setLoading(false);
     }
-  }, [calculation, session, selectedAttendant, selectedMember, cart, getTierPrice, paymentMethod, additionalDiscount, payment]);
+  }, [calculation, session, selectedAttendant, selectedMember, cart, getTierPrice, paymentMethod, additionalDiscount, payment, referenceNumber]);
 
   const initiateUnpaidPayment = () => {
     // Tambahkan konfirmasi untuk pembayaran hutang
@@ -337,6 +341,8 @@ export default function KasirTransaksiPage() {
     console.log("Calculation object:", calculation);
     console.log("Selected Attendant:", selectedAttendant);
     console.log("Additional Discount:", additionalDiscount);
+    console.log("Payment Method:", paymentMethod);
+    console.log("Reference Number:", referenceNumber);
 
     setLoading(true);
     try {
@@ -348,6 +354,7 @@ export default function KasirTransaksiPage() {
           attendantId: selectedAttendant.id, // Now required, not optional
           memberId: selectedMember?.id || defaultMember?.id || null, // Use default member if none selected
           paymentMethod: paymentMethod, // Include payment method
+          referenceNumber: paymentMethod !== 'CASH' ? referenceNumber : null, // Include reference number for QRIS/Transfer
           items: cart.map((item) => ({
             productId: item.productId,
             quantity: item.quantity,
@@ -368,7 +375,49 @@ export default function KasirTransaksiPage() {
       if (response.ok) {
         console.log("Full API response:", result); // Debug log lengkap
         console.log("API invoiceNumber:", result.invoiceNumber); // Debug log khusus invoice number
-        
+
+        // Ambil informasi toko untuk dimasukkan ke dalam receipt
+        let storeInfo = {
+          name: 'TOKO SAKINAH',
+          address: 'Jl. Raya No. 123, Kota Anda',
+          phone: '0812-3456-7890',
+          code: 'TOKO001', // Default code
+        };
+
+        try {
+          const storeResponse = await fetch('/api/stores/current');
+          if (storeResponse.ok) {
+            const storeData = await storeResponse.json();
+            storeInfo = {
+              name: storeData.name || process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+              address: storeData.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
+              phone: storeData.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
+              code: storeData.code || 'TOKO001', // Gunakan code dari storeData
+            };
+          } else {
+            // Coba endpoint setting sebagai fallback
+            const settingResponse = await fetch('/api/setting');
+            if (settingResponse.ok) {
+              const settingData = await settingResponse.json();
+              storeInfo = {
+                name: settingData.shopName || process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+                address: settingData.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
+                phone: settingData.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
+                code: settingData.code || 'TOKO001', // Gunakan code dari setting jika ada
+              };
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching store info for receipt:', error);
+          // Gunakan environment variables atau default jika API gagal
+          storeInfo = {
+            name: process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+            address: process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
+            phone: process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
+            code: 'TOKO001', // Default code
+          };
+        }
+
         const receiptPayload = {
           ...calculation,
           id: result.id,
@@ -379,6 +428,11 @@ export default function KasirTransaksiPage() {
           payment: payment,
           change: payment - calculation.grandTotal,
           paymentMethod: result.paymentMethod || paymentMethod, // Gunakan paymentMethod dari result atau dari state
+          referenceNumber: result.referenceNumber || referenceNumber, // Gunakan reference number dari result atau dari state
+          storeName: storeInfo.name,
+          storeAddress: storeInfo.address,
+          storePhone: storeInfo.phone,
+          storeCode: storeInfo.code, // Tambahkan storeCode ke payload
         };
         console.log("Receipt payload:", receiptPayload); // Debug log
 
@@ -388,17 +442,26 @@ export default function KasirTransaksiPage() {
           receiptPayload.invoiceNumber = result.id;
         }
 
-        // Langsung cetak struk tanpa menampilkan modal
-        printThermalReceipt(receiptPayload)
-          .then(() => {
-            console.log("Cetak thermal berhasil");
-          })
-          .catch((error) => {
-            console.error("Cetak thermal gagal:", error);
-            // Tampilkan modal sebagai fallback jika cetak gagal
-            setReceiptData(receiptPayload);
-            setShowReceiptModal(true);
-          });
+        // Cek apakah pembayaran non-tunai (QRIS/Transfer) dengan referensi yang valid
+        const isNonCashWithReference = paymentMethod !== 'CASH' && referenceNumber && referenceNumber.trim() !== '';
+
+        if (isNonCashWithReference) {
+          // Cetak otomatis untuk pembayaran QRIS/Transfer dengan referensi
+          printThermalReceipt(receiptPayload)
+            .then(() => {
+              console.log("Cetak thermal otomatis berhasil");
+            })
+            .catch((error) => {
+              console.error("Cetak thermal otomatis gagal:", error);
+              // Tampilkan modal sebagai fallback jika cetak gagal
+              setReceiptData(receiptPayload);
+              setShowReceiptModal(true);
+            });
+        } else {
+          // Tampilkan modal cetak untuk pembayaran tunai atau pembayaran non-tunai tanpa referensi
+          setReceiptData(receiptPayload);
+          setShowReceiptModal(true);
+        }
 
         // Reset form setelah cetak
         setCart([]);
@@ -416,8 +479,10 @@ export default function KasirTransaksiPage() {
       alert("Terjadi kesalahan saat memproses pembayaran");
     } finally {
       setLoading(false);
+      // Reset reference number in finally block to ensure it's always cleared
+      setReferenceNumber("");
     }
-  }, [calculation, payment, session, selectedAttendant, selectedMember, cart, getTierPrice, defaultMember, additionalDiscount]);
+  }, [calculation, payment, session, selectedAttendant, selectedMember, cart, getTierPrice, defaultMember, additionalDiscount, paymentMethod, referenceNumber]);
 
   const handleSuspendSale = async ({ name, notes }) => {
     if (cart.length === 0) {
@@ -505,6 +570,23 @@ export default function KasirTransaksiPage() {
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
+        // Fetch store info first
+        const storeRes = await fetch("/api/stores/current");
+        if (storeRes.ok) {
+          const storeData = await storeRes.json();
+          setStoreInfo({
+            name: storeData.name,
+            id: storeData.code || 'N/A' // Menggunakan code sebagai ID toko, jika tidak ada maka tampilkan 'N/A'
+          });
+        } else {
+          console.error("Gagal mengambil informasi toko:", storeRes.status);
+          // Fallback untuk handle kasus ketika API tidak bisa diakses
+          setStoreInfo({
+            name: process.env.NEXT_PUBLIC_SHOP_NAME || 'Toko SAKINAH',
+            id: session?.user?.storeId || 'TOKO001' // Gunakan storeId dari session jika tersedia
+          });
+        }
+
         const [membersRes, attendantsRes] = await Promise.all([
           fetch("/api/member?simple=true"),  // Gunakan parameter simple untuk mendapatkan array langsung
           fetch("/api/store-users?role=ATTENDANT"),  // Gunakan endpoint store-users dengan filter role ATTENDANT
@@ -761,7 +843,17 @@ export default function KasirTransaksiPage() {
                 darkMode ? "bg-gray-800" : "bg-gray-100"
               }`}
             >
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-6">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Nama Toko</p>
+                  <p className="text-lg font-semibold">{storeInfo.name || 'Memuat...'}</p>
+                </div>
+                <div className="border-l border-gray-300 dark:border-gray-600 h-10"></div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Kode Toko</p>
+                  <p className="text-lg font-semibold">{storeInfo.id || 'Memuat...'}</p>
+                </div>
+                <div className="border-l border-gray-300 dark:border-gray-600 h-10"></div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">
                     Nama Kasir
@@ -828,6 +920,8 @@ export default function KasirTransaksiPage() {
                 setPayment={setPayment}
                 initiatePaidPayment={initiatePaidPayment}
                 initiateUnpaidPayment={initiateUnpaidPayment}
+                referenceNumber={referenceNumber}
+                setReferenceNumber={setReferenceNumber}
                 loading={loading}
                 darkMode={darkMode}
                 additionalDiscount={additionalDiscount}

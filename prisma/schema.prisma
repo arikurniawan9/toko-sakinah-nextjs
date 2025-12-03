@@ -143,6 +143,7 @@ model Sale {
   status             String       @default("PAID")
   createdAt          DateTime     @default(now())
   paymentMethod      String       @default("CASH")
+  referenceNumber    String?
   receivable         Receivable?
   attendant          User?        @relation("AttendantSales", fields: [attendantId], references: [id], onDelete: Restrict)
   cashier            User         @relation("CashierSales", fields: [cashierId], references: [id])
@@ -159,19 +160,20 @@ model Sale {
 }
 
 model Receivable {
-  id         String    @id @default(cuid())
-  storeId    String
-  saleId     String    @unique
-  memberId   String
-  amountDue  Int
-  amountPaid Int       @default(0)
-  status     String
-  dueDate    DateTime?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  member     Member    @relation(fields: [memberId], references: [id])
-  sale       Sale      @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  store      Store     @relation(fields: [storeId], references: [id])
+  id              String    @id @default(cuid())
+  storeId         String
+  saleId          String    @unique
+  memberId        String
+  amountDue       Int
+  amountPaid      Int       @default(0)
+  status          String
+  dueDate         DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  referenceNumber String?
+  member          Member    @relation(fields: [memberId], references: [id])
+  sale            Sale      @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  store           Store     @relation(fields: [storeId], references: [id])
 
   @@index([storeId])
   @@index([memberId])

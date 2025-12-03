@@ -19,7 +19,7 @@ export async function PUT(request, { params }) {
   try {
     const receivableId = params.id;
     const body = await request.json();
-    const { amountPaid, paymentMethod = 'CASH' } = body;
+    const { amountPaid, paymentMethod = 'CASH', referenceNumber } = body;
 
     if (amountPaid <= 0) {
       return NextResponse.json({ error: 'Jumlah pembayaran harus lebih besar dari 0' }, { status: 400 });
@@ -65,6 +65,19 @@ export async function PUT(request, { params }) {
     }
 
     // Update status hutang
+    // Jika ada referensi baru dan sebelumnya sudah ada referensi, tambahkan ke daftar referensi
+    let updatedReferenceNumber = referenceNumber;
+    if (referenceNumber && receivable.referenceNumber) {
+      // Gabungkan referensi yang sudah ada dengan referensi baru, dipisahkan koma
+      updatedReferenceNumber = `${receivable.referenceNumber},${referenceNumber}`;
+    } else if (referenceNumber && !receivable.referenceNumber) {
+      // Gunakan referensi baru jika tidak ada referensi sebelumnya
+      updatedReferenceNumber = referenceNumber;
+    } else if (!referenceNumber && receivable.referenceNumber) {
+      // Gunakan referensi lama jika tidak ada referensi baru
+      updatedReferenceNumber = receivable.referenceNumber;
+    }
+
     const updatedReceivable = await prisma.receivable.update({
       where: {
         id: receivableId,
@@ -73,6 +86,7 @@ export async function PUT(request, { params }) {
       data: {
         amountPaid: newAmountPaid,
         status: newStatus,
+        ...(updatedReferenceNumber && { referenceNumber: updatedReferenceNumber }),
       },
       include: {
         sale: true
@@ -90,8 +104,24 @@ export async function PUT(request, { params }) {
       });
     }
 
+    // Ambil informasi transaksi terkait untuk keperluan struk
+    const saleInfo = await prisma.sale.findUnique({
+      where: { id: receivable.saleId },
+      include: {
+        cashier: true,
+        attendant: true,
+        member: true,
+        saleDetails: {
+          include: {
+            product: true
+          }
+        }
+      }
+    });
+
     return NextResponse.json({
       ...updatedReceivable,
+      sale: saleInfo,
       remainingAmount: receivable.amountDue - newAmountPaid
     }, { status: 200 });
 
