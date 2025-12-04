@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
 import { ROLES } from '@/lib/constants';
+import { logStoreUpdate, logStoreDeactivation } from '@/lib/auditLogger';
 
 export async function GET(request, { params }) {
   try {
@@ -93,6 +94,9 @@ export async function PUT(request, { params }) {
       });
     }
 
+    // Simpan data toko sebelum update
+    const oldStoreData = { ...existingStore };
+
     // Update toko
     const updatedStore = await prisma.store.update({
       where: { id },
@@ -106,6 +110,13 @@ export async function PUT(request, { params }) {
         updatedAt: new Date(),
       },
     });
+
+    // Log aktivitas update toko
+    const requestHeaders = new Headers(request.headers);
+    const ipAddress = requestHeaders.get('x-forwarded-for') || requestHeaders.get('x-real-ip') || '127.0.0.1';
+    const userAgent = requestHeaders.get('user-agent') || '';
+
+    await logStoreUpdate(session.user.id, id, oldStoreData, updatedStore, ipAddress, userAgent);
 
     return new Response(JSON.stringify({ store: updatedStore }), {
       status: 200,
@@ -154,6 +165,9 @@ export async function DELETE(request, { params }) {
       });
     }
 
+    // Simpan data toko sebelum update
+    const oldStoreData = { ...existingStore };
+
     // Update status toko menjadi INACTIVE
     const updatedStore = await prisma.store.update({
       where: { id },
@@ -162,6 +176,13 @@ export async function DELETE(request, { params }) {
         updatedAt: new Date(),
       },
     });
+
+    // Log aktivitas deaktivasi toko
+    const requestHeaders = new Headers(request.headers);
+    const ipAddress = requestHeaders.get('x-forwarded-for') || requestHeaders.get('x-real-ip') || '127.0.0.1';
+    const userAgent = requestHeaders.get('user-agent') || '';
+
+    await logStoreDeactivation(session.user.id, oldStoreData, ipAddress, userAgent);
 
     return new Response(JSON.stringify({ store: updatedStore }), {
       status: 200,

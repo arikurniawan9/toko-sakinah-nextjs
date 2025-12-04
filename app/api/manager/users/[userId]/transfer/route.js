@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
 import { ROLES } from '@/lib/constants';
+import { logUserTransfer } from '@/lib/auditLogger';
 
 export async function POST(request, { params }) {
   try {
@@ -17,9 +18,10 @@ export async function POST(request, { params }) {
     const { targetStoreId, targetRole, removeFromCurrentStore = true } = await request.json();
 
     // Validasi bahwa user dan toko tujuan ada
-    const [user, targetStore] = await Promise.all([
+    const [user, targetStore, currentStoreUser] = await Promise.all([
       prisma.user.findUnique({ where: { id: userId } }),
-      prisma.store.findUnique({ where: { id: targetStoreId } })
+      prisma.store.findUnique({ where: { id: targetStoreId } }),
+      prisma.storeUser.findFirst({ where: { userId } }) // Dapatkan toko saat ini dari user
     ]);
 
     if (!user) {
@@ -35,6 +37,9 @@ export async function POST(request, { params }) {
     if (!validRoles.includes(targetRole)) {
       return NextResponse.json({ error: 'Role tidak valid' }, { status: 400 });
     }
+
+    // Simpan informasi sebelum transfer untuk logging
+    const fromStoreId = currentStoreUser ? currentStoreUser.storeId : null;
 
     // Lakukan transfer dalam satu transaksi
     await prisma.$transaction(async (tx) => {
@@ -63,9 +68,16 @@ export async function POST(request, { params }) {
       });
     });
 
-    return NextResponse.json({ 
+    // Log aktivitas transfer user
+    const requestHeaders = new Headers(request.headers);
+    const ipAddress = requestHeaders.get('x-forwarded-for') || requestHeaders.get('x-real-ip') || '127.0.0.1';
+    const userAgent = requestHeaders.get('user-agent') || '';
+
+    await logUserTransfer(session.user.id, userId, fromStoreId, targetStoreId, targetRole, ipAddress, userAgent);
+
+    return NextResponse.json({
       message: 'User berhasil dipindahkan ke toko baru',
-      success: true 
+      success: true
     });
   } catch (error) {
     console.error('Error transferring user:', error);

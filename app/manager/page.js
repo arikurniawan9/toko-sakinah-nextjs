@@ -476,24 +476,63 @@ export default function ManagerDashboard() {
                         <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
                           activity.type === 'SALE' ? 'bg-green-100 dark:bg-green-800' :
                           activity.type === 'STOCK' ? 'bg-yellow-100 dark:bg-yellow-800' :
+                          activity.type === 'CREATE' ? 'bg-blue-100 dark:bg-blue-800' :
+                          activity.type === 'UPDATE' ? 'bg-purple-100 dark:bg-purple-800' :
+                          activity.type === 'DELETE' ? 'bg-red-100 dark:bg-red-800' :
                           'bg-blue-100 dark:bg-blue-800'
                         }`}>
                           {activity.type === 'SALE' ? (
                             <ShoppingCart className={`h-4 w-4 ${
                               activity.type === 'SALE' ? 'text-green-800 dark:text-green-100' :
                               activity.type === 'STOCK' ? 'text-yellow-800 dark:text-yellow-100' :
+                              activity.type === 'CREATE' ? 'text-blue-800 dark:text-blue-100' :
+                              activity.type === 'UPDATE' ? 'text-purple-800 dark:text-purple-100' :
+                              activity.type === 'DELETE' ? 'text-red-800 dark:text-red-100' :
                               'text-blue-800 dark:text-blue-100'
                             }`} />
                           ) : activity.type === 'STOCK' ? (
                             <Package className={`h-4 w-4 ${
                               activity.type === 'SALE' ? 'text-green-800 dark:text-green-100' :
                               activity.type === 'STOCK' ? 'text-yellow-800 dark:text-yellow-100' :
+                              activity.type === 'CREATE' ? 'text-blue-800 dark:text-blue-100' :
+                              activity.type === 'UPDATE' ? 'text-purple-800 dark:text-purple-100' :
+                              activity.type === 'DELETE' ? 'text-red-800 dark:text-red-100' :
+                              'text-blue-800 dark:text-blue-100'
+                            }`} />
+                          ) : activity.type === 'CREATE' ? (
+                            <Plus className={`h-4 w-4 ${
+                              activity.type === 'SALE' ? 'text-green-800 dark:text-green-100' :
+                              activity.type === 'STOCK' ? 'text-yellow-800 dark:text-yellow-100' :
+                              activity.type === 'CREATE' ? 'text-blue-800 dark:text-blue-100' :
+                              activity.type === 'UPDATE' ? 'text-purple-800 dark:text-purple-100' :
+                              activity.type === 'DELETE' ? 'text-red-800 dark:text-red-100' :
+                              'text-blue-800 dark:text-blue-100'
+                            }`} />
+                          ) : activity.type === 'UPDATE' ? (
+                            <Settings className={`h-4 w-4 ${
+                              activity.type === 'SALE' ? 'text-green-800 dark:text-green-100' :
+                              activity.type === 'STOCK' ? 'text-yellow-800 dark:text-yellow-100' :
+                              activity.type === 'CREATE' ? 'text-blue-800 dark:text-blue-100' :
+                              activity.type === 'UPDATE' ? 'text-purple-800 dark:text-purple-100' :
+                              activity.type === 'DELETE' ? 'text-red-800 dark:text-red-100' :
+                              'text-blue-800 dark:text-blue-100'
+                            }`} />
+                          ) : activity.type === 'DELETE' ? (
+                            <Trash2 className={`h-4 w-4 ${
+                              activity.type === 'SALE' ? 'text-green-800 dark:text-green-100' :
+                              activity.type === 'STOCK' ? 'text-yellow-800 dark:text-yellow-100' :
+                              activity.type === 'CREATE' ? 'text-blue-800 dark:text-blue-100' :
+                              activity.type === 'UPDATE' ? 'text-purple-800 dark:text-purple-100' :
+                              activity.type === 'DELETE' ? 'text-red-800 dark:text-red-100' :
                               'text-blue-800 dark:text-blue-100'
                             }`} />
                           ) : (
                             <Activity className={`h-4 w-4 ${
                               activity.type === 'SALE' ? 'text-green-800 dark:text-green-100' :
                               activity.type === 'STOCK' ? 'text-yellow-800 dark:text-yellow-100' :
+                              activity.type === 'CREATE' ? 'text-blue-800 dark:text-blue-100' :
+                              activity.type === 'UPDATE' ? 'text-purple-800 dark:text-purple-100' :
+                              activity.type === 'DELETE' ? 'text-red-800 dark:text-red-100' :
                               'text-blue-800 dark:text-blue-100'
                             }`} />
                           )}

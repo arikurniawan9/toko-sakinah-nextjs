@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { ROLES } from '@/lib/constants';
+import { logStoreCreation } from '@/lib/auditLogger';
 
 export async function GET(request) {
   try {
@@ -149,6 +150,13 @@ export async function POST(request) {
 
       return { store: newStore, admin: newAdmin };
     });
+
+    // Log aktivitas pembuatan toko
+    const requestHeaders = new Headers(request.headers);
+    const ipAddress = requestHeaders.get('x-forwarded-for') || requestHeaders.get('x-real-ip') || '127.0.0.1';
+    const userAgent = requestHeaders.get('user-agent') || '';
+
+    await logStoreCreation(session.user.id, result.store, ipAddress, userAgent);
 
     return new Response(JSON.stringify(result), {
       status: 201,

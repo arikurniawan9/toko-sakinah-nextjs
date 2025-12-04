@@ -145,7 +145,7 @@ export const printThermalReceipt = async (receiptData) => {
             ${receiptData.items.map(item => `
               <div class="text-xs mb-1">
                 <div class="flex justify-between">
-                  <span class="flex-1 truncate">${limitTextForPrint(item.name || '', 18)}</span>
+                  <span class="flex-1">${item.name || ''}</span>
                   <span class="w-16 text-right">${item.quantity}x</span>
                 </div>
                 <div class="flex justify-between">

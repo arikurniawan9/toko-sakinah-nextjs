@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { ROLES } from '@/lib/constants';
+import { logUserCreation, logUserDeletion } from '@/lib/auditLogger';
 
 // GET method (existing)
 export async function GET(request) {
@@ -169,6 +170,13 @@ export async function POST(request) {
       }
     });
 
+    // Log aktivitas pembuatan user
+    const requestHeaders = new Headers(request.headers);
+    const ipAddress = requestHeaders.get('x-forwarded-for') || requestHeaders.get('x-real-ip') || '127.0.0.1';
+    const userAgent = requestHeaders.get('user-agent') || '';
+
+    await logUserCreation(session.user.id, user, targetStoreId, ipAddress, userAgent);
+
     // Don't return the password hash
     const { password: _, ...userWithoutPassword } = user;
     return NextResponse.json({...userWithoutPassword, role}, { status: 201 }); // Return user data with store role
@@ -199,6 +207,20 @@ export async function DELETE(request) {
       );
     }
 
+    // Ambil data user sebelum dihapus untuk logging
+    const usersToDelete = await prisma.user.findMany({
+      where: {
+        id: { in: ids }
+      },
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        role: true,
+        status: true
+      }
+    });
+
     // Hapus user dari semua toko (hapus dari tabel storeUser) dan nonaktifkan user
     const transactionResult = await prisma.$transaction([
       // Nonaktifkan hubungan user-toko
@@ -220,6 +242,15 @@ export async function DELETE(request) {
         }
       })
     ]);
+
+    // Log aktivitas penghapusan user
+    const requestHeaders = new Headers(request.headers);
+    const ipAddress = requestHeaders.get('x-forwarded-for') || requestHeaders.get('x-real-ip') || '127.0.0.1';
+    const userAgent = requestHeaders.get('user-agent') || '';
+
+    for (const userData of usersToDelete) {
+      await logUserDeletion(session.user.id, userData, null, ipAddress, userAgent); // Kita tidak tahu storeId pasti, jadi gunakan null
+    }
 
     return NextResponse.json({
       message: `Berhasil menonaktifkan ${ids.length} user dan aksesnya dari semua toko`,

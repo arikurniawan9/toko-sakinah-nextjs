@@ -12,10 +12,16 @@ export async function GET(request, { params }) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Cek apakah pengguna memiliki storeId
+  if (!session.user.storeId) {
+    return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
+  }
+
   try {
     const purchase = await prisma.purchase.findUnique({
       where: {
-        id: params.id
+        id: params.id,
+        storeId: session.user.storeId  // Hanya bisa mengakses pembelian dari toko sendiri
       },
       include: {
         supplier: true,
@@ -61,7 +67,10 @@ export async function PUT(request, { params }) {
 
     // Get the current purchase to check for status changes
     const currentPurchase = await prisma.purchase.findUnique({
-      where: { id: params.id },
+      where: {
+        id: params.id,
+        storeId: session.user.storeId  // Hanya bisa mengupdate pembelian dari toko sendiri
+      },
       include: {
         items: {
           include: {
@@ -117,7 +126,8 @@ export async function PUT(request, { params }) {
         // Update the purchase status
         const purchase = await tx.purchase.update({
           where: {
-            id: params.id
+            id: params.id,
+            storeId: session.user.storeId  // Pastikan hanya mengupdate pembelian dari toko sendiri
           },
           data: updateData,
           include: {
@@ -151,7 +161,8 @@ export async function PUT(request, { params }) {
         // Update the purchase status
         const purchase = await tx.purchase.update({
           where: {
-            id: params.id
+            id: params.id,
+            storeId: session.user.storeId  // Pastikan hanya mengupdate pembelian dari toko sendiri
           },
           data: updateData,
           include: {
@@ -171,7 +182,8 @@ export async function PUT(request, { params }) {
       // Regular status update (not cancellation or reinstatement)
       updatedPurchase = await prisma.purchase.update({
         where: {
-          id: params.id
+          id: params.id,
+          storeId: session.user.storeId  // Pastikan hanya mengupdate pembelian dari toko sendiri
         },
         data: updateData,
         include: {
@@ -215,7 +227,8 @@ export async function DELETE(request, { params }) {
     // Get the purchase with items to revert stock changes
     const purchase = await prisma.purchase.findUnique({
       where: {
-        id: params.id
+        id: params.id,
+        storeId: session.user.storeId  // Hanya bisa menghapus pembelian dari toko sendiri
       },
       include: {
         items: {
@@ -247,7 +260,8 @@ export async function DELETE(request, { params }) {
     // Then delete the purchase and all related items
     await prisma.purchase.delete({
       where: {
-        id: params.id
+        id: params.id,
+        storeId: session.user.storeId  // Pastikan hanya menghapus pembelian dari toko sendiri
       }
     });
 

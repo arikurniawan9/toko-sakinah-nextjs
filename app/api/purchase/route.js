@@ -13,6 +13,11 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Cek apakah pengguna memiliki storeId
+  if (!session.user.storeId) {
+    return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page')) || 1;
@@ -28,6 +33,9 @@ export async function GET(request) {
     // Build where condition for filtering
     const whereCondition = {
       AND: [
+        // Filter hanya untuk toko yang sesuai dengan session user
+        { storeId: session.user.storeId },
+
         // Search condition - search in purchase number, supplier name, or user name
         search ? {
           OR: [
@@ -143,12 +151,14 @@ export async function POST(request) {
     // Create purchase with items
     const newPurchase = await prisma.purchase.create({
       data: {
+        storeId: session.user.storeId, // Tambahkan storeId dari session user
         supplierId: data.supplierId,
         userId: session.user.id,
         purchaseDate: purchaseDate,
         totalAmount: totalAmount,
         items: {
           create: data.items.map(item => ({
+            storeId: session.user.storeId, // Tambahkan storeId ke item juga
             productId: item.productId,
             quantity: item.quantity,
             purchasePrice: item.price,
@@ -180,7 +190,7 @@ export async function POST(request) {
     }
 
     // Log audit untuk pembuatan pembelian
-    await logCreate(session.user.id, 'Purchase', newPurchase.id, newPurchase, request);
+    await logCreate(session.user.id, 'Purchase', newPurchase.id, newPurchase, request, session.user.storeId);
 
     return NextResponse.json({
       success: true,
@@ -210,7 +220,10 @@ export async function DELETE(request) {
 
     // Check if purchase exists
     const existingPurchase = await prisma.purchase.findUnique({
-      where: { id },
+      where: {
+        id,
+        storeId: session.user.storeId  // Hanya bisa menghapus pembelian dari toko sendiri
+      },
       include: {
         items: {
           include: {
@@ -238,11 +251,14 @@ export async function DELETE(request) {
 
     // Then delete the purchase
     await prisma.purchase.delete({
-      where: { id }
+      where: {
+        id,
+        storeId: session.user.storeId  // Pastikan hanya menghapus pembelian dari toko sendiri
+      }
     });
 
     // Log audit untuk penghapusan pembelian
-    await logDelete(session.user.id, 'Purchase', existingPurchase.id, existingPurchase, request);
+    await logDelete(session.user.id, 'Purchase', existingPurchase.id, existingPurchase, request, session.user.storeId);
 
     return NextResponse.json({
       success: true,

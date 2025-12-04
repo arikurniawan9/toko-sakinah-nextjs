@@ -14,7 +14,8 @@ import {
   Settings,
   TrendingUp,
   ShoppingCart,
-  BarChart3
+  BarChart3,
+  Printer
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -56,6 +57,7 @@ const menuItems = [
       { title: "Laporan Gabungan", href: "/manager/reports", icon: FileText },
       { title: "Penjualan Gabungan", href: "/manager/reports/sales", icon: BarChart3 },
       { title: "Performa Toko", href: "/manager/reports/performance", icon: TrendingUp },
+      { title: "Cetak Laporan Toko", href: "/manager/print-reports", icon: Printer },
     ]
   },
   {
@@ -64,7 +66,15 @@ const menuItems = [
     icon: Users,
     children: [
       { title: "Manajemen Pengguna", href: "/manager/users", icon: Users },
-      { title: "Aktivitas Sistem", href: "/manager/users/activity", icon: Activity },
+    ]
+  },
+  {
+    title: "Aktivitas",
+    href: "/manager/activity-log",
+    icon: Activity,
+    children: [
+      { title: "Log Aktivitas Lengkap", href: "/manager/activity-log", icon: Activity },
+      { title: "Aktivitas Terbaru di Dashboard", href: "/manager", icon: Activity },
     ]
   },
   {

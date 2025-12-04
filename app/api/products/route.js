@@ -145,6 +145,8 @@ export async function GET(request) {
   }
 }
 
+import { logProductCreation } from '@/lib/auditLogger';
+
 export async function POST(request) {
   try {
     // Ambil session langsung
@@ -200,6 +202,13 @@ export async function POST(request) {
         priceTiers: true,
       },
     });
+
+    // Log aktivitas pembuatan produk
+    const requestHeaders = new Headers(request.headers);
+    const ipAddress = requestHeaders.get('x-forwarded-for') || requestHeaders.get('x-real-ip') || '127.0.0.1';
+    const userAgent = requestHeaders.get('user-agent') || '';
+
+    await logProductCreation(user.id, newProduct, targetStoreId, ipAddress, userAgent);
 
     return NextResponse.json({
       success: true,

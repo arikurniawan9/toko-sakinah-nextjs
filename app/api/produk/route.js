@@ -9,7 +9,7 @@ import {
   setToCache,
   invalidateProductCache
 } from '@/lib/redis'; // Tambahkan import fungsi cache
-import { logCreate, logUpdate, logDelete } from '@/lib/auditLogger';
+import { logProductCreation, logProductUpdate, logProductDeletion } from '@/lib/auditLogger';
 
 // Zod Schemas for Product
 const priceTierSchema = z.object({
@@ -226,7 +226,11 @@ export async function POST(request) {
     await invalidateProductCache(session.user.storeId);
 
     // Log audit untuk pembuatan produk
-    await logCreate(session.user.id, 'Product', createdProduct.id, createdProduct, request);
+    const requestHeaders = new Headers(request.headers);
+    const ipAddress = requestHeaders.get('x-forwarded-for') || requestHeaders.get('x-real-ip') || '127.0.0.1';
+    const userAgent = requestHeaders.get('user-agent') || '';
+
+    await logProductCreation(session.user.id, createdProduct, session.user.storeId, ipAddress, userAgent);
 
     return NextResponse.json(createdProduct, { status: 201 });
   } catch (error) {
@@ -332,7 +336,11 @@ export async function PUT(request) {
     await invalidateProductCache(session.user.storeId);
 
     // Log audit untuk pembaruan produk
-    await logUpdate(session.user.id, 'Product', updatedProduct.id, existingProduct, updatedProduct, request);
+    const requestHeaders = new Headers(request.headers);
+    const ipAddress = requestHeaders.get('x-forwarded-for') || requestHeaders.get('x-real-ip') || '127.0.0.1';
+    const userAgent = requestHeaders.get('user-agent') || '';
+
+    await logProductUpdate(session.user.id, existingProduct, updatedProduct, session.user.storeId, ipAddress, userAgent);
 
     return NextResponse.json(updatedProduct);
   } catch (error) {
@@ -424,8 +432,12 @@ export async function DELETE(request) {
     await invalidateProductCache(session.user.storeId);
 
     // Log audit untuk penghapusan produk
+    const requestHeaders = new Headers(request.headers);
+    const ipAddress = requestHeaders.get('x-forwarded-for') || requestHeaders.get('x-real-ip') || '127.0.0.1';
+    const userAgent = requestHeaders.get('user-agent') || '';
+
     for (const product of deletedProducts) {
-      await logDelete(session.user.id, 'Product', product.id, product, request);
+      await logProductDeletion(session.user.id, product, session.user.storeId, ipAddress, userAgent);
     }
 
     return NextResponse.json({ message: `Berhasil menghapus ${count} produk` });
