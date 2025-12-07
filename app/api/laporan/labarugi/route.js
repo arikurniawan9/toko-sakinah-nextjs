@@ -29,12 +29,12 @@ export async function GET(request) {
 
     // Fetch total sales within the date range for the specific store
     const salesResult = await prisma.$queryRaw`
-      SELECT 
+      SELECT
         COALESCE(SUM(total), 0) as totalSales,
         COUNT(*) as totalTransactions
       FROM "Sale"
-      WHERE "createdAt" >= ${startDate} 
-      AND "createdAt" <= ${endDate}
+      WHERE "date" >= ${startDate}
+      AND "date" <= ${endDate}
       AND "storeId" = ${storeId}
     `;
 
@@ -58,15 +58,15 @@ export async function GET(request) {
 
     // Fetch daily sales and expenses for chart for the specific store
     const salesByDay = await prisma.$queryRaw`
-      SELECT 
-        DATE("createdAt") as saleDate,
+      SELECT
+        DATE("date") as saleDate,
         SUM(total) as dailySales,
         COUNT(*) as transactionCount
       FROM "Sale"
-      WHERE "createdAt" >= ${startDate} 
-      AND "createdAt" <= ${endDate}
+      WHERE "date" >= ${startDate}
+      AND "date" <= ${endDate}
       AND "storeId" = ${storeId}
-      GROUP BY DATE("createdAt")
+      GROUP BY DATE("date")
       ORDER BY saleDate ASC
     `;
 

@@ -48,6 +48,22 @@ export default function ProductManagement() {
     totalProducts,
     fetchProducts,
     setError: setTableError,
+    // Filter states
+    categoryFilter,
+    supplierFilter,
+    minStock,
+    maxStock,
+    minPrice,
+    maxPrice,
+    // Filter handlers
+    handleCategoryFilter,
+    handleSupplierFilter,
+    handleMinStockFilter,
+    handleMaxStockFilter,
+    handleMinPriceFilter,
+    handleMaxPriceFilter,
+    clearFilters,
+    hasActiveFilters
   } = useProductTable();
 
   const {
@@ -663,6 +679,155 @@ export default function ProductManagement() {
             </div>
           </div>
 
+          {/* Filter Toolbar */}
+          <div className={`p-4 border-b ${darkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}>
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 w-full">
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Kategori</label>
+                  <select
+                    value={categoryFilter}
+                    onChange={(e) => handleCategoryFilter(e.target.value)}
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm ${
+                      darkMode
+                        ? 'bg-gray-700 border-gray-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    } focus:outline-none focus:ring-2 focus:ring-theme-purple-500`}
+                  >
+                    <option value="">Semua Kategori</option>
+                    {categories.map(category => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Supplier</label>
+                  <select
+                    value={supplierFilter}
+                    onChange={(e) => handleSupplierFilter(e.target.value)}
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm ${
+                      darkMode
+                        ? 'bg-gray-700 border-gray-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    } focus:outline-none focus:ring-2 focus:ring-theme-purple-500`}
+                  >
+                    <option value="">Semua Supplier</option>
+                    {suppliers.map(supplier => (
+                      <option key={supplier.id} value={supplier.id}>
+                        {supplier.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Min Stok</label>
+                  <input
+                    type="number"
+                    value={minStock}
+                    onChange={(e) => handleMinStockFilter(e.target.value)}
+                    placeholder="Min"
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm ${
+                      darkMode
+                        ? 'bg-gray-700 border-gray-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    } focus:outline-none focus:ring-2 focus:ring-theme-purple-500`}
+                  />
+                </div>
+
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Max Stok</label>
+                  <input
+                    type="number"
+                    value={maxStock}
+                    onChange={(e) => handleMaxStockFilter(e.target.value)}
+                    placeholder="Max"
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm ${
+                      darkMode
+                        ? 'bg-gray-700 border-gray-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    } focus:outline-none focus:ring-2 focus:ring-theme-purple-500`}
+                  />
+                </div>
+
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Min Harga</label>
+                  <input
+                    type="number"
+                    value={minPrice}
+                    onChange={(e) => handleMinPriceFilter(e.target.value)}
+                    placeholder="Min"
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm ${
+                      darkMode
+                        ? 'bg-gray-700 border-gray-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    } focus:outline-none focus:ring-2 focus:ring-theme-purple-500`}
+                  />
+                </div>
+
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Max Harga</label>
+                  <input
+                    type="number"
+                    value={maxPrice}
+                    onChange={(e) => handleMaxPriceFilter(e.target.value)}
+                    placeholder="Max"
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm ${
+                      darkMode
+                        ? 'bg-gray-700 border-gray-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    } focus:outline-none focus:ring-2 focus:ring-theme-purple-500`}
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2 items-end">
+                <div className="w-full sm:w-auto">
+                  <label htmlFor="itemsPerPage" className="sr-only">Items per page</label>
+                  <select
+                    id="itemsPerPage"
+                    value={itemsPerPage}
+                    onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:outline-none focus:ring-2 focus:ring-theme-purple-500`}
+                  >
+                    <option value={10}>10/halaman</option>
+                    <option value={20}>20/halaman</option>
+                    <option value={50}>50/halaman</option>
+                  </select>
+                </div>
+                {hasActiveFilters && (
+                  <button
+                    onClick={clearFilters}
+                    className={`px-3 py-2 rounded-md text-sm font-medium ${
+                      darkMode
+                        ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                        : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+                    }`}
+                  >
+                    Reset Filter
+                  </button>
+                )}
+                <div className="relative flex-grow sm:w-64">
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Cari produk (nama, kode, deskripsi)..."
+                    className={`w-full pl-10 pr-4 py-2 border rounded-md shadow-sm ${
+                      darkMode
+                        ? 'bg-gray-700 border-gray-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    } focus:outline-none focus:ring-2 focus:ring-theme-purple-500`}
+                  />
+                  <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                </div>
+              </div>
+            </div>
+          </div>
+
           <DataTable
             data={enhancedProducts}
             columns={columns}
@@ -671,7 +836,7 @@ export default function ProductManagement() {
             onSelectAll={isAdmin ? handleSelectAll : undefined}
             onSelectRow={isAdmin ? handleSelectRow : undefined}
             onAdd={isAdmin ? openModalForCreate : undefined}
-            onSearch={setSearchTerm}
+            onSearch={setSearchTerm} // Keep search function for the search input outside DataTable
             onExport={handleExport}
             onImport={handleImport}
             onItemsPerPageChange={setItemsPerPage}

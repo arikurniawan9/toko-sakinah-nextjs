@@ -203,3 +203,128 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Failed to create member' }, { status: 500 });
   }
 }
+
+// DELETE: Menghapus member
+export async function DELETE(request) {
+  const session = await getServerSession(authOptions);
+
+  if (!session || session.user.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
+    const url = new URL(request.url);
+    const id = url.searchParams.get('id');
+
+    if (id) {
+      // Hapus satu member
+      const member = await prisma.member.findUnique({
+        where: { id },
+      });
+
+      if (!member) {
+        return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+      }
+
+      await prisma.member.delete({
+        where: { id },
+      });
+
+      return NextResponse.json({ message: 'Member deleted successfully' });
+    } else {
+      // Hapus multiple members
+      const body = await request.json();
+      const { ids } = body;
+
+      if (!ids || !Array.isArray(ids) || ids.length === 0) {
+        return NextResponse.json({ error: 'No member IDs provided' }, { status: 400 });
+      }
+
+      // Hapus multiple members sekaligus
+      const deletedMembers = await prisma.member.deleteMany({
+        where: {
+          id: {
+            in: ids,
+          },
+        },
+      });
+
+      return NextResponse.json({
+        message: `${deletedMembers.count} member(s) deleted successfully`,
+      });
+    }
+  } catch (error) {
+    console.error('Error deleting member:', error);
+    return NextResponse.json({ error: 'Failed to delete member' }, { status: 500 });
+  }
+}
+
+// PUT: Mengupdate member
+export async function PUT(request) {
+  const session = await getServerSession(authOptions);
+
+  if (!session || session.user.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
+    const body = await request.json();
+    const { id, name, phone, address, membershipType, discount } = body;
+
+    if (!id || !name || !phone) {
+      return NextResponse.json(
+        { error: 'ID, nama, dan nomor telepon wajib diisi' },
+        { status: 400 }
+      );
+    }
+
+    // Validasi format nomor telepon
+    if (!/^\d{10,15}$/.test(phone)) {
+      return NextResponse.json(
+        { error: 'Format nomor telepon tidak valid' },
+        { status: 400 }
+      );
+    }
+
+    // Cek apakah member ada
+    const existingMember = await prisma.member.findUnique({
+      where: { id },
+    });
+
+    if (!existingMember) {
+      return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+    }
+
+    // Cek apakah nomor telepon yang baru sudah digunakan oleh member lain di toko yang sama (kecuali member itu sendiri)
+    const phoneConflict = await prisma.member.findFirst({
+      where: {
+        phone: phone,
+        storeId: existingMember.storeId,
+        id: { not: id }, // Tidak termasuk member yang sedang diupdate
+      },
+    });
+
+    if (phoneConflict) {
+      return NextResponse.json(
+        { error: 'Nomor telepon sudah terdaftar di toko ini' },
+        { status: 400 }
+      );
+    }
+
+    const updatedMember = await prisma.member.update({
+      where: { id },
+      data: {
+        name,
+        phone,
+        address: address || null,
+        membershipType: membershipType || 'SILVER',
+        discount: discount || 5,
+      },
+    });
+
+    return NextResponse.json(updatedMember);
+  } catch (error) {
+    console.error('Error updating member:', error);
+    return NextResponse.json({ error: 'Failed to update member' }, { status: 500 });
+  }
+}

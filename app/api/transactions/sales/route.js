@@ -1,64 +1,120 @@
+// app/api/transactions/sales/route.js
 import { NextResponse } from 'next/server';
+import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '../../../../lib/authOptions';
-import { PrismaClient } from '@prisma/client';
-
-// Tell Next.js this route is dynamic and should not be statically generated
-export const dynamic = 'force-dynamic';
-
-const prisma = new PrismaClient();
+import { authOptions } from '@/lib/authOptions';
 
 export async function GET(request) {
+  const session = await getServerSession(authOptions);
+
+  if (!session || !['ADMIN', 'CASHIER'].includes(session.user.role)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
-    // Check if user is authenticated
-    const session = await getServerSession(authOptions);
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page')) || 1;
+    const limit = parseInt(searchParams.get('limit')) || 10;
+    const search = searchParams.get('search') || '';
+    const startDate = searchParams.get('startDate') || '';
+    const endDate = searchParams.get('endDate') || '';
+    const status = searchParams.get('status') || '';
+    const paymentMethod = searchParams.get('paymentMethod') || '';
+    const minAmount = searchParams.get('minAmount') || '';
+    const maxAmount = searchParams.get('maxAmount') || '';
 
-    if (!session) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    // Validasi parameter
+    if (page < 1 || limit < 1 || limit > 100) {
+      return NextResponse.json({ error: 'Parameter pagination tidak valid' }, { status: 400 });
     }
 
-    // Only allow admin access
-    if (session.user.role !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      );
+    // Validasi bahwa min/max amount adalah angka
+    if ((minAmount && isNaN(parseInt(minAmount))) || (maxAmount && isNaN(parseInt(maxAmount)))) {
+      return NextResponse.json({ error: 'Parameter jumlah harus berupa angka' }, { status: 400 });
     }
 
-    // Fetch sales transactions with related data
-    const sales = await prisma.sale.findMany({
-      include: {
-        cashier: true,
-        attendant: true,
-        member: true,
-        saleDetails: {
-          include: {
-            product: true,
-          }
-        }
-      },
-      orderBy: {
-        date: 'desc',
-      },
-    });
+    // Ambil storeId dari session
+    const storeId = session.user.storeId;
+    if (!storeId) {
+      return NextResponse.json({ error: 'Store ID tidak ditemukan dalam session' }, { status: 400 });
+    }
 
-    // Transform data to match frontend requirements
-    const transformedSales = sales.map(sale => ({
+    const offset = (page - 1) * limit;
+
+    // Bangun kondisi where
+    const where = {
+      storeId,
+      ...(search && {
+        OR: [
+          { invoiceNumber: { contains: search, mode: 'insensitive' } },
+          { cashier: { name: { contains: search, mode: 'insensitive' } } },
+          { member: { name: { contains: search, mode: 'insensitive' } } },
+        ],
+      }),
+      ...(startDate && { date: { gte: new Date(startDate) } }),
+      ...(endDate && { date: { lte: new Date(endDate) } }),
+      ...(status && { status: { contains: status, mode: 'insensitive' } }),
+      ...(paymentMethod && { paymentMethod: { contains: paymentMethod, mode: 'insensitive' } }),
+      ...(minAmount !== '' && { total: { gte: parseInt(minAmount) } }),
+      ...(maxAmount !== '' && { total: { lte: parseInt(maxAmount) } }),
+    };
+
+    // Ambil data dan hitung total dalam satu operasi
+    const [sales, total] = await Promise.all([
+      prisma.sale.findMany({
+        where,
+        skip: offset,
+        take: limit,
+        include: {
+          cashier: {
+            select: {
+              name: true,
+            }
+          },
+          attendant: {
+            select: {
+              name: true,
+            }
+          },
+          member: {
+            select: {
+              name: true,
+            }
+          },
+          saleDetails: {
+            include: {
+              product: {
+                select: {
+                  name: true,
+                }
+              }
+            }
+          },
+        },
+        orderBy: { date: 'desc' },
+      }),
+      prisma.sale.count({ where })
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    // Format data untuk frontend
+    const formattedSales = sales.map(sale => ({
       id: sale.id,
-      cashierName: sale.cashier?.name || 'Unknown',
-      attendantName: sale.attendant?.name || null,
-      customerName: sale.member?.name || '-', // Using member as customer
+      invoiceNumber: sale.invoiceNumber,
+      cashier: sale.cashier,
+      attendant: sale.attendant,
+      member: sale.member,
+      total: sale.total,
+      discount: sale.discount,
+      additionalDiscount: sale.additionalDiscount,
+      tax: sale.tax,
+      payment: sale.payment,
+      change: sale.change,
+      status: sale.status,
       date: sale.date,
-      totalAmount: sale.total,
-      discount: sale.discount || 0, // Member discount
-      additionalDiscount: sale.additionalDiscount || 0, // Additional discount
-      tax: sale.tax || 0, // Tax if applicable
-      payment: sale.payment || 0, // Amount paid
-      change: sale.change || 0, // Change given
-      status: 'completed', // All sales are completed by default
+      paymentMethod: sale.paymentMethod,
+      referenceNumber: sale.referenceNumber,
       items: sale.saleDetails.map(detail => ({
         productName: detail.product?.name || 'Unknown Product',
         quantity: detail.quantity,
@@ -67,14 +123,21 @@ export async function GET(request) {
       })),
     }));
 
-    return NextResponse.json(transformedSales);
+    const result = {
+      transactions: formattedSales,
+      pagination: {
+        page,
+        totalPages,
+        totalItems: total,
+        hasMore: page < totalPages,
+        itemsPerPage: limit
+      },
+    };
+
+    return NextResponse.json(result);
+
   } catch (error) {
     console.error('Error fetching sales:', error);
-    return NextResponse.json(
-      { error: 'Internal Server Error' },
-      { status: 500 }
-    );
-  } finally {
-    await prisma.$disconnect();
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

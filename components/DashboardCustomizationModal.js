@@ -5,14 +5,14 @@ import { useDashboardCustomization } from './DashboardCustomizationContext';
 
 const DashboardCustomizationModal = ({ isOpen, onClose }) => {
   const { dashboardLayout, updateWidgetVisibility, reorderWidgets, resetLayout } = useDashboardCustomization();
-  const [tempLayout, setTempLayout] = useState([...dashboardLayout]);
+  const [tempLayout, setTempLayout] = useState([...(dashboardLayout || [])]);
 
   if (!isOpen) return null;
 
   const handleSave = () => {
     // Update the actual layout
     tempLayout.forEach((widget, index) => {
-      if (widget.visible !== dashboardLayout.find(w => w.id === widget.id)?.visible) {
+      if (widget.visible !== (dashboardLayout || []).find(w => w.id === widget.id)?.visible) {
         updateWidgetVisibility(widget.id, widget.visible);
       }
     });

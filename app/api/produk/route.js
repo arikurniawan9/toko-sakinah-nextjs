@@ -10,6 +10,12 @@ import {
   invalidateProductCache
 } from '@/lib/redis'; // Tambahkan import fungsi cache
 import { logProductCreation, logProductUpdate, logProductDeletion } from '@/lib/auditLogger';
+import {
+  validateSQLInjection,
+  sanitizeInput,
+  validateProductFilters,
+  sanitizeQueryParams
+} from '@/utils/inputValidation';
 
 // Zod Schemas for Product
 const priceTierSchema = z.object({
@@ -44,20 +50,40 @@ export async function GET(request) {
 
   try {
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page')) || 1;
-    const limit = parseInt(searchParams.get('limit')) || 10;
-    const search = searchParams.get('search') || '';
-    const categoryId = searchParams.get('categoryId') || '';
-    const productCode = searchParams.get('productCode') || '';
-    const supplierId = searchParams.get('supplierId') || ''; // Add supplier ID parameter
+
+    // Sanitasi dan validasi query parameter
+    const params = sanitizeQueryParams(searchParams);
+
+    const page = parseInt(params.page) || 1;
+    const limit = parseInt(params.limit) || 10;
+    const search = params.search || '';
+    const category = params.category || '';
+    const supplier = params.supplier || '';
+    const productCode = params.productCode || '';
+    const minStock = params.minStock || '';
+    const maxStock = params.maxStock || '';
+    const minPrice = params.minPrice || '';
+    const maxPrice = params.maxPrice || '';
+
+    // Validasi SQL injection pada parameter
+    if (!validateSQLInjection(search) || !validateSQLInjection(category) ||
+        !validateSQLInjection(supplier) || !validateSQLInjection(productCode)) {
+      return NextResponse.json({ error: 'Parameter mengandung karakter SQL yang berbahaya' }, { status: 400 });
+    }
 
     // Validasi parameter
     if (page < 1 || limit < 1 || limit > 100) {
       return NextResponse.json({ error: 'Parameter pagination tidak valid' }, { status: 400 });
     }
 
+    // Validasi bahwa min/max value adalah angka
+    if ((minStock && isNaN(parseInt(minStock))) || (maxStock && isNaN(parseInt(maxStock))) ||
+        (minPrice && isNaN(parseInt(minPrice))) || (maxPrice && isNaN(parseInt(maxPrice)))) {
+      return NextResponse.json({ error: 'Parameter filter harus berupa angka' }, { status: 400 });
+    }
+
     // Buat cache key berdasarkan parameter
-    const cacheKey = `products:${session.user.storeId}:${page}:${limit}:${search}:${categoryId}:${productCode}:${supplierId}`;
+    const cacheKey = `products:${session.user.storeId}:${page}:${limit}:${search}:${category}:${productCode}:${supplier}:${minStock}:${maxStock}:${minPrice}:${maxPrice}`;
 
     // Coba ambil dari cache dulu
     const cachedData = await getFromCache(cacheKey);
@@ -70,13 +96,34 @@ export async function GET(request) {
     const where = {
       storeId: session.user.storeId, // Filter by store ID
       ...(productCode && { productCode: { equals: productCode } }),
-      ...(categoryId && { categoryId }),
-      ...(supplierId && { supplierId }), // Add supplier filter if provided
+      ...(category && { categoryId: category }),
+      ...(supplier && { supplierId: supplier }),
+      ...(minStock !== '' && { stock: { gte: parseInt(minStock) } }),
+      ...(maxStock !== '' && { stock: { lte: parseInt(maxStock) } }),
+      ...(minPrice !== '' && {
+        priceTiers: {
+          some: {
+            price: { gte: parseInt(minPrice) }
+          }
+        }
+      }),
+      ...(maxPrice !== '' && {
+        priceTiers: {
+          some: {
+            price: { lte: parseInt(maxPrice) }
+          }
+        }
+      }),
       ...(search && !productCode && {
-        OR: [
-          { name: { contains: search } },
-          { productCode: { contains: search } },
-        ],
+        AND: [
+          {
+            OR: [
+              { name: { contains: search, mode: 'insensitive' } },
+              { productCode: { contains: search, mode: 'insensitive' } },
+              { description: { contains: search, mode: 'insensitive' } }
+            ]
+          }
+        ]
       }),
     };
 
@@ -144,6 +191,9 @@ export async function GET(request) {
     return NextResponse.json(result);
   } catch (error) {
     console.error('Error fetching products:', error);
+    if (error.message.includes('karakter SQL')) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return NextResponse.json({ error: 'Gagal mengambil data produk' }, { status: 500 });
   }
 }
@@ -157,14 +207,28 @@ export async function POST(request) {
 
   try {
     const body = await request.json();
+
+    // Validasi SQL injection pada body request
+    const jsonString = JSON.stringify(body);
+    if (!validateSQLInjection(jsonString)) {
+      return NextResponse.json({ error: 'Request body mengandung karakter SQL yang berbahaya' }, { status: 400 });
+    }
+
     const validatedData = productSchema.parse(body);
     const { priceTiers, ...productData } = validatedData;
+
+    // Sanitasi dan validasi tambahan
+    const sanitizedProductData = {
+      ...productData,
+      name: sanitizeInput(productData.name),
+      description: productData.description ? sanitizeInput(productData.description) : productData.description
+    };
 
     // Gunakan storeId dari session untuk compound key
     const existingProduct = await prisma.product.findUnique({
       where: {
         productCode_storeId: {
-          productCode: productData.productCode,
+          productCode: sanitizedProductData.productCode,
           storeId: session.user.storeId
         }
       },
@@ -175,7 +239,7 @@ export async function POST(request) {
     }
 
     // Pisahkan field categoryId dan supplierId dari productData
-    const { categoryId, supplierId, ...restProductData } = productData;
+    const { categoryId, supplierId, ...restProductData } = sanitizedProductData;
 
     // Handle supplier - create default if not provided
     let finalSupplierId = supplierId;
@@ -235,6 +299,9 @@ export async function POST(request) {
     return NextResponse.json(createdProduct, { status: 201 });
   } catch (error) {
     console.error('Error creating product:', error);
+    if (error.message.includes('karakter SQL')) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.errors[0].message }, { status: 400 });
     }
@@ -251,8 +318,20 @@ export async function PUT(request) {
 
   try {
     const body = await request.json();
+
+    // Validasi SQL injection pada body request
+    const jsonString = JSON.stringify(body);
+    if (!validateSQLInjection(jsonString)) {
+      return NextResponse.json({ error: 'Request body mengandung karakter SQL yang berbahaya' }, { status: 400 });
+    }
+
     const validatedData = productUpdateSchema.parse(body);
     const { id, priceTiers, ...productData } = validatedData;
+
+    // Validasi ID produk
+    if (!validateSQLInjection(id)) {
+      return NextResponse.json({ error: 'ID produk mengandung karakter berbahaya' }, { status: 400 });
+    }
 
     const duplicateProduct = await prisma.product.findFirst({
       where: {
@@ -279,8 +358,19 @@ export async function PUT(request) {
       },
     });
 
+    if (!existingProduct) {
+      return NextResponse.json({ error: 'Produk tidak ditemukan' }, { status: 404 });
+    }
+
+    // Sanitasi dan validasi tambahan
+    const sanitizedProductData = {
+      ...productData,
+      name: sanitizeInput(productData.name),
+      description: productData.description ? sanitizeInput(productData.description) : productData.description
+    };
+
     // Pisahkan field categoryId dan supplierId dari productData
-    const { categoryId, supplierId, ...restProductData } = productData;
+    const { categoryId, supplierId, ...restProductData } = sanitizedProductData;
 
     // Handle supplier for update - create default if not provided
     let finalSupplierId = supplierId;
@@ -345,6 +435,9 @@ export async function PUT(request) {
     return NextResponse.json(updatedProduct);
   } catch (error) {
     console.error('Error updating product:', error);
+    if (error.message.includes('karakter SQL')) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.errors[0].message }, { status: 400 });
     }
@@ -368,6 +461,13 @@ export async function DELETE(request) {
 
     try {
       const body = await request.json();
+
+      // Validasi SQL injection pada body request
+      const jsonString = JSON.stringify(body);
+      if (!validateSQLInjection(jsonString)) {
+        return NextResponse.json({ error: 'Request body mengandung karakter SQL yang berbahaya' }, { status: 400 });
+      }
+
       if (body.ids && Array.isArray(body.ids)) {
         idsToDelete = body.ids;
       }
@@ -375,13 +475,25 @@ export async function DELETE(request) {
       // Ignore error if body is empty
     }
 
+    // Validasi parameter query
+    const paramId = searchParams.get('id');
+    if (paramId && !validateSQLInjection(paramId)) {
+      return NextResponse.json({ error: 'Parameter ID mengandung karakter berbahaya' }, { status: 400 });
+    }
+
     if (idsToDelete.length === 0) {
-      const id = searchParams.get('id');
-      if (id) idsToDelete = [id];
+      if (paramId) idsToDelete = [paramId];
     }
 
     if (idsToDelete.length === 0) {
       return NextResponse.json({ error: 'ID produk harus disediakan' }, { status: 400 });
+    }
+
+    // Validasi setiap ID untuk mencegah SQL injection
+    for (const id of idsToDelete) {
+      if (!validateSQLInjection(id)) {
+        return NextResponse.json({ error: 'Salah satu ID produk mengandung karakter berbahaya' }, { status: 400 });
+      }
     }
 
     // Pastikan produk yang akan dihapus milik toko yang sesuai
@@ -443,6 +555,9 @@ export async function DELETE(request) {
     return NextResponse.json({ message: `Berhasil menghapus ${count} produk` });
   } catch (error) {
     console.error('Error deleting products:', error);
+    if (error.message.includes('karakter SQL')) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return NextResponse.json({ error: 'Gagal menghapus produk' }, { status: 500 });
   }
 }

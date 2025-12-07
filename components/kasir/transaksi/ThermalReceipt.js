@@ -109,6 +109,36 @@ const ThermalReceipt = ({ receiptData, darkMode }) => {
     return text.length > maxLength ? text.substring(0, maxLength - 3) + '...' : text;
   };
 
+  // Split long text into multiple lines for thermal printer
+  const splitTextForThermal = (text, maxLength) => {
+    if (!text) return [''];
+    const words = text.toString().split(' ');
+    const lines = [];
+    let currentLine = '';
+
+    for (const word of words) {
+      if ((currentLine + ' ' + word).length <= maxLength) {
+        currentLine = currentLine ? currentLine + ' ' + word : word;
+      } else {
+        if (currentLine) lines.push(currentLine);
+        if (word.length <= maxLength) {
+          currentLine = word;
+        } else {
+          // If the word is longer than max length, split it
+          let remainingWord = word;
+          while (remainingWord.length > maxLength) {
+            lines.push(remainingWord.substring(0, maxLength));
+            remainingWord = remainingWord.substring(maxLength);
+          }
+          if (remainingWord) currentLine = remainingWord;
+        }
+      }
+    }
+
+    if (currentLine) lines.push(currentLine);
+    return lines;
+  };
+
   const {
     id,
     invoiceNumber,
@@ -170,24 +200,33 @@ const ThermalReceipt = ({ receiptData, darkMode }) => {
       </div>
 
       <div className="my-2">
-        {items.map((item, index) => (
-          <div key={index} className="text-xs mb-1">
-            <div className="flex justify-between">
-              <span className="flex-1 truncate">{limitText(item.name || '', 18)}</span>
-              <span className="w-16 text-right">{item.quantity}x</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-right">@{formatCurrency(item.originalPrice || 0)}</span>
-              <span className="w-16 text-right">{formatCurrency(item.originalPrice * item.quantity || 0)}</span>
-            </div>
-            {item.originalPrice !== item.priceAfterItemDiscount && (
-              <div className="flex justify-between text-right text-xs italic">
-                <span></span>
-                <span className="text-right">Pot:{formatCurrency(item.originalPrice - item.priceAfterItemDiscount)}</span>
+        {items.map((item, index) => {
+          const productNameLines = splitTextForThermal(item.name || '', 20);
+          return (
+            <div key={index} className="text-xs mb-1">
+              <div className="flex flex-col">
+                {productNameLines.map((line, lineIndex) => (
+                  <div key={lineIndex} className="flex justify-between">
+                    <span className="flex-1">{line}</span>
+                    {lineIndex === 0 && (
+                      <span className="w-16 text-right">{item.quantity}x</span>
+                    )}
+                  </div>
+                ))}
+                <div className="flex justify-between">
+                  <span className="text-right text-xs">@{formatCurrency(item.originalPrice || 0)}</span>
+                  <span className="w-16 text-right">{formatCurrency(item.originalPrice * item.quantity || 0)}</span>
+                </div>
               </div>
-            )}
-          </div>
-        ))}
+              {item.originalPrice !== item.priceAfterItemDiscount && (
+                <div className="flex justify-between text-right text-xs italic">
+                  <span></span>
+                  <span className="text-right">Pot:{formatCurrency(item.originalPrice - item.priceAfterItemDiscount)}</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <div className="my-2 border-t border-black pt-1">

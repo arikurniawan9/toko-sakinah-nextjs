@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Eye, Edit, Trash2 } from 'lucide-react';
 import ProtectedRoute from '../../../components/ProtectedRoute';
 import { useUserTheme } from '../../../components/UserThemeContext';
 
@@ -214,6 +215,48 @@ export default function MemberManagement() {
     onDelete: () => handleDelete(member.id)
   }));
 
+  // Row actions for DataTable
+  const rowActions = (row) => (
+    <div className="flex space-x-1">
+      <button
+        onClick={() => {
+          // Redirect ke halaman detail member
+          window.location.href = `/admin/member/${row.id}`;
+        }}
+        className={`p-1.5 rounded-md transition-colors ${
+          darkMode
+            ? 'text-blue-400 hover:bg-blue-900/50'
+            : 'text-blue-600 hover:bg-blue-100'
+        }`}
+        title="Lihat Detail"
+      >
+        <Eye className="h-4 w-4" />
+      </button>
+      <button
+        onClick={() => openModalForEdit(row)}
+        className={`p-1.5 rounded-md transition-colors ${
+          darkMode
+            ? 'text-yellow-400 hover:bg-yellow-900/50'
+            : 'text-yellow-600 hover:bg-yellow-100'
+        }`}
+        title="Edit"
+      >
+        <Edit className="h-4 w-4" />
+      </button>
+      <button
+        onClick={() => handleDelete(row.id)}
+        className={`p-1.5 rounded-md transition-colors ${
+          darkMode
+            ? 'text-red-400 hover:bg-red-900/50'
+            : 'text-red-600 hover:bg-red-100'
+        }`}
+        title="Hapus"
+      >
+        <Trash2 className="h-4 w-4" />
+      </button>
+    </div>
+  );
+
   // Pagination data for DataTable
   const paginationData = {
     currentPage,
@@ -261,6 +304,7 @@ export default function MemberManagement() {
             showItemsPerPage={true}
             pagination={paginationData}
             mobileColumns={['name', 'phone', 'membershipType', 'discount']} // Show key information on mobile
+            rowActions={rowActions}
           />
         </div>
 

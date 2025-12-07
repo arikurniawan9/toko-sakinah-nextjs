@@ -1,4 +1,12 @@
 const XLSX = require('xlsx');
+const path = require('path');
+const fs = require('fs');
+
+// Validasi direktori template
+const templateDir = path.join(process.cwd(), 'public', 'templates');
+if (!fs.existsSync(templateDir)) {
+  fs.mkdirSync(templateDir, { recursive: true });
+}
 
 // Data contoh untuk template
 const templateData = [
@@ -97,7 +105,7 @@ const worksheet = XLSX.utils.json_to_sheet(templateData);
 // Menyesuaikan lebar kolom
 const colWidths = [
   { wch: 20 }, // Nama
-  { wch: 12 }, // Kode  
+  { wch: 12 }, // Kode
   { wch: 8 },  // Stok
   { wch: 15 }, // Kategori
   { wch: 15 }, // Supplier
@@ -115,7 +123,17 @@ worksheet['!cols'] = colWidths;
 // Menambahkan worksheet ke workbook
 XLSX.utils.book_append_sheet(workbook, worksheet, "Template Produk");
 
-// Menyimpan file ke public/templates
-XLSX.writeFile(workbook, 'public/templates/template-produk-updated.xlsx');
+// Menyimpan file ke public/templates dengan validasi keamanan
+const filePath = path.join(templateDir, 'template-produk-updated.xlsx');
 
-console.log('Template Excel produk berhasil dibuat di public/templates/template-produk-updated.xlsx');
+// Cek apakah path aman (tidak mengandung traversal path seperti ../)
+const resolvedPath = path.resolve(templateDir);
+const requestedPath = path.resolve(filePath);
+
+if (!requestedPath.startsWith(resolvedPath)) {
+  throw new Error('Path traversal detected! Requested path is outside of template directory.');
+}
+
+XLSX.writeFile(workbook, filePath);
+
+console.log(`Template Excel produk berhasil dibuat di ${filePath}`);

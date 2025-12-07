@@ -13,7 +13,7 @@ const TransactionCartItem = memo(({ item, updateQuantity, removeFromCart, darkMo
     <li key={item.productId} className="py-3">
       <div className="flex justify-between items-center">
         <div className="flex-1 min-w-0">
-          <div className={`text-sm font-medium truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>{item.name}</div>
+          <div className={`text-sm font-medium break-words max-w-xs ${darkMode ? 'text-white' : 'text-gray-900'}`}>{item.name}</div>
           <div className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
             {item.quantity} x Rp {formatNumber(item.originalPrice || 0)}
             {(item.priceAfterItemDiscount || 0) < (item.originalPrice || 0) && (

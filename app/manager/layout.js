@@ -57,7 +57,6 @@ const menuItems = [
       { title: "Laporan Gabungan", href: "/manager/reports", icon: FileText },
       { title: "Penjualan Gabungan", href: "/manager/reports/sales", icon: BarChart3 },
       { title: "Performa Toko", href: "/manager/reports/performance", icon: TrendingUp },
-      { title: "Cetak Laporan Toko", href: "/manager/print-reports", icon: Printer },
     ]
   },
   {

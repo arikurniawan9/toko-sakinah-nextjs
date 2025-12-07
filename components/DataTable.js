@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, Plus, Download, Trash2, Edit, Eye, Filter, SortAsc, SortDesc, MinusCircle, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Upload, FileText } from 'lucide-react';
 import LoadingSpinner from '@/components/LoadingSpinner'; // Import LoadingSpinner
+import AdvancedFilter from '@/components/AdvancedFilter'; // Import AdvancedFilter
 
 export default function DataTable({
   data,
@@ -156,111 +157,125 @@ export default function DataTable({
       {/* Toolbar */}
       {showToolbar && (
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4 flex-grow">
-              {showSearch && (
-                <div className="relative flex-grow sm:w-64">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Cari..."
-                    value={searchTerm}
-                    onChange={handleSearch}
-                    className={`pl-10 pr-4 py-2 border rounded-lg w-full ${
-                      darkMode
-                        ? 'bg-gray-700 border-gray-600 text-white'
-                        : 'bg-white border-gray-300 text-gray-900'
-                    }`}
-                  />
-                </div>
-              )}
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 flex-grow">
+                {showSearch && (
+                  <div className="relative flex-grow sm:w-64">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Cari..."
+                      value={searchTerm}
+                      onChange={handleSearch}
+                      className={`pl-10 pr-4 py-2 border rounded-lg w-full ${
+                        darkMode
+                          ? 'bg-gray-700 border-gray-600 text-white'
+                          : 'bg-white border-gray-300 text-gray-900'
+                      }`}
+                    />
+                  </div>
+                )}
 
-              {onDeleteMultiple && selectedRowsCount > 0 && (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={onDeleteMultiple}
-                    className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                    title={`Hapus (${selectedRowsCount})`}
-                  >
-                    <MinusCircle className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {onItemsPerPageChange && showItemsPerPage && (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm">Tampil:</span>
-                  <select
-                    value={pagination?.itemsPerPage || 10}
-                    onChange={handleItemsPerPageChange}
-                    className={`px-2 py-1 border rounded text-sm ${
-                      darkMode
-                        ? 'bg-gray-700 border-gray-600 text-white'
-                        : 'bg-white border-gray-300 text-gray-900'
-                    }`}
-                  >
-                    <option value={5}>5</option>
-                    <option value={10}>10</option>
-                    <option value={20}>20</option>
-                    <option value={50}>50</option>
-                  </select>
-                </div>
-              )}
-
-              <div className="flex gap-2">
-                {additionalActions.map((action, index) => {
-                  const IconComponent = action.icon;
-                  return (
+                {onDeleteMultiple && selectedRowsCount > 0 && (
+                  <div className="flex items-center gap-2">
                     <button
-                      key={index}
-                      onClick={action.onClick}
-                      className={`p-2 rounded-lg hover:opacity-90 transition-colors ${action.className}`}
-                      title={action.label}
+                      onClick={onDeleteMultiple}
+                      className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                      title={`Hapus (${selectedRowsCount})`}
                     >
-                      {IconComponent && <IconComponent className="h-4 w-4" />}
+                      <MinusCircle className="h-4 w-4" />
                     </button>
-                  );
-                })}
-                {showAdd && onAdd && (
-                  <button
-                    onClick={onAdd}
-                    className="p-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
-                    title="Tambah"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
-                )}
-                {showExport && onExport && (
-                  <button
-                    onClick={onExport}
-                    className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                    title="Ekspor"
-                  >
-                    <Download className="h-4 w-4" />
-                  </button>
-                )}
-                {showExportPDF && onExportPDF && (
-                  <button
-                    onClick={onExportPDF}
-                    className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                    title="Ekspor PDF"
-                  >
-                    <FileText className="h-4 w-4" />
-                  </button>
-                )}
-                {showImport && onImport && (
-                  <button
-                    onClick={onImport}
-                    className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                    title="Impor"
-                  >
-                    <Upload className="h-4 w-4" />
-                  </button>
+                  </div>
                 )}
               </div>
+
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {onItemsPerPageChange && showItemsPerPage && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">Tampil:</span>
+                    <select
+                      value={pagination?.itemsPerPage || 10}
+                      onChange={handleItemsPerPageChange}
+                      className={`px-2 py-1 border rounded text-sm ${
+                        darkMode
+                          ? 'bg-gray-700 border-gray-600 text-white'
+                          : 'bg-white border-gray-300 text-gray-900'
+                      }`}
+                    >
+                      <option value={5}>5</option>
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                    </select>
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  {additionalActions.map((action, index) => {
+                    const IconComponent = action.icon;
+                    return (
+                      <button
+                        key={index}
+                        onClick={action.onClick}
+                        className={`p-2 rounded-lg hover:opacity-90 transition-colors ${action.className}`}
+                        title={action.label}
+                      >
+                        {IconComponent && <IconComponent className="h-4 w-4" />}
+                      </button>
+                    );
+                  })}
+                  {showAdd && onAdd && (
+                    <button
+                      onClick={onAdd}
+                      className="p-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
+                      title="Tambah"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  )}
+                  {showExport && onExport && (
+                    <button
+                      onClick={onExport}
+                      className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      title="Ekspor"
+                    >
+                      <Download className="h-4 w-4" />
+                    </button>
+                  )}
+                  {showExportPDF && onExportPDF && (
+                    <button
+                      onClick={onExportPDF}
+                      className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      title="Ekspor PDF"
+                    >
+                      <FileText className="h-4 w-4" />
+                    </button>
+                  )}
+                  {showImport && onImport && (
+                    <button
+                      onClick={onImport}
+                      className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      title="Impor"
+                    >
+                      <Upload className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
+
+            {/* Advanced Filter Section */}
+            {showFilters && (
+              <AdvancedFilter
+                columns={columns}
+                filterValues={filterValues}
+                onFilterChange={onFilterChange}
+                darkMode={darkMode}
+                onApplyFilters={onToggleFilters}
+                onClearFilters={onToggleFilters}
+              />
+            )}
           </div>
         </div>
       )}

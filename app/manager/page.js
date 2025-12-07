@@ -370,7 +370,7 @@ export default function ManagerDashboard() {
       {/* Dashboard Widgets berdasarkan konfigurasi */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Stats Overview Widget */}
-        {dashboardLayout.find(w => w.id === 'stats' && w.visible) && (
+        {dashboardLayout && dashboardLayout.find(w => w.id === 'stats' && w.visible) && (
           <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-700 dark:to-gray-800 p-6 rounded-lg shadow">
@@ -456,7 +456,7 @@ export default function ManagerDashboard() {
       {/* Recent Activity and Low Stock Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Recent Activity Widget */}
-        {dashboardLayout.find(w => w.id === 'recent-activity' && w.visible) && (
+        {dashboardLayout && dashboardLayout.find(w => w.id === 'recent-activity' && w.visible) && (
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium text-gray-900 dark:text-white">Aktivitas Terbaru</h3>
@@ -556,7 +556,7 @@ export default function ManagerDashboard() {
         )}
 
         {/* Low Stock Products Widget */}
-        {dashboardLayout.find(w => w.id === 'low-stock' && w.visible) && (
+        {dashboardLayout && dashboardLayout.find(w => w.id === 'low-stock' && w.visible) && (
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium text-gray-900 dark:text-white">Produk Stok Rendah</h3>
@@ -590,7 +590,7 @@ export default function ManagerDashboard() {
       </div>
 
       {/* Recent Stores Widget */}
-      {dashboardLayout.find(w => w.id === 'recent-stores' && w.visible) && (
+      {dashboardLayout && dashboardLayout.find(w => w.id === 'recent-stores' && w.visible) && (
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-8">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-medium text-gray-900 dark:text-white">Toko Terbaru</h3>

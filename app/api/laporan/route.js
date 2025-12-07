@@ -19,22 +19,39 @@ export async function GET(request) {
     let endDate = endDateParam ? new Date(endDateParam) : new Date();
     endDate.setHours(23, 59, 59, 999); // Ensure endDate includes the whole day
 
-    // Fetch all sales within the date range
+    // Determine storeId from session to ensure multi-tenant security
+    const storeUser = await prisma.storeUser.findFirst({
+      where: {
+        userId: session.user.id,
+        status: { in: ['ACTIVE', 'AKTIF'] },
+      },
+      select: { storeId: true }
+    });
+
+    if (!storeUser) {
+      return NextResponse.json({ error: 'User does not have access to any store' }, { status: 403 });
+    }
+
+    // Fetch all sales within the date range for the user's store
     const sales = await prisma.sale.findMany({
       where: {
-        createdAt: {
+        date: {
           gte: startDate,
           lte: endDate,
         },
+        storeId: storeUser.storeId,
       },
       include: {
-        user: {
+        cashier: {
+          select: { name: true },
+        },
+        attendant: {
           select: { name: true },
         },
         member: {
           select: { name: true },
         },
-        saleItems: {
+        saleDetails: {
           include: {
             product: {
               select: { name: true },
@@ -43,7 +60,7 @@ export async function GET(request) {
         },
       },
       orderBy: {
-        createdAt: 'desc',
+        date: 'desc',
       },
     });
 
@@ -54,10 +71,10 @@ export async function GET(request) {
     let dailySalesMap = new Map(); // { date: { sales, transactions } }
 
     sales.forEach(sale => {
-      totalSales += sale.totalAmount;
+      totalSales += sale.total; // Use 'total' instead of 'totalAmount'
 
       // Aggregate product sales
-      sale.saleItems.forEach(item => {
+      sale.saleDetails.forEach(item => {
         const productId = item.productId;
         const productName = item.product.name;
         const quantity = item.quantity;
@@ -70,12 +87,12 @@ export async function GET(request) {
       });
 
       // Aggregate daily sales
-      const saleDate = new Date(sale.createdAt).toISOString().split('T')[0]; // YYYY-MM-DD
+      const saleDate = new Date(sale.date).toISOString().split('T')[0]; // Use 'date' instead of 'createdAt' YYYY-MM-DD
       if (dailySalesMap.has(saleDate)) {
-        dailySalesMap.get(saleDate).sales += sale.totalAmount;
+        dailySalesMap.get(saleDate).sales += sale.total;
         dailySalesMap.get(saleDate).transactions += 1;
       } else {
-        dailySalesMap.set(saleDate, { sales: sale.totalAmount, transactions: 1 });
+        dailySalesMap.set(saleDate, { sales: sale.total, transactions: 1 });
       }
     });
 
@@ -105,10 +122,11 @@ export async function GET(request) {
     // Recent transactions (last 5 sales)
     const recentTransactions = sales.slice(0, 5).map(sale => ({
       id: sale.id,
-      cashierName: sale.user?.name || 'N/A',
-      date: sale.createdAt,
-      totalAmount: sale.totalAmount,
-      paymentMethod: sale.paymentMethod || 'N/A', // Assuming paymentMethod exists on Sale model
+      invoiceNumber: sale.invoiceNumber,
+      cashierName: sale.cashier?.name || sale.attendant?.name || 'N/A',
+      date: sale.date,
+      totalAmount: sale.total,
+      paymentMethod: sale.paymentMethod || 'N/A',
     }));
 
 
@@ -124,7 +142,7 @@ export async function GET(request) {
   } catch (error) {
     console.error('Error fetching report data:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch report data' }, 
+      { error: 'Failed to fetch report data' },
       { status: 500 }
     );
   }

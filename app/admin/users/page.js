@@ -9,7 +9,7 @@ import { useUserForm } from '@/lib/hooks/useUserForm';
 import { useUserTable } from '@/lib/hooks/useUserTable';
 import UserModal from '@/components/admin/UserModal';
 import ConfirmationModal from '@/components/ConfirmationModal';
-import { AlertTriangle, CheckCircle, Plus, Edit, Trash2, Eye } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Plus, Edit, Trash2, Eye, Search } from 'lucide-react';
 import DataTable from '@/components/DataTable';
 import Breadcrumb from '@/components/Breadcrumb';
 
@@ -23,6 +23,7 @@ export default function UserManagement() {
     users,
     loading,
     error: tableError,
+    searchTerm,
     setSearchTerm,
     itemsPerPage,
     setItemsPerPage,
@@ -32,6 +33,18 @@ export default function UserManagement() {
     totalUsers,
     fetchUsers,
     setError: setTableError,
+    // Filter states
+    roleFilter,
+    statusFilter,
+    usernameFilter,
+    employeeNumberFilter,
+    // Filter handlers
+    handleRoleFilter,
+    handleStatusFilter,
+    handleUsernameFilter,
+    handleEmployeeNumberFilter,
+    clearFilters,
+    hasActiveFilters
   } = useUserTable();
 
   const {
@@ -288,6 +301,111 @@ export default function UserManagement() {
           Manajemen User
         </h1>
 
+        {/* Filter Toolbar */}
+        <div className={`p-4 rounded-xl shadow-lg mb-6 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            <div>
+              <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Pencarian</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className={`w-full pl-10 pr-4 py-2 border rounded-md shadow-sm ${
+                    darkMode
+                      ? 'bg-gray-700 border-gray-600 text-white'
+                      : 'bg-white border-gray-300 text-gray-900'
+                  } focus:outline-none focus:ring-2 focus:ring-theme-purple-500`}
+                  placeholder="Cari nama, username, kode..."
+                />
+                <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+              </div>
+            </div>
+
+            <div>
+              <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Role</label>
+              <select
+                value={roleFilter}
+                onChange={(e) => handleRoleFilter(e.target.value)}
+                className={`w-full px-3 py-2 border rounded-md shadow-sm ${
+                  darkMode
+                    ? 'bg-gray-700 border-gray-600 text-white'
+                    : 'bg-white border-gray-300 text-gray-900'
+                } focus:outline-none focus:ring-2 focus:ring-theme-purple-500`}
+              >
+                <option value="">Semua Role</option>
+                <option value="ADMIN">Admin</option>
+                <option value="CASHIER">Kasir</option>
+                <option value="ATTENDANT">Pelayan</option>
+                <option value="WAREHOUSE">Gudang</option>
+                <option value="MANAGER">Manager</option>
+              </select>
+            </div>
+
+            <div>
+              <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Status</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => handleStatusFilter(e.target.value)}
+                className={`w-full px-3 py-2 border rounded-md shadow-sm ${
+                  darkMode
+                    ? 'bg-gray-700 border-gray-600 text-white'
+                    : 'bg-white border-gray-300 text-gray-900'
+                } focus:outline-none focus:ring-2 focus:ring-theme-purple-500`}
+              >
+                <option value="">Semua Status</option>
+                <option value="AKTIF">Aktif</option>
+                <option value="TIDAK_AKTIF">Tidak Aktif</option>
+              </select>
+            </div>
+
+            <div>
+              <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Username</label>
+              <input
+                type="text"
+                value={usernameFilter}
+                onChange={(e) => handleUsernameFilter(e.target.value)}
+                placeholder="Username"
+                className={`w-full px-3 py-2 border rounded-md shadow-sm ${
+                  darkMode
+                    ? 'bg-gray-700 border-gray-600 text-white'
+                    : 'bg-white border-gray-300 text-gray-900'
+                } focus:outline-none focus:ring-2 focus:ring-theme-purple-500`}
+              />
+            </div>
+
+            <div>
+              <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Kode Karyawan</label>
+              <input
+                type="text"
+                value={employeeNumberFilter}
+                onChange={(e) => handleEmployeeNumberFilter(e.target.value)}
+                placeholder="Kode Karyawan"
+                className={`w-full px-3 py-2 border rounded-md shadow-sm ${
+                  darkMode
+                    ? 'bg-gray-700 border-gray-600 text-white'
+                    : 'bg-white border-gray-300 text-gray-900'
+                } focus:outline-none focus:ring-2 focus:ring-theme-purple-500`}
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end mt-4">
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className={`px-3 py-2 rounded-md text-sm font-medium ${
+                  darkMode
+                    ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                    : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+                }`}
+              >
+                Reset Filter
+              </button>
+            )}
+          </div>
+        </div>
+
         <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
           <DataTable
             data={users}
@@ -297,11 +415,11 @@ export default function UserManagement() {
             onSelectAll={handleSelectAll}
             onSelectRow={handleSelectRow}
             onAdd={isAdmin ? openModalForCreate : undefined}
-            onSearch={setSearchTerm}
+            onSearch={setSearchTerm} // Keep search function for the search input outside DataTable
             onItemsPerPageChange={setItemsPerPage}
             darkMode={darkMode}
             actions={isAdmin}
-            showToolbar={true}
+            showToolbar={false} // Disable default toolbar because we have custom filter toolbar
             showAdd={isAdmin}
             showExport={false}
             showItemsPerPage={true}

@@ -75,11 +75,11 @@ const Receipt = React.forwardRef(({ receiptData, onReadyToPrint }, ref) => {
       <div>
         {items.map((item) => (
           <div key={item.productId || Math.random()} className="flex justify-between">
-            <div className="flex-1">
+            <div className="flex-1 break-words">
               <div>{item.name}</div>
               <div className="text-xs">{item.quantity} x {formatCurrency(item.originalPrice || 0)}</div>
             </div>
-            <div className="text-right">
+            <div className="text-right flex-shrink-0 ml-2">
               {formatCurrency(item.originalPrice * item.quantity || 0)}
             </div>
           </div>

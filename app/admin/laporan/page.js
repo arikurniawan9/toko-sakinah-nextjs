@@ -321,7 +321,7 @@ export default function ReportDashboard() {
                   <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
                     darkMode ? 'text-gray-300' : 'text-gray-500'
                   }`}>
-                    ID Transaksi
+                    No. Invoice
                   </th>
                   <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
                     darkMode ? 'text-gray-300' : 'text-gray-500'
@@ -348,10 +348,10 @@ export default function ReportDashboard() {
               <tbody className={darkMode ? 'divide-gray-700 bg-gray-800' : 'divide-gray-200 bg-white'}>
                 {recentTransactionsData.map((transaction, index) => (
                   <tr key={transaction.id} className={darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}>
-                    <td className={`px-6 py-4 whitespace-nowrap text-sm ${
-                      darkMode ? 'text-gray-300' : 'text-gray-500'
+                    <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
+                      darkMode ? 'text-white' : 'text-gray-900'
                     }`}>
-                      #{transaction.id.substring(0, 8)}
+                      {transaction.invoiceNumber}
                     </td>
                     <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
                       darkMode ? 'text-white' : 'text-gray-900'

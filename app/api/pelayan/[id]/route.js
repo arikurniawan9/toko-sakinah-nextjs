@@ -70,18 +70,31 @@ export async function GET(request, { params }) {
       orderBy: {
         createdAt: 'desc',
       },
-      select: {
-        id: true,
-        invoiceNumber: true, // Corrected from invoice
-        total: true,
-        paymentMethod: true,
-        status: true,
-        createdAt: true,
+      include: {
+        saleDetails: {
+          include: {
+            product: {
+              select: {
+                name: true,
+                productCode: true,
+              }
+            }
+          }
+        }
       },
     });
-    
-    // Transform to keep consistency on the frontend
-    const salesData = transactions.map(t => ({...t, invoice: t.invoiceNumber}));
+
+    // Transform data to match frontend requirements
+    const salesData = transactions.map(transaction => ({
+      id: transaction.id,
+      invoice: transaction.invoiceNumber,
+      invoiceNumber: transaction.invoiceNumber,
+      total: transaction.total,
+      paymentMethod: transaction.paymentMethod,
+      status: transaction.status,
+      createdAt: transaction.createdAt,
+      saleDetails: transaction.saleDetails,
+    }));
 
     // 3. Get total count of transactions for pagination
     const totalTransactions = await prisma.sale.count({
