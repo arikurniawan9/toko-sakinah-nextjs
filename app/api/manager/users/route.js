@@ -1,19 +1,10 @@
-// app/api/manager/users/route.js - tambahan DELETE method
-import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/authOptions';
-import prisma from '@/lib/prisma';
-import bcrypt from 'bcryptjs';
-import { ROLES } from '@/lib/constants';
-import { logUserCreation, logUserDeletion } from '@/lib/auditLogger';
-
-// GET method (existing)
+// GET /api/manager/users - Get all users (for MANAGER role)
 export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session || !session.user || !session.user.id || session.user.role !== ROLES.MANAGER) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session || session.user.role !== ROLES.MANAGER) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -21,112 +12,110 @@ export async function GET(request) {
     const limit = parseInt(searchParams.get('limit')) || 10;
     const search = searchParams.get('search') || '';
     const role = searchParams.get('role') || '';
-    const storeId = searchParams.get('storeId') || '';
     const status = searchParams.get('status') || '';
+    const offset = (page - 1) * limit;
 
-    const skip = (page - 1) * limit;
+    const whereConditions = [];
 
-    // Query untuk mengambil user beserta informasi toko mereka
-    const whereClause = {
-      AND: [
-        search ? {
-          OR: [
-            { name: { contains: search, mode: 'insensitive' } },
-            { username: { contains: search, mode: 'insensitive' } },
-          ],
-        } : {},
-        role ? { storeUsers: { some: { role } } } : {},
-        storeId ? { storeUsers: { some: { storeId } } } : {},
-        status ? { status: status } : {}, // Filter status user
-      ],
-    };
+    // Role filtering: if a specific role is passed, use it. Otherwise, exclude WAREHOUSE.
+    if (role) {
+      whereConditions.push({ role: role });
+    } else {
+      whereConditions.push({ role: { not: ROLES.WAREHOUSE } });
+    }
+    
+    // Status filtering
+    if (status) {
+      whereConditions.push({ status: status });
+    }
 
-    const users = await prisma.user.findMany({
-      where: whereClause,
-      include: {
-        storeUsers: {
-          include: {
-            store: true
-          },
-          orderBy: { assignedAt: 'desc' }
-        }
-      },
-      skip,
-      take: limit,
-      orderBy: { createdAt: 'desc' },
-    });
+    // Search filtering
+    if (search) {
+      whereConditions.push({
+        OR: [
+          { name: { contains: search, mode: 'insensitive' } },
+          { username: { contains: search, mode: 'insensitive' } },
+          { code: { contains: search, mode: 'insensitive' } },
+          { employeeNumber: { contains: search, mode: 'insensitive' } },
+        ],
+      });
+    }
+    
+    const whereClause = whereConditions.length > 0 ? { AND: whereConditions } : {};
 
-    // Format data agar mudah digunakan di UI
-    const formattedUsers = users.map(user => ({
-      ...user,
-      stores: user.storeUsers.map(su => ({
-        id: su.store.id,
-        name: su.store.name,
-        role: su.role,
-        assignedAt: su.assignedAt,
-        status: su.status
-      }))
-    }));
-
-    const totalItems = await prisma.user.count({
-      where: whereClause,
-    });
+    const [users, totalCount] = await prisma.$transaction([
+      prisma.user.findMany({
+        where: whereClause,
+        select: {
+            id: true,
+            name: true,
+            username: true,
+            employeeNumber: true,
+            code: true,
+            address: true,
+            phone: true,
+            status: true,
+            createdAt: true,
+            updatedAt: true,
+            role: true,
+        },
+        skip: offset,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.user.count({ where: whereClause })
+    ]);
 
     return NextResponse.json({
-      users: formattedUsers,
+      users,
       pagination: {
-        total: totalItems,
-        page: page,
-        limit: limit,
-        totalPages: Math.ceil(totalItems / limit),
+        page,
+        limit,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limit)
       }
     });
+
   } catch (error) {
-    console.error('Error fetching all users:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    console.error('Error fetching global users:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch users' },
+      { status: 500 }
+    );
   }
 }
+import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/authOptions';
+import prisma from '@/lib/prisma';
+import bcrypt from 'bcryptjs';
+import { ROLES } from '@/lib/constants';
 
-// POST method (existing)
+// POST /api/manager/users - Create a new global user (e.g., WAREHOUSE)
 export async function POST(request) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session || !session.user || !session.user.id || session.user.role !== ROLES.MANAGER) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session || session.user.role !== ROLES.MANAGER) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Untuk MANAGER, mereka bisa mengakses semua toko, jadi kita tidak perlu validasi storeId dari session
-    // Lanjutkan ke pengambilan data dari body request
+    const { name, username, employeeNumber, code, password, role, address, phone } = await request.json();
 
-    const { name, username, employeeNumber, password, role, storeId: targetStoreId, phone, address } = await request.json();
-
-    // Validasi data
-    if (!name || !username || !password || !targetStoreId || !role) {
+    // Validation
+    if (!name || !username || !password || !role) {
       return NextResponse.json(
-        { error: 'Nama, username, password, toko, dan role wajib diisi' },
+        { error: 'Nama, username, password, dan role wajib diisi' },
         { status: 400 }
       );
     }
 
-    // Validasi role
-    const validRoles = [ROLES.ADMIN, ROLES.CASHIER, ROLES.ATTENDANT, ROLES.MANAGER, ROLES.WAREHOUSE];
-    if (!validRoles.includes(role)) {
+    // Only allow creating global roles via this endpoint
+    const validGlobalRoles = [ROLES.WAREHOUSE, ROLES.MANAGER];
+    if (!validGlobalRoles.includes(role)) {
       return NextResponse.json(
-        { error: 'Role tidak valid' },
+        { error: `Role '${role}' tidak valid untuk endpoint ini. Gunakan endpoint /api/store-users untuk role spesifik toko.` },
         { status: 400 }
-      );
-    }
-
-    // Cek apakah toko tujuan valid
-    const targetStore = await prisma.store.findUnique({
-      where: { id: targetStoreId }
-    });
-
-    if (!targetStore) {
-      return NextResponse.json(
-        { error: 'Toko tujuan tidak ditemukan' },
-        { status: 404 }
       );
     }
 
@@ -141,47 +130,32 @@ export async function POST(request) {
         { status: 400 }
       );
     }
-
+    
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create the user
+    // Create the user in the User table
+    // No StoreUser record is created, as this is a global user.
     const user = await prisma.user.create({
       data: {
         name: name.trim(),
         username: username.trim(),
         employeeNumber: employeeNumber ? employeeNumber.trim() : null,
-        phone: phone ? phone.trim() : null,
-        address: address ? address.trim() : null,
+        code: code ? code.trim() : null,
         password: hashedPassword,
-        role: role, // Set role in user table to the selected role
+        address,
+        phone,
+        role: role,
         status: 'AKTIF',
       }
     });
 
-    // Create store-user relationship with specified role for this store
-    await prisma.storeUser.create({
-      data: {
-        userId: user.id,
-        storeId: targetStoreId,
-        role: role, // Role in the specific store
-        assignedBy: session.user.id,
-        status: 'ACTIVE',
-      }
-    });
-
-    // Log aktivitas pembuatan user
-    const requestHeaders = new Headers(request.headers);
-    const ipAddress = requestHeaders.get('x-forwarded-for') || requestHeaders.get('x-real-ip') || '127.0.0.1';
-    const userAgent = requestHeaders.get('user-agent') || '';
-
-    await logUserCreation(session.user.id, user, targetStoreId, ipAddress, userAgent);
-
     // Don't return the password hash
     const { password: _, ...userWithoutPassword } = user;
-    return NextResponse.json({...userWithoutPassword, role}, { status: 201 }); // Return user data with store role
+    return NextResponse.json(userWithoutPassword, { status: 201 });
+
   } catch (error) {
-    console.error('Error creating user:', error);
+    console.error('Error creating global user:', error);
     return NextResponse.json(
       { error: 'Failed to create user' },
       { status: 500 }
@@ -189,78 +163,58 @@ export async function POST(request) {
   }
 }
 
-// DELETE method - untuk menghapus user dari semua toko dan menonaktifkan user secara keseluruhan
+// DELETE /api/manager/users - Delete multiple global users
 export async function DELETE(request) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session || !session.user || !session.user.id || session.user.role !== ROLES.MANAGER) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session || session.user.role !== ROLES.MANAGER) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const { ids } = await request.json();
 
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
       return NextResponse.json(
-        { error: 'Array ID harus disediakan' },
+        { error: 'Array ID pengguna harus disediakan' },
         { status: 400 }
       );
     }
-
-    // Ambil data user sebelum dihapus untuk logging
-    const usersToDelete = await prisma.user.findMany({
-      where: {
-        id: { in: ids }
-      },
-      select: {
-        id: true,
-        name: true,
-        username: true,
-        role: true,
-        status: true
-      }
-    });
-
-    // Hapus user dari semua toko (hapus dari tabel storeUser) dan nonaktifkan user
-    const transactionResult = await prisma.$transaction([
-      // Nonaktifkan hubungan user-toko
-      prisma.storeUser.updateMany({
-        where: {
-          userId: { in: ids }
-        },
-        data: {
-          status: 'INACTIVE' // Nonaktifkan hubungan user-toko
-        }
-      }),
-      // Update status user secara keseluruhan
-      prisma.user.updateMany({
-        where: {
-          id: { in: ids }
-        },
-        data: {
-          status: 'TIDAK_AKTIF' // Nonaktifkan pengguna secara keseluruhan
-        }
-      })
-    ]);
-
-    // Log aktivitas penghapusan user
-    const requestHeaders = new Headers(request.headers);
-    const ipAddress = requestHeaders.get('x-forwarded-for') || requestHeaders.get('x-real-ip') || '127.0.0.1';
-    const userAgent = requestHeaders.get('user-agent') || '';
-
-    for (const userData of usersToDelete) {
-      await logUserDeletion(session.user.id, userData, null, ipAddress, userAgent); // Kita tidak tahu storeId pasti, jadi gunakan null
+    
+    // Prevent a manager from deleting themselves
+    if (ids.includes(session.user.id)) {
+        return NextResponse.json({ error: 'Anda tidak dapat menghapus akun Anda sendiri.' }, { status: 400 });
     }
 
-    return NextResponse.json({
-      message: `Berhasil menonaktifkan ${ids.length} user dan aksesnya dari semua toko`,
-      deletedCount: ids.length
+    // Ensure users to be deleted are global users, not store-specific ones by mistake
+    const usersToDelete = await prisma.user.findMany({
+        where: {
+            id: { in: ids },
+            role: { in: [ROLES.WAREHOUSE, ROLES.MANAGER] }
+        }
     });
+
+    if (usersToDelete.length !== ids.length) {
+        return NextResponse.json({ error: 'Beberapa pengguna yang dipilih bukan pengguna global atau tidak ditemukan.' }, { status: 404 });
+    }
+
+    const deletedUsers = await prisma.user.deleteMany({
+      where: {
+        id: { in: ids },
+      },
+    });
+
+    return NextResponse.json({
+      message: `Berhasil menghapus ${deletedUsers.count} user.`,
+      deletedCount: deletedUsers.count
+    });
+
   } catch (error) {
-    console.error('Error deleting users:', error);
+    console.error('Error deleting global users:', error);
     return NextResponse.json(
-      { error: 'Failed to delete users from stores' },
+      { error: 'Failed to delete users' },
       { status: 500 }
     );
   }
 }
+

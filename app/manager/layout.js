@@ -60,11 +60,12 @@ const menuItems = [
     ]
   },
   {
-    title: "Pengguna",
+    title: "Manajemen Pengguna",
     href: "/manager/users",
     icon: Users,
     children: [
-      { title: "Manajemen Pengguna", href: "/manager/users", icon: Users },
+      { title: "Semua Pengguna", href: "/manager/users", icon: Users },
+      { title: "Akun Gudang", href: "/manager/warehouse-users", icon: Package },
     ]
   },
   {

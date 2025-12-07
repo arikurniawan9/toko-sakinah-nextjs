@@ -37,7 +37,8 @@ import {
   HardDrive,
   RotateCcw,
   Activity,
-  Printer
+  Printer,
+  TrendingUp
 } from 'lucide-react';
 import { useUserTheme } from './UserThemeContext';
 import { useSidebar } from './SidebarContext';
@@ -113,6 +114,10 @@ const Sidebar = ({ children }) => {
     { title: "Cetak Laporan Toko", href: "/manager/print-reports", icon: Printer, type: 'item', roles: ['MANAGER'] },
     { title: "Log Aktivitas", href: "/manager/activity-log", icon: Activity, type: 'item', roles: ['MANAGER'] },
     { title: "Backup & Restore", href: "/manager/backup-restore", icon: HardDrive, type: 'item', roles: ['MANAGER'] },
+    { title: "Manajemen Pengguna", type: 'heading', roles: ['MANAGER'] },
+    { title: "Semua Pengguna", href: "/manager/users", icon: Users, type: 'item', roles: ['MANAGER'] },
+    { title: "Akun Gudang", href: "/manager/warehouse-users", icon: Package, type: 'item', roles: ['MANAGER'] },
+
 
     // ADMIN menus
     { title: "Dashboard", href: "/admin", icon: Home, type: 'item', roles: ['ADMIN'] },
@@ -146,6 +151,15 @@ const Sidebar = ({ children }) => {
     { title: "Master", type: 'heading', roles: ['CASHIER'] },
     { title: "Produk", href: "/kasir/produk", icon: ShoppingBag, type: 'item', roles: ['CASHIER'] },
     { title: "Kategori", href: "/kasir/kategori", icon: Tag, type: 'item', roles: ['CASHIER'] },
+
+    // WAREHOUSE menus
+    { title: "Dashboard", href: "/warehouse", icon: Home, type: 'item', roles: ['WAREHOUSE'] },
+    { title: "Stok Gudang", href: "/warehouse/stock", icon: Package, type: 'item', roles: ['WAREHOUSE'] },
+    { title: "Pembelian Gudang", href: "/warehouse/purchase", icon: ShoppingCart, type: 'item', roles: ['WAREHOUSE'] },
+    { title: "Distribusi ke Toko", href: "/warehouse/distribution", icon: TrendingUp, type: 'item', roles: ['WAREHOUSE'] },
+
+    { title: "Pengaturan", href: "/warehouse/settings", icon: Settings, type: 'item', roles: ['WAREHOUSE'] },
+
   ];
 
   // Filter menu items based on user role
@@ -228,7 +242,7 @@ const Sidebar = ({ children }) => {
                       onClick={() => isMobile && setIsMobileMenuOpen(false)}
                       className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                         isActive
-                          ? 'text-white bg-theme-purple-gradient'
+                          ? `text-white bg-theme-purple-gradient`
                           : `${darkMode ? 'text-gray-300 hover:bg-gray-700 hover:text-white' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'}`
                       }`}
                     >

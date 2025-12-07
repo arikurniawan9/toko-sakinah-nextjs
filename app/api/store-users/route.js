@@ -15,16 +15,8 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Allow CASHIER, ADMIN, and MANAGER to access this endpoint
     if (!['CASHIER', 'ADMIN', 'MANAGER'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    // For multi-tenant system, get store ID from session
-    const storeId = session.user.storeId;
-    
-    if (!storeId) {
-      return NextResponse.json({ error: 'Store ID not found in session' }, { status: 400 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -32,13 +24,21 @@ export async function GET(request) {
     const limit = parseInt(searchParams.get('limit')) || 10;
     const search = searchParams.get('search') || '';
     const role = searchParams.get('role') || '';
-
-    // Calculate offset for pagination
     const offset = (page - 1) * limit;
 
-    const whereClause = {
-      storeId,
-    };
+    let whereClause = {};
+
+    if (session.user.role === 'MANAGER') {
+      // Manager can see users across all stores, filtered by role if specified
+      whereClause = {};
+    } else {
+      // Other roles are restricted to their own store
+      const storeId = session.user.storeId;
+      if (!storeId) {
+        return NextResponse.json({ error: 'Store ID not found in session' }, { status: 400 });
+      }
+      whereClause.storeId = storeId;
+    }
 
     if (role) {
       whereClause.role = role;
@@ -82,12 +82,10 @@ export async function GET(request) {
       where: whereClause,
     });
 
-    // Transform the results to match the expected format
     const users = usersData.map(storeUser => ({
       ...storeUser.user,
       role: storeUser.role,
     }));
-
 
     return NextResponse.json({
       users,

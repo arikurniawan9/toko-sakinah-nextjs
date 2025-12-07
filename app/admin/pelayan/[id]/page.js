@@ -51,8 +51,8 @@ export default function PelayanDetail() {
       doc.text(`Tanggal Bergabung: ${attendant ? new Date(attendant.createdAt).toLocaleDateString('id-ID') : '-'}`, 20, 54);
 
       // Add summary information
-      doc.text(`Total Transaksi: ${totalTransactions}`, 120, 36);
-      doc.text(`Total Penjualan: Rp ${summary.totalSalesValue.toLocaleString('id-ID')}`, 120, 42);
+      doc.text(`Total Transaksi: ${totalTransactions || 0}`, 120, 36);
+      doc.text(`Total Penjualan: Rp ${(summary.totalSalesValue || 0).toLocaleString('id-ID')}`, 120, 42);
 
       // Add date of report generation
       doc.text(`Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}`, 120, 48);
@@ -60,14 +60,14 @@ export default function PelayanDetail() {
       // Calculate the y position for the table
       let startY = 65;
 
-      // Prepare transaction data for the table
-      const transactionData = transactions.map((transaction, index) => [
+      // Prepare transaction data for the table with proper data validation
+      const transactionData = (transactions || []).map((transaction, index) => [
         index + 1,
         transaction.invoice || '-',
         transaction.total ? `Rp ${transaction.total.toLocaleString('id-ID')}` : 'Rp 0',
         transaction.paymentMethod || '-',
         transaction.status || '-',
-        new Date(transaction.createdAt).toLocaleDateString('id-ID')
+        transaction.createdAt ? new Date(transaction.createdAt).toLocaleDateString('id-ID') : '-'
       ]);
 
       // Add the table of transactions
@@ -91,57 +91,64 @@ export default function PelayanDetail() {
 
       // Add detailed transaction items for each transaction
       let currentY = doc.lastAutoTable.finalY + 10;
-      doc.setFontSize(14);
-      doc.text('Detail Transaksi', 20, currentY);
-      currentY += 10;
 
-      for (const transaction of transactions) {
-        doc.setFontSize(12);
-        doc.text(`Invoice: ${transaction.invoice || '-'}`, 20, currentY);
-        doc.text(`Tanggal: ${new Date(transaction.createdAt).toLocaleDateString('id-ID')}`, 100, currentY);
-        currentY += 6;
+      // Only add detailed transaction items if there are any transactions
+      if (transactions && transactions.length > 0) {
+        doc.setFontSize(14);
+        doc.text('Detail Transaksi', 20, currentY);
+        currentY += 10;
 
-        // Add items table for this transaction
-        if (transaction.saleDetails && transaction.saleDetails.length > 0) {
-          const itemData = transaction.saleDetails.map((detail, idx) => [
-            idx + 1,
-            detail.product?.name || 'Tidak Diketahui',
-            detail.product?.productCode || 'Tidak Ada Kode',
-            detail.quantity,
-            `Rp ${detail.price.toLocaleString('id-ID')}`,
-            `Rp ${detail.subtotal.toLocaleString('id-ID')}`
-          ]);
+        for (const transaction of transactions) {
+          doc.setFontSize(12);
+          doc.text(`Invoice: ${transaction.invoice || '-'}`, 20, currentY);
+          doc.text(`Tanggal: ${transaction.createdAt ? new Date(transaction.createdAt).toLocaleDateString('id-ID') : '-'}`, 100, currentY);
+          currentY += 6;
 
-          doc.autoTable({
-            head: [['No.', 'Nama Produk', 'Kode Produk', 'Jumlah', 'Harga', 'Subtotal']],
-            body: itemData,
-            startY: currentY,
-            margin: { left: 20 },
-            theme: 'grid',
-            styles: {
-              fontSize: 9,
-              cellPadding: 2
-            },
-            headStyles: {
-              fillColor: [107, 114, 128], // Tailwind gray-500 equivalent
-              textColor: [255, 255, 255]
-            },
-            tableWidth: 170
-          });
+          // Add items table for this transaction
+          if (transaction.saleDetails && transaction.saleDetails.length > 0) {
+            const itemData = transaction.saleDetails.map((detail, idx) => [
+              idx + 1,
+              detail.product?.name || 'Tidak Diketahui',
+              detail.product?.productCode || 'Tidak Ada Kode',
+              detail.quantity || 0,
+              `Rp ${(detail.price || 0).toLocaleString('id-ID')}`,
+              `Rp ${(detail.subtotal || 0).toLocaleString('id-ID')}`
+            ]);
 
-          currentY = doc.lastAutoTable.finalY + 5;
-        } else {
-          doc.text('Tidak ada item dalam transaksi ini', 20, currentY);
-          currentY += 5;
+            doc.autoTable({
+              head: [['No.', 'Nama Produk', 'Kode Produk', 'Jumlah', 'Harga', 'Subtotal']],
+              body: itemData,
+              startY: currentY,
+              margin: { left: 20 },
+              theme: 'grid',
+              styles: {
+                fontSize: 9,
+                cellPadding: 2
+              },
+              headStyles: {
+                fillColor: [107, 114, 128], // Tailwind gray-500 equivalent
+                textColor: [255, 255, 255]
+              },
+              tableWidth: 170
+            });
+
+            currentY = doc.lastAutoTable.finalY + 5;
+          } else {
+            doc.text('Tidak ada item dalam transaksi ini', 20, currentY);
+            currentY += 5;
+          }
+
+          currentY += 5; // Space between transactions
+
+          // Check if we need a new page
+          if (currentY > 250) {
+            doc.addPage();
+            currentY = 20;
+          }
         }
-
-        currentY += 5; // Space between transactions
-
-        // Check if we need a new page
-        if (currentY > 250) {
-          doc.addPage();
-          currentY = 20;
-        }
+      } else {
+        doc.text('Tidak ada transaksi untuk ditampilkan', 20, currentY);
+        currentY += 10;
       }
 
       // Add page footer info

@@ -3,7 +3,7 @@
 import { useUserTheme } from '@/components/UserThemeContext';
 import Breadcrumb from '@/components/Breadcrumb';
 
-export default function WarehouseDistributionPage() {
+export default function WarehouseSettingsPage() {
   const { userTheme } = useUserTheme();
   const darkMode = userTheme.darkMode;
 
@@ -12,17 +12,17 @@ export default function WarehouseDistributionPage() {
       <Breadcrumb
         items={[
             { title: 'Dashboard Gudang', href: '/warehouse' },
-            { title: 'Distribusi ke Toko', href: '/warehouse/distribution' }
+            { title: 'Pengaturan', href: '/warehouse/settings' }
         ]}
         darkMode={darkMode}
       />
       <h1 className={`text-3xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-        Distribusi Barang ke Toko
+        Pengaturan Gudang
       </h1>
       
       <div className={`p-6 rounded-lg shadow ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
         <p className={`${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-          Halaman untuk distribusi atau transfer stok dari gudang pusat ke masing-masing toko akan ditampilkan di sini.
+          Halaman untuk pengaturan yang spesifik untuk modul gudang akan ditampilkan di sini.
         </p>
       </div>
     </main>
