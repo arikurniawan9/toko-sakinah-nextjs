@@ -1,8 +1,11 @@
 // components/produk/ProductDetailModal.js
 'use client';
 
-import { X, Tag, Truck, Package, DollarSign, Scale, Info } from 'lucide-react';
+import { useState } from 'react';
+import { X, Tag, Truck, Package, DollarSign, Scale, Info, Hash } from 'lucide-react';
 import Tooltip from '../Tooltip';
+import ProductBarcodePreview from '../admin/ProductBarcodePreview';
+import { generateSingleProductBarcodePDF } from '../admin/ProductBarcodePDFGenerator';
 
 export default function ProductDetailModal({
   isOpen,
@@ -10,7 +13,34 @@ export default function ProductDetailModal({
   product,
   darkMode,
 }) {
+  const [quantity, setQuantity] = useState(1);
+  const [showBarcodePreview, setShowBarcodePreview] = useState(false);
+
   if (!isOpen || !product) return null;
+
+  const handlePrintBarcode = () => {
+    if (!product) return;
+    setShowBarcodePreview(true);
+  };
+
+  const handleConfirmPrint = (options = {}) => {
+    try {
+      generateSingleProductBarcodePDF(product, quantity, {
+        barcodeWidth: 38, barcodeHeight: 15,
+        labelWidth: options.labelWidth || 50,
+        labelHeight: options.labelHeight || 25,
+        margin: 5,
+        fontSize: options.fontSize || 8,
+        darkMode: darkMode,
+        includeProductName: options.includeProductName || false,
+        includeProductCode: options.includeProductCode || true
+      });
+      setShowBarcodePreview(false);
+    } catch (error) {
+      console.error('Error printing barcode:', error);
+      // Handle error jika perlu
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[100] overflow-y-auto">
@@ -100,6 +130,39 @@ export default function ProductDetailModal({
                     )}
                   </div>
                 </div>
+
+                {/* Barcode Section */}
+                <div className={`border-t pt-2.5 ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                  <h4 className={`text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-800'} mb-2`}>Cetak Barcode</h4>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-2 sm:space-y-0">
+                    <div className="flex-1">
+                      <label className={`block text-xs font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Jumlah Barcode</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={quantity}
+                        onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                        className={`w-full px-2 py-1.5 text-xs border rounded-md shadow-sm ${
+                          darkMode
+                            ? 'bg-gray-700 border-gray-600 text-white'
+                            : 'bg-white border-gray-300 text-gray-900'
+                        } focus:outline-none focus:ring-1 focus:ring-theme-purple-500`}
+                      />
+                    </div>
+                    <div className="mt-1 sm:mt-0">
+                      <button
+                        onClick={handlePrintBarcode}
+                        className={`inline-flex items-center justify-center px-3 py-2 border border-transparent text-xs font-medium rounded-md shadow-sm ${
+                          darkMode
+                            ? 'text-gray-200 bg-gray-800 hover:bg-gray-700'
+                            : 'text-gray-700 bg-gray-100 hover:bg-gray-200'
+                        }`}
+                      >
+                        <Hash className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -116,6 +179,16 @@ export default function ProductDetailModal({
             </button>
           </div>
         </div>
+
+        {/* Barcode Preview Modal */}
+        <ProductBarcodePreview
+          isOpen={showBarcodePreview}
+          onClose={() => setShowBarcodePreview(false)}
+          product={product}
+          quantity={quantity}
+          darkMode={darkMode}
+          onPrint={handleConfirmPrint}
+        />
       </div>
     </div>
   );
