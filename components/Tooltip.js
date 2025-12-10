@@ -35,7 +35,7 @@ const Tooltip = ({ children, content, position = 'top', darkMode = false }) => {
   const shouldShowTooltip = isOverflowing || !triggerRef.current?.classList.contains('truncate');
 
   return (
-    <div 
+    <div
       className="relative inline-block"
       onMouseEnter={shouldShowTooltip ? showTooltip : undefined}
       onMouseLeave={shouldShowTooltip ? hideTooltip : undefined}
@@ -45,18 +45,18 @@ const Tooltip = ({ children, content, position = 'top', darkMode = false }) => {
       <div ref={triggerRef} className="focus:outline-none">
         {children}
       </div>
-      
+
       {isVisible && (
-        <div 
+        <div
           className={`
-            absolute z-max px-3 py-2 text-sm rounded-lg shadow-lg
+            absolute z-[9999] px-3 py-2 text-sm rounded-lg shadow-lg
             ${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900 border border-gray-200'}
             whitespace-nowrap
           `}
           style={{
             [position]: '100%',
             left: position === 'top' || position === 'bottom' ? '50%' : '100%',
-            transform: 
+            transform:
               position === 'top' ? 'translate(-50%, -10px)' :
               position === 'bottom' ? 'translate(-50%, 10px)' :
               position === 'left' ? 'translateX(-10px)' :
@@ -64,16 +64,16 @@ const Tooltip = ({ children, content, position = 'top', darkMode = false }) => {
           }}
         >
           {content}
-          <div 
+          <div
             className={`
               absolute w-2 h-2 rotate-45
               ${darkMode ? 'bg-gray-800' : 'bg-white border-r border-b border-gray-200'}
             `}
             style={{
-              [position === 'top' ? 'bottom' : 
-               position === 'bottom' ? 'top' : 
+              [position === 'top' ? 'bottom' :
+               position === 'bottom' ? 'top' :
                position === 'left' ? 'right' : 'left']: '-4px',
-              [position === 'top' || position === 'bottom' ? 'left' : 
+              [position === 'top' || position === 'bottom' ? 'left' :
                position === 'left' ? 'bottom' : 'bottom']: '50%',
               transform: 'translate(-50%, -50%)',
             }}
@@ -89,24 +89,24 @@ const SimpleTooltip = ({ children, content, position = 'top', darkMode = false }
   const [isVisible, setIsVisible] = useState(false);
 
   return (
-    <div 
+    <div
       className="relative inline-block"
       onMouseEnter={() => setIsVisible(true)}
       onMouseLeave={() => setIsVisible(false)}
     >
       {children}
-      
+
       {isVisible && (
-        <div 
+        <div
           className={`
-            absolute z-max px-3 py-2 text-sm rounded-lg shadow-lg
+            absolute z-[9999] px-3 py-2 text-sm rounded-lg shadow-lg
             ${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900 border border-gray-200'}
             whitespace-nowrap
           `}
           style={{
             [position]: '100%',
             left: position === 'top' || position === 'bottom' ? '50%' : '100%',
-            transform: 
+            transform:
               position === 'top' ? 'translate(-50%, -10px)' :
               position === 'bottom' ? 'translate(-50%, 10px)' :
               position === 'left' ? 'translateX(-10px)' :
@@ -114,16 +114,16 @@ const SimpleTooltip = ({ children, content, position = 'top', darkMode = false }
           }}
         >
           {content}
-          <div 
+          <div
             className={`
               absolute w-2 h-2 rotate-45
               ${darkMode ? 'bg-gray-800' : 'bg-white border-r border-b border-gray-200'}
             `}
             style={{
-              [position === 'top' ? 'bottom' : 
-               position === 'bottom' ? 'top' : 
+              [position === 'top' ? 'bottom' :
+               position === 'bottom' ? 'top' :
                position === 'left' ? 'right' : 'left']: '-4px',
-              [position === 'top' || position === 'bottom' ? 'left' : 
+              [position === 'top' || position === 'bottom' ? 'left' :
                position === 'left' ? 'bottom' : 'bottom']: '50%',
               transform: 'translate(-50%, -50%)',
             }}
