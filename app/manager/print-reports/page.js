@@ -4,9 +4,10 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ROLES } from '@/lib/constants';
-import { Printer, Store, FileText, ShoppingCart, TrendingUp, DollarSign, Package } from 'lucide-react';
+import { Printer, Store, FileText, ShoppingCart, TrendingUp, DollarSign, Package, Eye } from 'lucide-react';
 import { useUserTheme } from '@/components/UserThemeContext';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import ReportPreview from '@/components/manager/ReportPreview';
 
 export default function PrintReportsPage() {
   const { data: session, status } = useSession();
@@ -17,6 +18,7 @@ export default function PrintReportsPage() {
   const [selectedStore, setSelectedStore] = useState('');
   const [selectedReport, setSelectedReport] = useState('');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  const [showPreview, setShowPreview] = useState(false);
 
   // Fetch all stores
   useEffect(() => {
@@ -84,6 +86,15 @@ export default function PrintReportsPage() {
       console.error('Error printing report:', error);
       alert('Terjadi kesalahan saat mencetak laporan');
     }
+  };
+
+  // Handle preview
+  const handlePreview = () => {
+    if (!selectedStore || !selectedReport) {
+      alert('Silakan pilih toko dan jenis laporan terlebih dahulu');
+      return;
+    }
+    setShowPreview(true);
   };
 
   // Hydration-safe loading and authentication checks
@@ -201,7 +212,15 @@ export default function PrintReportsPage() {
         </div>
 
         {/* Print Button */}
-        <div className="mt-6 flex justify-end">
+        <div className="mt-6 flex justify-end space-x-3">
+          <button
+            onClick={handlePreview}
+            disabled={!selectedStore || !selectedReport}
+            className="flex items-center px-6 py-3 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+          >
+            <Eye className="h-5 w-5 mr-2" />
+            Tampilkan Preview
+          </button>
           <button
             onClick={handlePrint}
             disabled={!selectedStore || !selectedReport}
@@ -251,6 +270,16 @@ export default function PrintReportsPage() {
           );
         })}
       </div>
+
+      {/* Report Preview Modal */}
+      <ReportPreview
+        isOpen={showPreview}
+        onClose={() => setShowPreview(false)}
+        storeId={selectedStore}
+        reportType={selectedReport}
+        dateRange={dateRange}
+        stores={stores}
+      />
     </div>
   );
 }
