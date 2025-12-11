@@ -13,11 +13,34 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const member = await prisma.member.findUnique({
-      where: {
-        id: params.id,
-      },
-    });
+    // Dapatkan storeId dari session
+    const storeId = session.user.storeId;
+    if (!storeId) {
+      return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
+    }
+
+    // Periksa apakah permintaan datang dari konteks transaksi
+    const url = new URL(request.url);
+    const context = url.searchParams.get('context'); // Jika context=transaction, ini untuk transaksi
+
+    let member;
+
+    if (context === 'transaction') {
+      // Untuk konteks transaksi, izinkan akses ke member dari toko manapun
+      member = await prisma.member.findUnique({
+        where: {
+          id: params.id,
+        },
+      });
+    } else {
+      // Untuk konteks administrasi, batasi hanya member dari toko ini
+      member = await prisma.member.findUnique({
+        where: {
+          id: params.id,
+          storeId: storeId, // Tambahkan filter storeId untuk administrasi
+        },
+      });
+    }
 
     if (!member) {
       return NextResponse.json({ error: 'Member not found' }, { status: 404 });

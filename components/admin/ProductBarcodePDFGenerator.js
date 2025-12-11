@@ -50,19 +50,56 @@ export const generateProductBarcodePDF = (products, options = {}) => {
 
     if (includeProductName) {
       doc.setFontSize(fontSize - 2); // Ukuran font lebih kecil untuk nama produk
-      const productName = product.name.length > 25 ?
-        product.name.substring(0, 22) + '...' :
-        product.name;
+
+      // Ambil nama produk dan batasi maksimal 2 baris
+      const productName = product.name;
+      const maxWidth = labelWidth - 4; // Kurangi sedikit margin
+
+      // Pisahkan teks menjadi dua baris maksimum
+      const words = productName.split(' ');
+      const lines = [];
+      let currentLine = '';
+
+      for (const word of words) {
+        const testLine = currentLine ? `${currentLine} ${word}` : word;
+        const textSize = doc.getTextWidth(testLine);
+
+        // Jika testLine melebihi lebar maksimum, maka pindahkan ke baris baru
+        if (textSize > maxWidth && currentLine !== '') {
+          lines.push(currentLine);
+          if (lines.length >= 1) { // Batasi ke 2 baris maksimal (kita baru menambahkan 1 baris)
+            currentLine = word;
+            break; // Kita hanya akan punya maksimal 2 baris
+          }
+          currentLine = word;
+        } else {
+          currentLine = testLine;
+        }
+      }
+
+      // Tambahkan baris terakhir
+      if (currentLine) {
+        lines.push(currentLine);
+      }
+
+      // Jika lebih dari 2 baris, gabungkan sisa teks ke baris kedua dengan ellipsis
+      if (lines.length > 2) {
+        lines[1] = lines.slice(1).join(' ') + '...';
+        lines.splice(2); // Hanya ambil 2 baris pertama
+      }
 
       // Teks nama produk diposisikan di atas barcode
       doc.text(
-        productName,
+        lines,
         currentX + labelWidth / 2,
         yPos,
         { align: 'center' }
       );
 
-      yPos += 2; // Jarak antara nama produk dan barcode (dikurangi dari sebelumnya)
+      // Tambahkan jarak berdasarkan jumlah baris teks
+      const lineHeight = 5; // Jarak antar baris
+      const linesCount = lines.length;
+      yPos += (lineHeight * linesCount) - 2; // Kurangi sedikit agar tetap rapat
     }
 
     // Gambar barcode standar menggunakan JsBarcode
@@ -96,17 +133,56 @@ export const generateProductBarcodePDF = (products, options = {}) => {
 
     // Tambahkan nama produk di atas (jika diminta)
     if (includeProductName) {
-      const productName = product.name.length > 20 ?
-        product.name.substring(0, 17) + '...' :
-        product.name;
+      doc.setFontSize(fontSize - 2); // Ukuran font lebih kecil untuk nama produk
+
+      // Ambil nama produk dan batasi maksimal 2 baris
+      const productName = product.name;
+      const maxWidth = labelWidth - 4; // Kurangi sedikit margin
+
+      // Pisahkan teks menjadi dua baris maksimum
+      const words = productName.split(' ');
+      const lines = [];
+      let currentLine = '';
+
+      for (const word of words) {
+        const testLine = currentLine ? `${currentLine} ${word}` : word;
+        const textSize = doc.getTextWidth(testLine);
+
+        // Jika testLine melebihi lebar maksimum, maka pindahkan ke baris baru
+        if (textSize > maxWidth && currentLine !== '') {
+          lines.push(currentLine);
+          if (lines.length >= 1) { // Batasi ke 2 baris maksimal (kita baru menambahkan 1 baris)
+            currentLine = word;
+            break; // Kita hanya akan punya maksimal 2 baris
+          }
+          currentLine = word;
+        } else {
+          currentLine = testLine;
+        }
+      }
+
+      // Tambahkan baris terakhir
+      if (currentLine) {
+        lines.push(currentLine);
+      }
+
+      // Jika lebih dari 2 baris, gabungkan sisa teks ke baris kedua dengan ellipsis
+      if (lines.length > 2) {
+        lines[1] = lines.slice(1).join(' ') + '...';
+        lines.splice(2); // Hanya ambil 2 baris pertama
+      }
+
       doc.text(
-        productName,
+        lines,
         currentX + labelWidth / 2,
         yPos,
         { align: 'center' }
       );
 
-      yPos += 2; // Jarak antara nama produk dan kotak barcode (dikurangi dari sebelumnya)
+      // Tambahkan jarak berdasarkan jumlah baris teks
+      const lineHeight = 5; // Jarak antar baris
+      const linesCount = lines.length;
+      yPos += (lineHeight * linesCount) - 2; // Kurangi sedikit agar tetap rapat
     }
 
     // Tambahkan kotak sebagai pengganti barcode
@@ -282,19 +358,56 @@ export const generateSingleProductBarcodePDF = (product, quantity = 1, options =
 
     if (includeProductName) {
       doc.setFontSize(fontSize - 2); // Ukuran font lebih kecil untuk nama produk
-      const productName = product.name.length > 25 ?
-        product.name.substring(0, 22) + '...' :
-        product.name;
+
+      // Ambil nama produk dan batasi maksimal 2 baris
+      const productName = product.name;
+      const maxWidth = labelWidth - 4; // Kurangi sedikit margin
+
+      // Pisahkan teks menjadi dua baris maksimum
+      const words = productName.split(' ');
+      const lines = [];
+      let currentLine = '';
+
+      for (const word of words) {
+        const testLine = currentLine ? `${currentLine} ${word}` : word;
+        const textSize = doc.getTextWidth(testLine);
+
+        // Jika testLine melebihi lebar maksimum, maka pindahkan ke baris baru
+        if (textSize > maxWidth && currentLine !== '') {
+          lines.push(currentLine);
+          if (lines.length >= 1) { // Batasi ke 2 baris maksimal (kita baru menambahkan 1 baris)
+            currentLine = word;
+            break; // Kita hanya akan punya maksimal 2 baris
+          }
+          currentLine = word;
+        } else {
+          currentLine = testLine;
+        }
+      }
+
+      // Tambahkan baris terakhir
+      if (currentLine) {
+        lines.push(currentLine);
+      }
+
+      // Jika lebih dari 2 baris, gabungkan sisa teks ke baris kedua dengan ellipsis
+      if (lines.length > 2) {
+        lines[1] = lines.slice(1).join(' ') + '...';
+        lines.splice(2); // Hanya ambil 2 baris pertama
+      }
 
       // Teks nama produk diposisikan di atas barcode
       doc.text(
-        productName,
+        lines,
         currentX + labelWidth / 2,
         yPos,
         { align: 'center' }
       );
 
-      yPos += 2; // Jarak antara nama produk dan barcode (dikurangi dari sebelumnya)
+      // Tambahkan jarak berdasarkan jumlah baris teks
+      const lineHeight = 5; // Jarak antar baris
+      const linesCount = lines.length;
+      yPos += (lineHeight * linesCount) - 2; // Kurangi sedikit agar tetap rapat
     }
 
     // Gambar barcode standar menggunakan JsBarcode
@@ -328,17 +441,56 @@ export const generateSingleProductBarcodePDF = (product, quantity = 1, options =
 
     // Tambahkan nama produk di atas (jika diminta)
     if (includeProductName) {
-      const productName = product.name.length > 20 ?
-        product.name.substring(0, 17) + '...' :
-        product.name;
+      doc.setFontSize(fontSize - 2); // Ukuran font lebih kecil untuk nama produk
+
+      // Ambil nama produk dan batasi maksimal 2 baris
+      const productName = product.name;
+      const maxWidth = labelWidth - 4; // Kurangi sedikit margin
+
+      // Pisahkan teks menjadi dua baris maksimum
+      const words = productName.split(' ');
+      const lines = [];
+      let currentLine = '';
+
+      for (const word of words) {
+        const testLine = currentLine ? `${currentLine} ${word}` : word;
+        const textSize = doc.getTextWidth(testLine);
+
+        // Jika testLine melebihi lebar maksimum, maka pindahkan ke baris baru
+        if (textSize > maxWidth && currentLine !== '') {
+          lines.push(currentLine);
+          if (lines.length >= 1) { // Batasi ke 2 baris maksimal (kita baru menambahkan 1 baris)
+            currentLine = word;
+            break; // Kita hanya akan punya maksimal 2 baris
+          }
+          currentLine = word;
+        } else {
+          currentLine = testLine;
+        }
+      }
+
+      // Tambahkan baris terakhir
+      if (currentLine) {
+        lines.push(currentLine);
+      }
+
+      // Jika lebih dari 2 baris, gabungkan sisa teks ke baris kedua dengan ellipsis
+      if (lines.length > 2) {
+        lines[1] = lines.slice(1).join(' ') + '...';
+        lines.splice(2); // Hanya ambil 2 baris pertama
+      }
+
       doc.text(
-        productName,
+        lines,
         currentX + labelWidth / 2,
         yPos,
         { align: 'center' }
       );
 
-      yPos += 2; // Jarak antara nama produk dan kotak barcode (dikurangi dari sebelumnya)
+      // Tambahkan jarak berdasarkan jumlah baris teks
+      const lineHeight = 5; // Jarak antar baris
+      const linesCount = lines.length;
+      yPos += (lineHeight * linesCount) - 2; // Kurangi sedikit agar tetap rapat
     }
 
     // Tambahkan kotak sebagai pengganti barcode

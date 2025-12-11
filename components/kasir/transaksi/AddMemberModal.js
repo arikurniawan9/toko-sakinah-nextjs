@@ -1,45 +1,49 @@
 import React, { useState } from 'react';
 
-const AddMemberModal = ({ isOpen, onClose, onSave, darkMode, existingMembers = [] }) => {
+const AddMemberModal = ({ isOpen, onClose, onSave, darkMode }) => {
+  // State management
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
     address: '',
     membershipType: 'SILVER', // Default membership type
+    discount: 3 // Default discount for SILVER (3%)
   });
-  
+  const [discountManuallyChanged, setDiscountManuallyChanged] = useState(false);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
+  // Form validation
   const validateForm = () => {
     const newErrors = {};
-    
+
     if (!formData.name.trim()) {
       newErrors.name = 'Nama wajib diisi';
     }
-    
+
     if (!formData.phone.trim()) {
       newErrors.phone = 'Nomor telepon wajib diisi';
     } else if (!/^\d{10,15}$/.test(formData.phone)) {
       newErrors.phone = 'Nomor telepon tidak valid';
-    } else if (existingMembers.some(member => member.phone === formData.phone)) {
-      newErrors.phone = 'Nomor telepon sudah terdaftar';
     }
+    // Validasi nomor telepon duplikat sekarang akan dilakukan di API
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     setLoading(true);
     try {
       await onSave(formData);
       onClose();
-      setFormData({ name: '', phone: '', address: '', membershipType: 'SILVER' });
+      setFormData({ name: '', phone: '', address: '', membershipType: 'SILVER', discount: 3 });
+      setDiscountManuallyChanged(false); // Reset manual discount flag
     } catch (error) {
       console.error('Error adding member:', error);
     } finally {
@@ -47,13 +51,38 @@ const AddMemberModal = ({ isOpen, onClose, onSave, darkMode, existingMembers = [
     }
   };
 
+  // Handle input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
+
+    setFormData(prev => {
+      const updatedData = {
+        ...prev,
+        [name]: name === 'discount' ? parseInt(value) || 0 : value
+      };
+
+      // Jika tipe keanggotaan diubah dan pengguna belum mengganti diskon secara manual, perbarui diskon otomatis
+      if (name === 'membershipType' && !discountManuallyChanged) {
+        switch(value.toUpperCase()) {
+          case 'GOLD':
+            updatedData.discount = 4;
+            break;
+          case 'PLATINUM':
+            updatedData.discount = 5;
+            break;
+          case 'SILVER':
+          default:
+            updatedData.discount = 3; // Default untuk silver (3%)
+            break;
+        }
+      } else if (name === 'discount') {
+        // Tandai bahwa pengguna telah mengubah diskon secara manual
+        setDiscountManuallyChanged(true);
+      }
+
+      return updatedData;
+    });
+
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
@@ -62,6 +91,117 @@ const AddMemberModal = ({ isOpen, onClose, onSave, darkMode, existingMembers = [
       }));
     }
   };
+
+  // Render form fields
+  const renderFormFields = () => (
+    <div className="space-y-4">
+      <div>
+        <label htmlFor="name" className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+          Nama Lengkap *
+        </label>
+        <input
+          type="text"
+          id="name"
+          name="name"
+          value={formData.name}
+          onChange={handleChange}
+          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+            errors.name
+              ? 'border-red-500'
+              : darkMode
+                ? 'border-gray-600 bg-gray-700 text-white'
+                : 'border-gray-300 bg-white text-gray-900'
+          }`}
+          placeholder="Masukkan nama lengkap"
+        />
+        {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
+      </div>
+
+      <div>
+        <label htmlFor="phone" className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+          Nomor Telepon *
+        </label>
+        <input
+          type="text"
+          id="phone"
+          name="phone"
+          value={formData.phone}
+          onChange={handleChange}
+          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+            errors.phone
+              ? 'border-red-500'
+              : darkMode
+                ? 'border-gray-600 bg-gray-700 text-white'
+                : 'border-gray-300 bg-white text-gray-900'
+          }`}
+          placeholder="Masukkan nomor telepon"
+        />
+        {errors.phone && <p className="mt-1 text-sm text-red-500">{errors.phone}</p>}
+      </div>
+
+      <div>
+        <label htmlFor="address" className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+          Alamat
+        </label>
+        <textarea
+          id="address"
+          name="address"
+          value={formData.address}
+          onChange={handleChange}
+          rows="3"
+          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+            darkMode
+              ? 'border-gray-600 bg-gray-700 text-white'
+              : 'border-gray-300 bg-white text-gray-900'
+          }`}
+          placeholder="Masukkan alamat"
+        ></textarea>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label htmlFor="membershipType" className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+            Tipe Keanggotaan
+          </label>
+          <select
+            id="membershipType"
+            name="membershipType"
+            value={formData.membershipType}
+            onChange={handleChange}
+            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+              darkMode
+                ? 'border-gray-600 bg-gray-700 text-white'
+                : 'border-gray-300 bg-white text-gray-900'
+            }`}
+          >
+            <option value="SILVER">Silver (3% diskon)</option>
+            <option value="GOLD">Gold (4% diskon)</option>
+            <option value="PLATINUM">Platinum (5% diskon)</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="discount" className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+            Diskon (%)
+          </label>
+          <input
+            type="number"
+            id="discount"
+            name="discount"
+            value={formData.discount}
+            onChange={handleChange}
+            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+              darkMode
+                ? 'border-gray-600 bg-gray-700 text-white'
+                : 'border-gray-300 bg-white text-gray-900'
+            }`}
+            placeholder="Persentase diskon"
+            min="0"
+            max="100"
+          />
+        </div>
+      </div>
+    </div>
+  );
 
   if (!isOpen) return null;
 
@@ -85,91 +225,7 @@ const AddMemberModal = ({ isOpen, onClose, onSave, darkMode, existingMembers = [
           </div>
 
           <form onSubmit={handleSubmit}>
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="name" className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Nama Lengkap *
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                    errors.name 
-                      ? 'border-red-500' 
-                      : darkMode 
-                        ? 'border-gray-600 bg-gray-700 text-white' 
-                        : 'border-gray-300 bg-white text-gray-900'
-                  }`}
-                  placeholder="Masukkan nama lengkap"
-                />
-                {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
-              </div>
-
-              <div>
-                <label htmlFor="phone" className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Nomor Telepon *
-                </label>
-                <input
-                  type="text"
-                  id="phone"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                    errors.phone 
-                      ? 'border-red-500' 
-                      : darkMode 
-                        ? 'border-gray-600 bg-gray-700 text-white' 
-                        : 'border-gray-300 bg-white text-gray-900'
-                  }`}
-                  placeholder="Masukkan nomor telepon"
-                />
-                {errors.phone && <p className="mt-1 text-sm text-red-500">{errors.phone}</p>}
-              </div>
-
-              <div>
-                <label htmlFor="address" className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Alamat
-                </label>
-                <textarea
-                  id="address"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleChange}
-                  rows="3"
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                    darkMode 
-                      ? 'border-gray-600 bg-gray-700 text-white' 
-                      : 'border-gray-300 bg-white text-gray-900'
-                  }`}
-                  placeholder="Masukkan alamat"
-                ></textarea>
-              </div>
-
-              <div>
-                <label htmlFor="membershipType" className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Tipe Keanggotaan
-                </label>
-                <select
-                  id="membershipType"
-                  name="membershipType"
-                  value={formData.membershipType}
-                  onChange={handleChange}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                    darkMode 
-                      ? 'border-gray-600 bg-gray-700 text-white' 
-                      : 'border-gray-300 bg-white text-gray-900'
-                  }`}
-                >
-                  <option value="SILVER">Silver (5% diskon)</option>
-                  <option value="GOLD">Gold (10% diskon)</option>
-                  <option value="PLATINUM">Platinum (15% diskon)</option>
-                </select>
-              </div>
-            </div>
+            {renderFormFields()}
 
             <div className="flex justify-end space-x-3 mt-6">
               <button

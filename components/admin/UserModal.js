@@ -27,8 +27,6 @@ const UserModal = ({
   const availableRoles = [
     { value: ROLES.ADMIN, label: 'Admin' },
     { value: ROLES.CASHIER, label: 'Kasir' },
-    { value: ROLES.ATTENDANT, label: 'Pelayan' },
-    { value: ROLES.WAREHOUSE, label: 'Gudang' },
   ];
 
   const rolesToDisplay = allowedRoles

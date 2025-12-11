@@ -38,7 +38,7 @@ export default function KasirTransaksiPage() {
   const router = useRouter();
 
   // State Management
-  const [members, setMembers] = useState([]);
+  // Tidak lagi menggunakan state members karena pencarian dilakukan secara dinamis
   const [selectedMember, setSelectedMember] = useState(null);
   const [attendants, setAttendants] = useState([]);
   const [selectedAttendant, setSelectedAttendant] = useState(null);
@@ -523,8 +523,20 @@ export default function KasirTransaksiPage() {
   };
 
   const handleResumeSale = async (suspendedSale) => {
-    // Find the member object from the members list using memberId
-    const memberToSelect = members.find((m) => m.id === suspendedSale.memberId) || null;
+    // Ambil detail member dari API jika ada memberId
+    let memberToSelect = null;
+    if (suspendedSale.memberId) {
+      try {
+        const response = await fetch(`/api/member/${suspendedSale.memberId}`);
+        if (response.ok) {
+          const memberData = await response.json();
+          memberToSelect = memberData.member || null;
+        }
+      } catch (error) {
+        console.error('Error fetching member for suspended sale:', error);
+        memberToSelect = null;
+      }
+    }
 
     // Set the state
     setCart(suspendedSale.cartItems);
@@ -580,24 +592,22 @@ export default function KasirTransaksiPage() {
           });
         }
 
-        const [membersRes, attendantsRes] = await Promise.all([
-          fetch("/api/member?simple=true"),  // Gunakan parameter simple untuk mendapatkan array langsung
-          fetch("/api/store-users?role=ATTENDANT"),  // Gunakan endpoint store-users dengan filter role ATTENDANT
-        ]);
-        const membersData = await membersRes.json();  // Ini sekarang langsung array
+        const attendantsRes = await fetch("/api/store-users?role=ATTENDANT");  // Gunakan endpoint store-users dengan filter role ATTENDANT
         const attendantsData = await attendantsRes.json();  // Ini sekarang berisi data dari response lengkap dengan pagination
 
-        const allMembers = membersData || [];
-        setMembers(allMembers);
-
-        const generalCustomer = allMembers.find(
-          (m) => m.name === "Pelanggan Umum"
-        );
-        setDefaultMember(generalCustomer);
-
-        // Proses data pelayan dari response store-users (sudah dalam format yang benar)
         const allAttendants = attendantsData.users || [];
         setAttendants(allAttendants || []);
+
+        // Buat default member "Pelanggan Umum"
+        const generalCustomer = {
+          id: 'general-customer',
+          name: 'Pelanggan Umum',
+          phone: '',
+          address: '',
+          membershipType: 'REGULAR',
+          discount: 0
+        };
+        setDefaultMember(generalCustomer);
       } catch (error) {
         console.error("Error fetching initial data:", error);
       }
@@ -855,7 +865,6 @@ export default function KasirTransaksiPage() {
                 defaultMember={defaultMember}
                 onSelectMember={setSelectedMember}
                 onRemoveMember={() => setSelectedMember(null)}
-                members={members}
                 darkMode={darkMode}
                 isOpen={showMembersModal}
                 onToggle={setShowMembersModal}
@@ -950,7 +959,7 @@ export default function KasirTransaksiPage() {
         onClose={() => setShowAddMemberModal(false)}
         onSave={handleAddMember}
         darkMode={darkMode}
-        existingMembers={members}
+        existingMembers={[]} // Karena pencarian member sekarang dinamis, kita tidak lagi menyimpan semua member
       />
 
       {/* Receipt Modal */}

@@ -3,7 +3,7 @@
 
 import { Save, X, Plus, Trash2 } from 'lucide-react';
 import Tooltip from '../Tooltip';
-import AutoCompleteSearch from '../AutoCompleteSearch'; // Import AutoCompleteSearch
+import AutoCompleteSearch from '../AutoCompleteSearch';
 
 export default function ProductModal({ 
   showModal, 
@@ -16,36 +16,57 @@ export default function ProductModal({
   removeTier,
   handleSave, 
   darkMode,
-  categories, // This can now be removed or kept for initial display
-  suppliers,  // This can now be removed or kept for initial display
+  categories,
+  suppliers,
   onSuccess 
 }) {
   if (!showModal) return null;
 
-  // Search function for categories
+  // --- Search and Initial Data Functions ---
+
   const searchCategories = async (query) => {
-    if (!query) return [];
     const response = await fetch(`/api/kategori/search?q=${query}`);
     const data = await response.json();
     return data.categories || [];
   };
 
-  // Search function for suppliers
+  const getInitialCategories = async () => {
+    const response = await fetch(`/api/kategori?limit=10`); // Ambil 10 item awal
+    const data = await response.json();
+    return data.categories || [];
+  };
+
   const searchSuppliers = async (query) => {
-    if (!query) return [];
     const response = await fetch(`/api/supplier/search?q=${query}`);
     const data = await response.json();
     return data.suppliers || [];
   };
 
-  // Handle selection from AutoCompleteSearch
+  const getInitialSuppliers = async () => {
+    const response = await fetch(`/api/supplier?limit=10`); // Ambil 10 item awal
+    const data = await response.json();
+    return data.suppliers || [];
+  };
+
+  // --- Selection Handlers ---
+
   const handleCategorySelect = (category) => {
-    handleInputChange({ target: { name: 'categoryId', value: category.id } });
+    handleInputChange({ target: { name: 'categoryId', value: category ? category.id : null } });
   };
 
   const handleSupplierSelect = (supplier) => {
-    handleInputChange({ target: { name: 'supplierId', value: supplier.id } });
+    handleInputChange({ target: { name: 'supplierId', value: supplier ? supplier.id : null } });
   };
+
+  // --- Determine Initial Values for Edit Mode ---
+
+  const initialCategory = editingProduct && formData.categoryId
+    ? categories.find(c => c.id === formData.categoryId)
+    : null;
+
+  const initialSupplier = editingProduct && formData.supplierId
+    ? suppliers.find(s => s.id === formData.supplierId)
+    : null;
 
   return (
     <div className="fixed z-[100] inset-0 overflow-y-auto">
@@ -95,18 +116,22 @@ export default function ProductModal({
                         <div>
                           <label htmlFor="categoryId" className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>Kategori</label>
                           <AutoCompleteSearch
-                            placeholder="Cari kategori..."
+                            placeholder="Cari atau pilih kategori..."
                             searchFunction={searchCategories}
+                            getInitialItems={getInitialCategories}
                             onSelect={handleCategorySelect}
+                            initialValue={initialCategory}
                             darkMode={darkMode}
                           />
                         </div>
                         <div>
                           <label htmlFor="supplierId" className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>Supplier</label>
                           <AutoCompleteSearch
-                            placeholder="Cari supplier..."
+                            placeholder="Cari atau pilih supplier..."
                             searchFunction={searchSuppliers}
+                            getInitialItems={getInitialSuppliers}
                             onSelect={handleSupplierSelect}
+                            initialValue={initialSupplier}
                             darkMode={darkMode}
                           />
                         </div>

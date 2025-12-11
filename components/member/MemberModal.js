@@ -140,14 +140,14 @@ const MemberModal = ({
                         value={formData.membershipType}
                         onChange={handleInputChange}
                         className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-theme-purple-500 focus:border-theme-purple-500 sm:text-sm ${
-                          darkMode 
-                            ? 'bg-gray-700 border-gray-600 text-white' 
+                          darkMode
+                            ? 'bg-gray-700 border-gray-600 text-white'
                             : 'border-theme-purple-300 text-gray-900'
                         }`}
                       >
-                        <option className={`${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-gray-900'}`} value="silver">Silver</option>
-                        <option className={`${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-gray-900'}`} value="gold">Gold</option>
-                        <option className={`${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-gray-900'}`} value="platinum">Platinum</option>
+                        <option className={`${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-gray-900'}`} value="SILVER">Silver (3% diskon)</option>
+                        <option className={`${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-gray-900'}`} value="GOLD">Gold (4% diskon)</option>
+                        <option className={`${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-gray-900'}`} value="PLATINUM">Platinum (5% diskon)</option>
                       </select>
                     </div>
                     <div>

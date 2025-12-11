@@ -588,7 +588,7 @@ export default function AdminTransactionPage() {
         }
 
         const [membersRes, attendantsRes] = await Promise.all([
-          fetch("/api/member?simple=true"),  // Gunakan parameter simple untuk mendapatkan array langsung
+          fetch("/api/member?simple=true"),  // Gunakan parameter simple untuk array, hanya member dari toko ini
           fetch("/api/store-users?role=ATTENDANT"),  // Gunakan endpoint store-users dengan filter role ATTENDANT
         ]);
         const membersData = await membersRes.json();  // Ini sekarang langsung array

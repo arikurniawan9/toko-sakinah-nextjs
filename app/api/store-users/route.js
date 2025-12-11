@@ -24,6 +24,7 @@ export async function GET(request) {
     const limit = parseInt(searchParams.get('limit')) || 10;
     const search = searchParams.get('search') || '';
     const role = searchParams.get('role') || '';
+    const excludeRole = searchParams.get('excludeRole') || '';
     const offset = (page - 1) * limit;
 
     let whereClause = {};
@@ -40,8 +41,21 @@ export async function GET(request) {
       whereClause.storeId = storeId;
     }
 
+    // Add role filter if specified
     if (role) {
       whereClause.role = role;
+    }
+
+    // Add exclude role filter if specified
+    if (excludeRole) {
+      whereClause.role = {
+        not: excludeRole
+      };
+    } else if (!role) {
+      // When no specific role is requested, still exclude ATTENDANT for general user view
+      whereClause.role = {
+        not: 'ATTENDANT'
+      };
     }
 
     if (search) {

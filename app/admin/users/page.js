@@ -116,6 +116,9 @@ export default function UserManagement() {
     }
   }, [tableError]);
 
+  // Tidak perlu filter sisi klien karena sudah difilter di sisi server
+  const filteredUsers = users;
+
   useEffect(() => {
     setCurrentPage(1);
   }, [itemsPerPage, searchTerm]);
@@ -271,9 +274,9 @@ export default function UserManagement() {
   const paginationData = {
     currentPage,
     totalPages,
-    totalItems: totalUsers,
+    totalItems: filteredUsers.length, // Gunakan jumlah user yang sudah difilter
     startIndex: (currentPage - 1) * itemsPerPage + 1,
-    endIndex: Math.min(currentPage * itemsPerPage, totalUsers),
+    endIndex: Math.min(currentPage * itemsPerPage, filteredUsers.length), // Gunakan jumlah user yang sudah difilter
     onPageChange: setCurrentPage,
     itemsPerPage: itemsPerPage
   };
@@ -356,7 +359,7 @@ export default function UserManagement() {
           </div>
 
           <DataTable
-            data={users}
+            data={filteredUsers} // Gunakan user yang sudah difilter
             columns={columns}
             loading={loading}
             selectedRows={selectedRows}

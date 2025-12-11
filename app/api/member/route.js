@@ -19,7 +19,7 @@ export async function GET(request) {
     const page = parseInt(searchParams.get('page') || '1');
     const search = searchParams.get('search') || '';
 
-    // Determine the storeId from the user's session
+    // Ambil storeId dari session
     const storeId = session.user.storeId;
     if (!storeId) {
       return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
@@ -27,8 +27,15 @@ export async function GET(request) {
 
     const skip = (page - 1) * limit;
 
-    const baseWhereClause = {
-      storeId: storeId,
+    // Periksa apakah permintaan datang dari komponen pemilihan member untuk transaksi
+    // Parameter all sekarang diabaikan karena member HARUS terikat ke toko
+    // Tidak ada lagi fitur untuk menampilkan semua member tanpa memperhatikan toko
+    const memberUrl = new URL(request.url);
+    // showAll parameter tidak lagi digunakan untuk mencegah cross-store access
+    // const showAll = memberUrl.searchParams.get('all'); // Parameter untuk menampilkan semua member
+
+    let baseWhereClause = {
+      storeId: storeId, // Selalu filter berdasarkan toko yang terkait dengan pengguna
     };
 
     const whereClause = search
@@ -53,8 +60,8 @@ export async function GET(request) {
     ]);
 
     // Periksa apakah permintaan datang dari komponen pemilihan member
-    const url = new URL(request.url);
-    const isSimple = url.searchParams.get('simple'); // Jika ada parameter simple, kembalikan hanya array members
+    const requestUrl = new URL(request.url);
+    const isSimple = requestUrl.searchParams.get('simple'); // Jika ada parameter simple, kembalikan hanya array members
 
     if (isSimple) {
       return NextResponse.json(members);
@@ -82,7 +89,7 @@ export async function POST(request) {
 
   try {
     const body = await request.json();
-    const { name, phone, address, membershipType } = body;
+    const { name, phone, address, membershipType, discount } = body;
 
     // 1. Validasi input dasar
     if (!name || !phone) {
@@ -100,18 +107,14 @@ export async function POST(request) {
       );
     }
 
-    // 3. Tentukan storeId dari sesi pengguna
+    // 3. Tentukan storeId dari sesi pengguna (untuk mencatat toko pembuatan member)
     let storeId;
-    if (session.user.role === 'MANAGER' || session.user.role === 'WAREHOUSE') {
-      if (session.user.storeId) {
-        storeId = session.user.storeId;
-      } else {
-        return NextResponse.json(
-          { error: 'Silakan pilih toko terlebih dahulu' },
-          { status: 400 }
-        );
-      }
+
+    // Cek dulu apakah storeId langsung tersedia di session (untuk beberapa role seperti MANAGER)
+    if (session.user.storeId) {
+      storeId = session.user.storeId;
     } else {
+      // Jika tidak langsung tersedia, cari relasi user dengan toko
       const storeUser = await prisma.storeUser.findFirst({
         where: {
           userId: session.user.id,
@@ -130,7 +133,7 @@ export async function POST(request) {
       }
       storeId = storeUser.storeId;
     }
-    
+
     // Jika tidak ada storeId, hentikan proses
     if (!storeId) {
         return NextResponse.json(
@@ -185,13 +188,21 @@ export async function POST(request) {
       );
     }
 
+    // Konversi membershipType ke huruf kapital untuk konsistensi internal
+    const normalizedMembershipType = (membershipType || 'SILVER').toUpperCase();
+
+    // Jika discount tidak disediakan, hitung berdasarkan membershipType
+    const calculatedDiscount = discount !== undefined && discount !== null
+      ? Number(discount)
+      : (normalizedMembershipType === 'GOLD' ? 4 : normalizedMembershipType === 'PLATINUM' ? 5 : 3);
+
     const newMember = await prisma.member.create({
       data: {
         name,
         phone,
         address: address || null,
-        membershipType: membershipType || 'SILVER', // Default to SILVER
-        discount: membershipType === 'GOLD' ? 10 : membershipType === 'PLATINUM' ? 15 : 5, // Default 5% for SILVER
+        membershipType: normalizedMembershipType, // Gunakan format kapital untuk menyimpan
+        discount: calculatedDiscount,
         code: uniqueCode,
         storeId: storeId // Assign to the appropriate store
       },
@@ -217,9 +228,18 @@ export async function DELETE(request) {
     const id = url.searchParams.get('id');
 
     if (id) {
-      // Hapus satu member
+      // Dapatkan storeId dari sesi
+      const storeId = session.user.storeId;
+      if (!storeId) {
+        return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
+      }
+
+      // Hapus satu member dari toko yang sesuai
       const member = await prisma.member.findUnique({
-        where: { id },
+        where: {
+          id,
+          storeId: storeId, // Pastikan hanya menghapus member dari toko yang sesuai
+        },
       });
 
       if (!member) {
@@ -227,7 +247,10 @@ export async function DELETE(request) {
       }
 
       await prisma.member.delete({
-        where: { id },
+        where: {
+          id,
+          storeId: storeId, // Pastikan hanya menghapus member dari toko yang sesuai
+        },
       });
 
       return NextResponse.json({ message: 'Member deleted successfully' });
@@ -240,12 +263,19 @@ export async function DELETE(request) {
         return NextResponse.json({ error: 'No member IDs provided' }, { status: 400 });
       }
 
-      // Hapus multiple members sekaligus
+      // Dapatkan storeId dari sesi
+      const storeId = session.user.storeId;
+      if (!storeId) {
+        return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
+      }
+
+      // Hapus multiple members sekaligus hanya dari toko yang sesuai
       const deletedMembers = await prisma.member.deleteMany({
         where: {
           id: {
             in: ids,
           },
+          storeId: storeId, // Pastikan hanya menghapus member dari toko yang sesuai
         },
       });
 
@@ -286,9 +316,18 @@ export async function PUT(request) {
       );
     }
 
-    // Cek apakah member ada
+    // Dapatkan storeId dari session
+    const storeId = session.user.storeId;
+    if (!storeId) {
+      return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
+    }
+
+    // Cek apakah member ada di toko yang sesuai
     const existingMember = await prisma.member.findUnique({
-      where: { id },
+      where: {
+        id,
+        storeId: storeId, // Hanya cari member di toko yang sesuai
+      },
     });
 
     if (!existingMember) {
@@ -311,14 +350,22 @@ export async function PUT(request) {
       );
     }
 
+    // Konversi membershipType ke huruf kapital untuk konsistensi internal
+    const normalizedMembershipType = (membershipType || 'SILVER').toUpperCase();
+
+    // Jika discount tidak disediakan, hitung berdasarkan membershipType
+    const calculatedDiscount = discount !== undefined && discount !== null
+      ? Number(discount)
+      : (normalizedMembershipType === 'GOLD' ? 4 : normalizedMembershipType === 'PLATINUM' ? 5 : 3);
+
     const updatedMember = await prisma.member.update({
       where: { id },
       data: {
         name,
         phone,
         address: address || null,
-        membershipType: membershipType || 'SILVER',
-        discount: discount || 5,
+        membershipType: normalizedMembershipType, // Gunakan format kapital untuk menyimpan
+        discount: calculatedDiscount,
       },
     });
 

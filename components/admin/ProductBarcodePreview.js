@@ -220,9 +220,7 @@ export default function ProductBarcodePreview({
                     <div className="flex-grow flex items-center justify-center w-full">
                       {includeProductName && (
                         <div className={`text-center mb-1 text-xs ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                          {product.name.length > 15 ? 
-                            product.name.substring(0, 12) + '...' : 
-                            product.name}
+                          {product.name}
                         </div>
                       )}
                       <div className="flex justify-center">

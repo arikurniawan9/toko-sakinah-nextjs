@@ -7,7 +7,8 @@ import { useRouter } from 'next/navigation';
 import { useUserTheme } from '../../../../components/UserThemeContext';
 import TransactionDetailModal from '../../../../components/TransactionDetailModal';
 import { ROLES } from '@/lib/constants';
-import { ArrowLeft, User, ShoppingBag, Package, Wallet, Calendar, CreditCard } from 'lucide-react';
+import { ArrowLeft, User, ShoppingBag, Package, Wallet, Calendar, CreditCard, Printer } from 'lucide-react';
+import { generateMemberCardPDF } from '../../../../components/admin/MemberCardPDFGenerator';
 
 export default function MemberDetailPage({ params }) {
   const { data: session, status } = useSession();
@@ -132,12 +133,28 @@ export default function MemberDetailPage({ params }) {
               }`} />
             </div>
             <div className="flex-1">
-              <h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                {member.name}
-              </h1>
-              <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                Member {member.membershipType} • {member.phone}
-              </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                    {member.name}
+                  </h1>
+                  <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    Member {member.membershipType} • {member.phone}
+                  </p>
+                </div>
+                <button
+                  onClick={() => generateMemberCardPDF(member)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
+                    darkMode
+                      ? 'bg-theme-purple-700 hover:bg-theme-purple-600 text-white'
+                      : 'bg-theme-purple-600 hover:bg-theme-purple-700 text-white'
+                  } transition-colors duration-200 shadow`}
+                  title="Cetak Kartu Member"
+                >
+                  <Printer className="h-4 w-4" />
+                  <span>Cetak Kartu</span>
+                </button>
+              </div>
               <div className="mt-4 flex flex-wrap gap-4">
                 <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
                   darkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-50 text-green-700'

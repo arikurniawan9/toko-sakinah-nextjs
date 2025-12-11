@@ -20,7 +20,7 @@ export default function MemberDetailModal({ isOpen, onClose, memberId }) {
       setError(null);
 
       // Ambil detail member
-      const memberRes = await fetch(`/api/member/${memberId}`);
+      const memberRes = await fetch(`/api/member/${memberId}?context=transaction`);
       if (!memberRes.ok) {
         throw new Error('Gagal mengambil data member');
       }
