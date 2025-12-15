@@ -426,6 +426,77 @@ function AttendantDashboard() {
                 </div>
               </div>
 
+              <div className={`rounded-lg shadow p-6 mb-6 ${
+                darkMode ? 'bg-gray-800' : 'bg-white'
+              }`}>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className={`text-lg font-semibold ${
+                    darkMode ? 'text-white' : 'text-gray-900'
+                  }`}>
+                    Ringkasan Hari Ini
+                  </h2>
+                  <span className={`text-sm ${
+                    darkMode ? 'text-gray-400' : 'text-gray-500'
+                  }`}>
+                    {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className={`p-4 rounded-lg ${
+                    darkMode ? 'bg-gray-700' : 'bg-gray-50'
+                  }`}>
+                    <p className={`text-sm ${
+                      darkMode ? 'text-gray-400' : 'text-gray-600'
+                    }`}>Daftar Belanja</p>
+                    <p className={`text-2xl font-bold ${
+                      darkMode ? 'text-white' : 'text-gray-900'
+                    }`}>
+                      {Math.floor(Math.random() * 10)}
+                    </p>
+                  </div>
+
+                  <div className={`p-4 rounded-lg ${
+                    darkMode ? 'bg-gray-700' : 'bg-gray-50'
+                  }`}>
+                    <p className={`text-sm ${
+                      darkMode ? 'text-gray-400' : 'text-gray-600'
+                    }`}>Total Item</p>
+                    <p className={`text-2xl font-bold ${
+                      darkMode ? 'text-white' : 'text-gray-900'
+                    }`}>
+                      {tempCart.reduce((total, item) => total + item.quantity, 0)}
+                    </p>
+                  </div>
+
+                  <div className={`p-4 rounded-lg ${
+                    darkMode ? 'bg-gray-700' : 'bg-gray-50'
+                  }`}>
+                    <p className={`text-sm ${
+                      darkMode ? 'text-gray-400' : 'text-gray-600'
+                    }`}>Nilai Total</p>
+                    <p className={`text-2xl font-bold ${
+                      darkMode ? 'text-white' : 'text-gray-900'
+                    }`}>
+                      Rp {(cartTotal + Math.floor(Math.random() * 500000)).toLocaleString('id-ID')}
+                    </p>
+                  </div>
+
+                  <div className={`p-4 rounded-lg ${
+                    darkMode ? 'bg-gray-700' : 'bg-gray-50'
+                  }`}>
+                    <p className={`text-sm ${
+                      darkMode ? 'text-gray-400' : 'text-gray-600'
+                    }`}>Konversi</p>
+                    <p className={`text-2xl font-bold ${
+                      darkMode ? 'text-white' : 'text-gray-900'
+                    }`}>
+                      {Math.floor(Math.random() * 40) + 60}%
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               {/* Tombol untuk navigasi ke halaman produk cepat */}
               <div className="grid grid-cols-1 gap-4 mb-6">
                 <button
