@@ -48,7 +48,7 @@ export async function GET(request) {
       select: {
         id: true,
         referenceNumber: true, // Nomor referensi yang mungkin terkait dengan suspended sale
-        invoice: true,
+        invoiceNumber: true,
         createdAt: true
       },
       orderBy: {
