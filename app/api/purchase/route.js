@@ -189,8 +189,14 @@ export async function POST(request) {
       });
     }
 
+    // Ambil IP address dan user agent dari request
+    const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      request.headers.get('x-real-ip') ||
+      'unknown';
+    const userAgent = request.headers.get('user-agent') || 'unknown';
+
     // Log audit untuk pembuatan pembelian
-    await logCreate(session.user.id, 'Purchase', newPurchase.id, newPurchase, request, session.user.storeId);
+    await logCreate(session.user.id, 'Purchase', newPurchase, ipAddress, userAgent, session.user.storeId);
 
     return NextResponse.json({
       success: true,

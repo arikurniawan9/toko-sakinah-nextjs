@@ -33,7 +33,7 @@ export async function GET(request) {
     const baseWhereClause = {
       storeId: storeId,
       role: 'ATTENDANT', // Sesuai dengan ROLES.ATTENDANT
-      status: 'ACTIVE',  // Default sesuai dengan skema Prisma
+      status: { in: ['ACTIVE', 'AKTIF'] },  // Gunakan kedua status untuk kompatibilitas
     };
 
     // Tambahkan pencarian jika ada
@@ -152,7 +152,7 @@ export async function POST(request) {
         employeeNumber: employeeNumber ? employeeNumber.trim() : null,
         password: hashedPassword,
         role: 'ADMIN', // Set role di tabel user sebagai 'ADMIN' untuk menunjukkan ini adalah akun pengguna
-        status: 'ACTIVE',
+        status: 'AKTIF',
       }
     });
 
@@ -163,7 +163,7 @@ export async function POST(request) {
         storeId: storeId,
         role: 'ATTENDANT', // Sesuai dengan konstanta ROLES
         assignedBy: session.user.id,
-        status: 'ACTIVE',
+        status: 'AKTIF',
       }
     });
 
@@ -176,5 +176,116 @@ export async function POST(request) {
   } catch (error) {
     console.error('Error creating attendant:', error);
     return NextResponse.json({ error: 'Failed to create attendant' }, { status: 500 });
+  }
+}
+
+// PUT: Memperbarui pelayan yang sudah ada
+export async function PUT(request) {
+  const session = await getServerSession(authOptions);
+
+  if (!session || !['ADMIN', 'MANAGER'].includes(session.user.role)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
+    const body = await request.json();
+    const { id, name, username, employeeNumber, password } = body;
+
+    // Validasi input
+    if (!id || !name || !username) {
+      return NextResponse.json(
+        { error: 'ID, nama, dan username wajib diisi' },
+        { status: 400 }
+      );
+    }
+
+    // Tentukan storeId dari sesi pengguna
+    const storeId = session.user.storeId;
+    if (!storeId) {
+      return NextResponse.json({ error: 'Store ID not found in session' }, { status: 400 });
+    }
+
+    // Cek apakah user ada dan merupakan pelayan di toko ini
+    const existingStoreUser = await prisma.storeUser.findFirst({
+      where: {
+        userId: id,
+        storeId: storeId,
+        role: 'ATTENDANT'
+      },
+      include: {
+        user: true
+      }
+    });
+
+    if (!existingStoreUser) {
+      return NextResponse.json(
+        { error: 'Pelayan tidak ditemukan di toko ini' },
+        { status: 404 }
+      );
+    }
+
+    // Cek apakah username sudah digunakan (kecuali oleh user yang sedang diupdate)
+    const existingDifferentUser = await prisma.user.findFirst({
+      where: {
+        username: username.trim(),
+        id: { not: id }  // Kecualikan user yang sedang diupdate
+      }
+    });
+
+    if (existingDifferentUser) {
+      return NextResponse.json(
+        { error: 'Username sudah digunakan oleh pengguna lain' },
+        { status: 400 }
+      );
+    }
+
+    // Siapkan data update
+    const updateData = {
+      name: name.trim(),
+      username: username.trim(),
+      employeeNumber: employeeNumber ? employeeNumber.trim() : null,
+    };
+
+    // Tambahkan password jika disediakan
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      updateData.password = hashedPassword;
+    }
+
+    // Update pengguna
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: updateData
+    });
+
+    // Juga update role di StoreUser untuk memastikan konsistensi
+    await prisma.storeUser.update({
+      where: {
+        userId_storeId: {
+          userId: id,
+          storeId: storeId,
+        }
+      },
+      data: {
+        role: 'ATTENDANT', // Jaga agar role tetap ATTENDANT sesuai ekspektasi
+        status: 'AKTIF',   // Juga pastikan status tetap AKTIF
+      }
+    });
+
+    // Jangan kembalikan password hash
+    const { password: _, ...userWithoutPassword } = updatedUser;
+    return NextResponse.json({
+      ...userWithoutPassword,
+      role: 'ATTENDANT' // Kembalikan role yang berlaku untuk toko ini
+    });
+  } catch (error) {
+    console.error('Error updating attendant:', error);
+    if (error.code === 'P2025') {
+      return NextResponse.json(
+        { error: 'Pelayan tidak ditemukan' },
+        { status: 404 }
+      );
+    }
+    return NextResponse.json({ error: 'Failed to update attendant' }, { status: 500 });
   }
 }

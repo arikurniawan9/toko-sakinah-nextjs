@@ -175,6 +175,13 @@ export default function KasirTransaksiPage() {
       return;
     }
 
+    // Validasi bahwa pembayaran tidak negatif
+    if (payment < 0) {
+      showNotification("Jumlah pembayaran tidak boleh negatif!", 'error');
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await fetch("/api/transaksi", {
@@ -198,7 +205,7 @@ export default function KasirTransaksiPage() {
           tax: calculation.tax,
           discount: calculation.totalDiscount,
           additionalDiscount: additionalDiscount,
-          status: payment > 0 ? 'PARTIALLY_PAID' : 'UNPAID', // Gunakan PARTIALLY_PAID jika ada DP, UNPAID jika tidak ada DP
+          status: payment > 0 ? 'CREDIT_PAID' : 'CREDIT', // Gunakan CREDIT untuk hutang penuh, CREDIT_PAID untuk sebagian bayar
         }),
       });
 
@@ -493,6 +500,8 @@ export default function KasirTransaksiPage() {
           notes,
           memberId: selectedMember?.id || defaultMember?.id || null,
           cartItems: cart, // The API expects the cart items
+          additionalDiscount: additionalDiscount, // Simpan diskon tambahan
+          selectedAttendantId: selectedAttendant?.id, // Simpan ID pelayan yang dipilih
         }),
       });
 
@@ -538,9 +547,17 @@ export default function KasirTransaksiPage() {
       }
     }
 
+    // Cari pelayan yang dipilih sebelumnya
+    let attendantToSelect = null;
+    if (suspendedSale.selectedAttendantId) {
+      attendantToSelect = attendants.find(att => att.id === suspendedSale.selectedAttendantId) || null;
+    }
+
     // Set the state
     setCart(suspendedSale.cartItems);
     setSelectedMember(memberToSelect);
+    setSelectedAttendant(attendantToSelect);
+    setAdditionalDiscount(suspendedSale.additionalDiscount || 0); // Kembalikan diskon tambahan jika ada
 
     // Close the modal
     setIsSuspendedListModalOpen(false);
@@ -684,6 +701,13 @@ export default function KasirTransaksiPage() {
           initiateUnpaidPayment();
         }
       }
+      // Tambahkan shortcut untuk menangguhkan transaksi dengan SHIFT+S
+      if (event.shiftKey && event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        if (cart.length > 0) {
+          setIsSuspendModalOpen(true);
+        }
+      }
       if (event.altKey && event.key === "Enter") {
         event.preventDefault();
         if (calculation && payment >= calculation.grandTotal && !loading && selectedAttendant) {
@@ -693,7 +717,7 @@ export default function KasirTransaksiPage() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [clearForm, calculation, payment, loading, selectedMember, selectedAttendant, initiateUnpaidPayment, initiatePaidPayment, isUnpaidConfirmModalOpen]);
+  }, [clearForm, calculation, payment, loading, selectedMember, selectedAttendant, initiateUnpaidPayment, initiatePaidPayment, isUnpaidConfirmModalOpen, cart.length, setIsSuspendModalOpen]);
 
   const handleReceiptReadyToPrint = () => {
     if (receiptData && receiptRef.current) {

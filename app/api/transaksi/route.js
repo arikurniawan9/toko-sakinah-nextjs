@@ -179,8 +179,8 @@ export async function POST(request) {
   }
 
   // Untuk transaksi hutang, memberId wajib
-  if (!memberId && status === 'UNPAID') {
-    return NextResponse.json({ error: 'Member must be selected for unpaid transactions' }, { status: 400 });
+  if (!memberId && (status === 'UNPAID' || status === 'CREDIT' || status === 'CREDIT_PAID')) {
+    return NextResponse.json({ error: 'Member must be selected for credit transactions' }, { status: 400 });
   }
 
   // Validasi stok sebelum membuat transaksi
@@ -278,8 +278,8 @@ export async function POST(request) {
         }
       }
 
-      // 4. Jika status UNPAID atau PARTIALLY_PAID, buat juga entri di Receivable
-      if ((status === 'UNPAID' || status === 'PARTIALLY_PAID') && memberId) {
+      // 4. Jika status UNPAID, PARTIALLY_PAID, CREDIT, atau CREDIT_PAID, buat juga entri di Receivable
+      if ((status === 'UNPAID' || status === 'PARTIALLY_PAID' || status === 'CREDIT' || status === 'CREDIT_PAID') && memberId) {
         // Sisa hutang adalah total - jumlah yang dibayar
         const remainingAmount = total - (payment || 0);
         if (remainingAmount > 0) {
@@ -299,8 +299,14 @@ export async function POST(request) {
       return newSale;
     });
 
+    // Ambil IP address dan user agent dari request
+    const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      request.headers.get('x-real-ip') ||
+      'unknown';
+    const userAgent = request.headers.get('user-agent') || 'unknown';
+
     // Log audit untuk pembuatan transaksi penjualan
-    await logCreate(session.user.id, 'Sale', sale.id, sale, request, session.user.storeId);
+    await logCreate(session.user.id, 'Sale', sale, ipAddress, userAgent, session.user.storeId);
 
     // Debug log untuk melihat invoice number yang dihasilkan
     console.log("Sale object created:", {

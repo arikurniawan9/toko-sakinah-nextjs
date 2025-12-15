@@ -42,6 +42,7 @@ export async function GET(request, { params }) {
           some: {
             storeId: storeId,
             role: ROLES.ATTENDANT,
+            status: { in: ['ACTIVE', 'AKTIF'] }, // Gunakan kedua status untuk kompatibilitas
           },
         },
       },

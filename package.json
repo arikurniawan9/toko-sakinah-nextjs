@@ -12,7 +12,9 @@
     "prisma:generate": "prisma generate",
     "prisma:studio": "prisma studio",
     "seed": "prisma db seed",
-    "test": "jest"
+    "test": "jest",
+    "fix-attendant-roles": "node utils/fix-attendant-roles.js",
+    "debug-attendant-data": "node utils/debug-attendant-data.js"
   },
   "dependencies": {
     "@next-auth/prisma-adapter": "^1.0.7",
@@ -24,6 +26,7 @@
     "dotenv": "^17.2.3",
     "express-rate-limit": "^8.2.1",
     "html-to-image": "^1.11.13",
+    "html5-qrcode": "^2.3.8",
     "jsbarcode": "^3.12.1",
     "jspdf": "^3.0.4",
     "jspdf-autotable": "^5.0.2",

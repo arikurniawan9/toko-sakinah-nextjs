@@ -11,6 +11,8 @@ import { DashboardCustomizationProvider } from '@/components/DashboardCustomizat
 import { UserThemeProvider } from '@/components/UserThemeContext';
 import ShopNameUpdater from '@/components/ShopNameUpdater';
 
+import { PelayanStateProvider } from '@/components/pelayan/PelayanStateContext';
+
 // Providers lengkap untuk aplikasi yang memerlukan otentikasi
 export function Providers({ children }) {
   return (
@@ -20,10 +22,12 @@ export function Providers({ children }) {
           <UserThemeProvider>
             <NotificationProvider>
               <SessionProvider>
-                <AutoLogoutProvider>
-                  <ShopNameUpdater />
-                  {children}
-                </AutoLogoutProvider>
+                <PelayanStateProvider>
+                  <AutoLogoutProvider>
+                    <ShopNameUpdater />
+                    {children}
+                  </AutoLogoutProvider>
+                </PelayanStateProvider>
               </SessionProvider>
             </NotificationProvider>
           </UserThemeProvider>

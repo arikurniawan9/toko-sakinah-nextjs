@@ -62,7 +62,7 @@ export default function Toolbar({
       {/* Right side: Action Buttons */}
       <div className="flex items-center justify-start md:justify-end flex-wrap gap-2">
         {selectedRowsCount > 0 && (
-          <Tooltip content={`Hapus ${selectedRowsCount} produk terpilih`}>
+          <Tooltip content={`Hapus ${selectedRowsCount} produk terpilih`} darkMode={darkMode}>
             <button
               onClick={onDeleteMultiple}
               className="inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
@@ -72,7 +72,7 @@ export default function Toolbar({
             </button>
           </Tooltip>
         )}
-        <Tooltip content="Import produk dari file">
+        <Tooltip content="Import produk dari file" darkMode={darkMode}>
           <label className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${darkMode ? 'text-gray-200 bg-gray-800 hover:bg-gray-700' : 'text-gray-700 bg-gray-100 hover:bg-gray-200'}`}>
             <Upload className="h-4 w-4" />
             <input
@@ -84,7 +84,7 @@ export default function Toolbar({
             />
           </label>
         </Tooltip>
-        <Tooltip content="Export data ke file">
+        <Tooltip content="Export data ke file" darkMode={darkMode}>
           <button
             onClick={onExport}
             disabled={exportLoading}
@@ -100,7 +100,7 @@ export default function Toolbar({
             )}
           </button>
         </Tooltip>
-        <Tooltip content="Template Produk">
+        <Tooltip content="Template Produk" darkMode={darkMode}>
           <a
             href="/templates/template-produk.xlsx"
             download="template-produk.xlsx"
@@ -109,7 +109,7 @@ export default function Toolbar({
             <Folder className="h-4 w-4" />
           </a>
         </Tooltip>
-        <Tooltip content="Tambah produk baru">
+        <Tooltip content="Tambah produk baru" darkMode={darkMode}>
           <button
             onClick={onAddNew}
             className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"

@@ -161,6 +161,10 @@ export default function CashierDashboard() {
                       <span className="mr-2">•</span>
                       <span>Gunakan Alt+Enter untuk langsung membayar jika jumlah sudah cukup</span>
                     </li>
+                    <li className="flex items-start">
+                      <span className="mr-2">•</span>
+                      <span>Gunakan SHIFT+S untuk menangguhkan transaksi</span>
+                    </li>
                   </ul>
                 </div>
               </div>

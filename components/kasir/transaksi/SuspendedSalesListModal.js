@@ -3,11 +3,17 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { ShoppingCart, Trash2, PlayCircle } from "lucide-react";
+import ConfirmationModal from "../../ConfirmationModal";
 
 const SuspendedSalesListModal = ({ isOpen, onClose, onResume, darkMode }) => {
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [saleToDelete, setSaleToDelete] = useState(null);
+  const [saleToResume, setSaleToResume] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showResumeConfirm, setShowResumeConfirm] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const fetchSuspendedSales = useCallback(async () => {
     setLoading(true);
@@ -32,16 +38,22 @@ const SuspendedSalesListModal = ({ isOpen, onClose, onResume, darkMode }) => {
     }
   }, [isOpen, fetchSuspendedSales]);
 
-  const handleDelete = async (saleId) => {
-    if (
-      !confirm(
-        "Apakah Anda yakin ingin menghapus penjualan yang ditangguhkan ini?"
-      )
-    ) {
-      return;
-    }
+  const confirmDelete = (saleId) => {
+    setSaleToDelete(saleId);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmResume = (sale) => {
+    setSaleToResume(sale);
+    setShowResumeConfirm(true);
+  };
+
+  const handleDelete = async () => {
+    if (!saleToDelete) return;
+
+    setDeleteLoading(true);
     try {
-      const response = await fetch(`/api/suspended-sales?id=${saleId}`, {
+      const response = await fetch(`/api/suspended-sales?id=${saleToDelete}`, {
         method: "DELETE",
       });
       if (!response.ok) {
@@ -49,18 +61,23 @@ const SuspendedSalesListModal = ({ isOpen, onClose, onResume, darkMode }) => {
       }
       // Refresh the list
       fetchSuspendedSales();
+      setShowDeleteConfirm(false);
+      setSaleToDelete(null);
     } catch (err) {
-      alert(err.message);
+      // Di sini bisa ditambahkan notifikasi error jika diperlukan
+      console.error("Error deleting suspended sale:", err);
+      setShowDeleteConfirm(false);
+      setSaleToDelete(null);
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
-  const handleResume = (sale) => {
-    if (
-      confirm(
-        "Melanjutkan penjualan ini akan menggantikan keranjang Anda saat ini. Lanjutkan?"
-      )
-    ) {
-      onResume(sale);
+  const handleResume = () => {
+    if (saleToResume) {
+      onResume(saleToResume);
+      setShowResumeConfirm(false);
+      setSaleToResume(null);
     }
   };
 
@@ -120,6 +137,15 @@ const SuspendedSalesListModal = ({ isOpen, onClose, onResume, darkMode }) => {
                         {sale.notes}
                       </p>
                     )}
+                    {sale.selectedAttendantId && sale.attendantName && (
+                      <p
+                        className={`text-sm mt-1 ${
+                          darkMode ? "text-blue-300" : "text-blue-600"
+                        }`}
+                      >
+                        Dibuat oleh: {sale.attendantName}
+                      </p>
+                    )}
                     <p
                       className={`text-xs mt-2 flex items-center ${
                         darkMode ? "text-gray-400" : "text-gray-500"
@@ -131,7 +157,7 @@ const SuspendedSalesListModal = ({ isOpen, onClose, onResume, darkMode }) => {
                   </div>
                   <div className="flex items-center space-x-2">
                     <button
-                      onClick={() => handleDelete(sale.id)}
+                      onClick={() => confirmDelete(sale.id)}
                       className={`p-2 rounded-full ${
                         darkMode
                           ? "text-red-400 hover:bg-gray-600"
@@ -142,7 +168,7 @@ const SuspendedSalesListModal = ({ isOpen, onClose, onResume, darkMode }) => {
                       <Trash2 size={18} />
                     </button>
                     <button
-                      onClick={() => handleResume(sale)}
+                      onClick={() => confirmResume(sale)}
                       className="flex items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
                       title="Lanjutkan"
                     >
@@ -173,6 +199,38 @@ const SuspendedSalesListModal = ({ isOpen, onClose, onResume, darkMode }) => {
           </button>
         </div>
       </div>
+
+      {/* Modal konfirmasi hapus */}
+      <ConfirmationModal
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setSaleToDelete(null);
+        }}
+        onConfirm={handleDelete}
+        title="Konfirmasi Hapus"
+        message="Apakah Anda yakin ingin menghapus penjualan yang ditangguhkan ini? Tindakan ini tidak dapat dibatalkan."
+        confirmText="Hapus"
+        cancelText="Batal"
+        variant="danger"
+        isLoading={deleteLoading}
+        darkMode={darkMode}
+      />
+
+      {/* Modal konfirmasi lanjutkan */}
+      <ConfirmationModal
+        isOpen={showResumeConfirm}
+        onClose={() => {
+          setShowResumeConfirm(false);
+          setSaleToResume(null);
+        }}
+        onConfirm={handleResume}
+        title="Konfirmasi Lanjutkan"
+        message="Melanjutkan penjualan ini akan menggantikan keranjang Anda saat ini. Apakah Anda ingin melanjutkan?"
+        confirmText="Lanjutkan"
+        cancelText="Batal"
+        darkMode={darkMode}
+      />
     </div>
   );
 };

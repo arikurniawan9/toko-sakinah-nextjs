@@ -1,327 +1,490 @@
 // app/pelayan/page.js
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useSession, signOut } from 'next-auth/react';
 import ProtectedRoute from '../../components/ProtectedRoute';
-import { Search, Plus, ShoppingCart, Users, Send } from 'lucide-react';
+import { Search, ShoppingCart, Users, Send, Camera, Sun, Moon, LogOut, AlertCircle, Trash2, X, History, Bell } from 'lucide-react';
+import BarcodeScanner from '../../components/BarcodeScanner';
+import { useNotification } from '../../components/notifications/NotificationProvider';
+import LoadingSpinner from '../../components/LoadingSpinner';
+import ConfirmationModal from '../../components/ConfirmationModal';
+import { useDebounce } from '../../lib/hooks/useDebounce';
+import { usePelayanState } from '../../components/pelayan/PelayanStateContext';
+import PelayanHistory from '../../components/pelayan/PelayanHistory';
+import PelayanNotifications from '../../components/pelayan/PelayanNotifications';
+import AttendantMemberSelection from '../../components/pelayan/AttendantMemberSelection';
+
+// Komponen untuk satu produk - menggunakan memo untuk mencegah rendering ulang yang tidak perlu
+const ProductItem = ({ product, isOutOfStock, addToCart, darkMode }) => {
+  const productName = product.name || 'Produk tidak dikenal';
+  const productCode = product.productCode || 'Tidak ada kode';
+  const productSellingPrice = product.sellingPrice || 0;
+  const productStock = product.stock || 0;
+
+  return (
+    <div
+      className={`flex items-center space-x-4 p-3 border-b border-gray-200 dark:border-gray-700 last:border-b-0 transition-colors ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer'}`}
+      onClick={() => !isOutOfStock && addToCart(product)}
+    >
+      <div className="flex-shrink-0 relative">
+        {product.image ? (
+          <img src={product.image} alt={productName} className="h-12 w-12 object-contain rounded" />
+        ) : (
+          <div className="h-12 w-12 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center">
+            <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+        )}
+        {isOutOfStock && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold px-1 rounded-full">X</span>}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="font-medium text-gray-900 dark:text-white truncate">{productName}</div>
+        <div className="text-sm text-gray-600 dark:text-gray-300">Kode: {productCode}</div>
+      </div>
+      <div className="text-right">
+        <div className="font-semibold text-pastel-purple-600 dark:text-pastel-purple-400">
+          Rp {productSellingPrice.toLocaleString('id-ID')}
+        </div>
+        <div className="text-xs text-gray-500 dark:text-gray-400">Stok: {productStock}</div>
+      </div>
+    </div>
+  );
+};
+
+// Komponen untuk satu item di keranjang - menggunakan memo untuk mencegah rendering ulang yang tidak perlu
+const CartItem = ({ item, updateQuantity, removeFromCart, darkMode }) => {
+  const itemPrice = item.price || 0;
+  const itemQuantity = item.quantity || 0;
+  const itemSubtotal = itemPrice * itemQuantity;
+
+  return (
+    <li className="py-3">
+      <div className="flex justify-between items-start">
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium text-gray-900 dark:text-white truncate">{item.name || 'Produk tidak dikenal'}</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{itemQuantity} x Rp {itemPrice.toLocaleString('id-ID')}</div>
+        </div>
+        <div className="flex items-center space-x-2 ml-2">
+          <button onClick={() => updateQuantity(item.productId, itemQuantity - 1)} className="w-6 h-6 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700">-</button>
+          <span className="text-sm dark:text-white min-w-[20px] text-center">{itemQuantity}</span>
+          <button onClick={() => updateQuantity(item.productId, itemQuantity + 1)} className="w-6 h-6 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700">+</button>
+          <button onClick={() => removeFromCart(item.productId)} className="ml-2 text-red-500" title="Hapus item dari keranjang">
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+      <div className="text-sm text-right text-pastel-purple-600 dark:text-pastel-purple-400 mt-1 font-medium">
+        Rp {itemSubtotal.toLocaleString('id-ID')}
+      </div>
+    </li>
+  );
+};
 
 export default function AttendantDashboard() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  
+  // Local UI state
   const [searchTerm, setSearchTerm] = useState('');
-  const [products, setProducts] = useState([]);
-  const [tempCart, setTempCart] = useState([]);
-  const [customers, setCustomers] = useState([]);
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+  const [showSendConfirmModal, setShowSendConfirmModal] = useState(false);
+  const [showClearCartModal, setShowClearCartModal] = useState(false);
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [note, setNote] = useState('');
+  const [activeTab, setActiveTab] = useState('cart'); // 'cart' or 'history'
+  const [darkMode, setDarkMode] = useState(false);
 
-  // Fetch products
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+
+  // Global state from context
+  const {
+    products,
+    tempCart,
+    selectedCustomer,
+    setSelectedCustomer,
+    defaultCustomer,
+    isInitialLoading,
+    isSearchingProducts,
+    isSubmitting,
+    error,
+    setError,
+    fetchProducts,
+    fetchDefaultCustomer,
+    addToTempCart,
+    removeFromTempCart,
+    updateQuantity,
+    handleClearCart: clearCartFromContext,
+    sendToCashier,
+    searchCustomers,
+  } = usePelayanState();
+
+  // Memoisasi total belanja di keranjang
+  const cartTotal = useMemo(() => {
+    return tempCart.reduce((total, item) => {
+      const itemPrice = item.price || 0;
+      const itemQuantity = item.quantity || 0;
+      return total + (itemPrice * itemQuantity);
+    }, 0);
+  }, [tempCart]);
+
+  const { showNotification } = useNotification();
+
+  // Initialize dark mode
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await fetch('/api/produk');
-        const data = await response.json();
-        setProducts(data.products || []);
-      } catch (error) {
-        console.error('Error fetching products:', error);
-      }
-    };
-    
-    fetchProducts();
-  }, []);
-
-  // Fetch customers (members)
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      try {
-        const response = await fetch('/api/member');
-        const data = await response.json();
-        setCustomers(data.members || []);
-      } catch (error) {
-        console.error('Error fetching customers:', error);
-      }
-    };
-    
-    fetchCustomers();
-  }, []);
-
-  // Filter products based on search term
-  const filteredProducts = products.filter(product => 
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.productCode.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Add product to temp cart
-  const addToTempCart = (product) => {
-    const existingItem = tempCart.find(item => item.productId === product.id);
-    
-    if (existingItem) {
-      setTempCart(tempCart.map(item => 
-        item.productId === product.id 
-          ? { ...item, quantity: item.quantity + 1 }
-          : item
-      ));
+    const storedPreference = localStorage.getItem('darkMode');
+    if (storedPreference !== null) {
+      setDarkMode(JSON.parse(storedPreference));
     } else {
-      setTempCart([
-        ...tempCart,
-        {
-          productId: product.id,
-          name: product.name,
-          price: product.sellingPrice,
-          quantity: 1,
-          image: product.image
-        }
-      ]);
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setDarkMode(prefersDark);
     }
-  };
+  }, []);
 
-  // Remove item from temp cart
-  const removeFromTempCart = (productId) => {
-    setTempCart(tempCart.filter(item => item.productId !== productId));
-  };
-
-  // Update quantity
-  const updateQuantity = (productId, newQuantity) => {
-    if (newQuantity <= 0) {
-      removeFromTempCart(productId);
-      return;
-    }
-
-    setTempCart(tempCart.map(item => 
-      item.productId === productId 
-        ? { ...item, quantity: newQuantity }
-        : item
-    ));
-  };
-
-  // Send temp cart to cashier
-  const sendToCashier = async () => {
-    if (tempCart.length === 0) {
-      alert('Keranjang masih kosong');
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/temp-cart', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          attendantId: session.user.id,
-          customerId: selectedCustomer?.id || null,
-          items: tempCart
-        })
-      });
-
-      if (response.ok) {
-        alert('Daftar belanja berhasil dikirim ke kasir!');
-        // Clear temp cart
-        setTempCart([]);
-        setSelectedCustomer(null);
+  // Apply dark mode
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (darkMode) {
+        document.documentElement.classList.add('dark');
       } else {
-        const error = await response.json();
-        alert(`Gagal mengirim: ${error.error}`);
+        document.documentElement.classList.remove('dark');
       }
-    } catch (error) {
-      console.error('Error sending to cashier:', error);
-      alert('Terjadi kesalahan saat mengirim daftar belanja');
+      localStorage.setItem('darkMode', JSON.stringify(darkMode));
     }
+  }, [darkMode]);
+
+  // Initial data load: Only fetch default customer if not already loaded
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user?.storeId && !selectedCustomer) {
+      fetchDefaultCustomer();
+    } else if (status === 'authenticated' && !session?.user?.storeId) {
+      setError('Anda tidak terkait dengan toko manapun. Silakan hubungi administrator.');
+    }
+  }, [status, session, selectedCustomer, fetchDefaultCustomer, setError]);
+
+  // Effect for product search
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user?.storeId) {
+      fetchProducts(debouncedSearchTerm);
+    }
+  }, [debouncedSearchTerm, status, session, fetchProducts]);
+
+
+  const handleBarcodeScan = useCallback(async (decodedText) => {
+    setShowBarcodeScanner(false);
+    
+    const productResponse = await fetch(`/api/produk?search=${encodeURIComponent(decodedText)}`);
+    if (productResponse.ok) {
+      const productData = await productResponse.json();
+      if (productData.products && productData.products.length > 0) {
+        addToTempCart(productData.products[0]);
+        showNotification(`Produk ${productData.products[0].name} ditambahkan.`, 'success');
+        return;
+      }
+    }
+    
+    const customerData = await searchCustomers(decodedText);
+    if (customerData && customerData.length > 0) {
+        setSelectedCustomer(customerData[0]);
+        showNotification(`Pelanggan ${customerData[0].name} dipilih.`, 'success');
+        return;
+    }
+    
+    showNotification('Kode barcode tidak cocok dengan produk atau pelanggan manapun.', 'warning');
+  }, [addToTempCart, setSelectedCustomer, showNotification, searchCustomers]);
+  
+  const handleClearCart = () => {
+    clearCartFromContext();
+    setShowClearCartModal(false);
   };
+  
+  const handleConfirmSend = () => {
+    setShowSendConfirmModal(false);
+    setShowNoteModal(true); // Buka modal catatan setelah konfirmasi awal
+  };
+
+  const handleSendWithNote = async () => {
+    // Kirim daftar belanja ke suspended sales dengan catatan
+    const success = await sendToCashier(note); // Kirim dengan catatan
+    if (success) {
+      setSearchTerm('');
+      setNote(''); // Reset catatan
+    }
+    setShowNoteModal(false);
+  };
+
+  const toggleDarkMode = () => setDarkMode(!darkMode);
+  const handleScannerClose = () => setShowBarcodeScanner(false);
+
+  if (isInitialLoading || status === 'loading') {
+    return <LoadingSpinner />;
+  }
 
   return (
     <ProtectedRoute requiredRole="ATTENDANT">
-      <div className="min-h-screen bg-gray-50">
+      <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${darkMode ? 'dark' : ''}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Dashboard Pelayan</h1>
-            <div className="text-right">
-              <p className="text-sm font-medium text-gray-900">Halo, {session?.user?.name}</p>
-              <p className="text-xs text-gray-500">Pelayan</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard Pelayan</h1>
+            <div className="flex items-center space-x-2">
+              <PelayanNotifications darkMode={darkMode} attendantId={session?.user?.id} />
+              <button onClick={toggleDarkMode} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                {darkMode ? <Sun className="h-5 w-5 text-yellow-500" /> : <Moon className="h-5 w-5 text-gray-700" />}
+              </button>
+              <div className="text-right">
+                <p className="text-sm font-medium text-gray-900 dark:text-white">Halo, {session?.user?.name}</p>
+                {session?.user?.storeAccess?.name && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {session.user.storeAccess.name} ({session.user.storeAccess.code})
+                  </p>
+                )}
+                <p className="text-xs text-gray-500 dark:text-gray-400">Pelayan</p>
+              </div>
+              <button onClick={() => signOut({ callbackUrl: '/login' })} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                <LogOut className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+              </button>
             </div>
           </div>
+          
+          {error && (
+            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-md flex items-center">
+                <AlertCircle className="h-5 w-5 mr-3"/>
+                <span>{error}</span>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Product Search & List */}
             <div className="lg:col-span-2">
-              <div className="bg-white rounded-lg shadow p-6 mb-6">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
                 <div className="relative">
                   <input
                     type="text"
                     placeholder="Cari produk berdasarkan nama atau kode..."
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pastel-purple-500 focus:border-pastel-purple-500"
+                    className="w-full pl-10 pr-12 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-pastel-purple-500"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
+                    disabled={!!error}
                   />
                   <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                  <button onClick={() => setShowBarcodeScanner(true)} className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" disabled={!!error}>
+                    <Camera className="h-5 w-5" />
+                  </button>
                 </div>
               </div>
 
-              {/* Products Grid */}
-              <div className="bg-white rounded-lg shadow overflow-hidden">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-4 max-h-96 overflow-y-auto">
-                  {filteredProducts.map(product => (
-                    <div 
-                      key={product.id} 
-                      className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                      onClick={() => addToTempCart(product)}
-                    >
-                      {product.image && (
-                        <img 
-                          src={product.image} 
-                          alt={product.name} 
-                          className="w-full h-32 object-contain mb-2"
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+                <div className="p-4 max-h-96 overflow-y-auto">
+                   {isSearchingProducts ? <LoadingSpinner /> : searchTerm.trim() === '' ? (
+                    <p className="text-gray-500 dark:text-gray-400 text-center py-4">Silakan cari produk berdasarkan nama atau kode.</p>
+                  ) : products.length === 0 ? (
+                    <p className="text-gray-500 dark:text-gray-400 text-center py-4">Tidak ada produk ditemukan untuk pencarian "{searchTerm}".</p>
+                  ) : (
+                    products.map(product => {
+                      const isOutOfStock = product.stock <= 0;
+                      return (
+                        <ProductItem
+                          key={product.id}
+                          product={product}
+                          isOutOfStock={isOutOfStock}
+                          addToCart={addToTempCart}
+                          darkMode={darkMode}
                         />
-                      )}
-                      <div className="font-medium text-gray-900">{product.name}</div>
-                      <div className="text-sm text-gray-600">Kode: {product.productCode}</div>
-                      <div className="text-sm font-semibold text-pastel-purple-600">Rp {product.sellingPrice.toLocaleString('id-ID')}</div>
-                      <div className="text-xs text-gray-500 mt-1">Stok: {product.stock}</div>
-                    </div>
-                  ))}
+                      );
+                    })
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Temp Cart & Actions */}
             <div className="space-y-6">
-              {/* Customer Selection */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-gray-900">Pelanggan</h2>
-                  {selectedCustomer && (
-                    <span className="text-sm text-green-600">{selectedCustomer.name}</span>
-                  )}
-                </div>
-                
-                {selectedCustomer ? (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">{selectedCustomer.name} ({selectedCustomer.membershipType})</span>
+              <AttendantMemberSelection
+                selectedCustomer={selectedCustomer}
+                defaultCustomer={defaultCustomer}
+                onSelectCustomer={setSelectedCustomer}
+                onRemoveCustomer={() => setSelectedCustomer(defaultCustomer || null)}
+                darkMode={darkMode}
+                isOpen={showCustomerModal}
+                onToggle={setShowCustomerModal}
+              />
+
+              {/* Tab untuk Daftar Belanja dan Histori */}
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+                <div className="border-b border-gray-200 dark:border-gray-700">
+                  <nav className="flex">
                     <button
-                      onClick={() => setSelectedCustomer(null)}
-                      className="text-red-600 hover:text-red-800 text-sm"
+                      onClick={() => setActiveTab('cart')}
+                      className={`flex-1 py-3 px-4 text-center text-sm font-medium ${
+                        activeTab === 'cart'
+                          ? `${darkMode ? 'bg-gray-800 text-pastel-purple-400 border-b-2 border-pastel-purple-400' : 'bg-white text-pastel-purple-600 border-b-2 border-pastel-purple-600'}`
+                          : `${darkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'}`
+                      }`}
                     >
-                      Hapus
+                      <div className="flex items-center justify-center">
+                        <ShoppingCart className="h-4 w-4 mr-2" />
+                        Daftar Belanja
+                      </div>
                     </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setShowCustomerModal(true)}
-                    className="w-full py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-                  >
-                    <Users className="h-4 w-4 inline mr-2" />
-                    Pilih Pelanggan
-                  </button>
-                )}
-              </div>
-
-              {/* Temp Cart */}
-              <div className="bg-white rounded-lg shadow overflow-hidden">
-                <div className="px-4 py-5 border-b border-gray-200 sm:px-6">
-                  <div className="flex justify-between items-center">
-                    <h2 className="text-lg font-semibold text-gray-900">Daftar Belanja</h2>
-                    <span className="bg-pastel-purple-100 text-pastel-purple-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                      {tempCart.length} item
-                    </span>
-                  </div>
+                    <button
+                      onClick={() => setActiveTab('history')}
+                      className={`flex-1 py-3 px-4 text-center text-sm font-medium ${
+                        activeTab === 'history'
+                          ? `${darkMode ? 'bg-gray-800 text-pastel-purple-400 border-b-2 border-pastel-purple-400' : 'bg-white text-pastel-purple-600 border-b-2 border-pastel-purple-600'}`
+                          : `${darkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'}`
+                      }`}
+                    >
+                      <div className="flex items-center justify-center">
+                        <History className="h-4 w-4 mr-2" />
+                        Histori
+                      </div>
+                    </button>
+                  </nav>
                 </div>
-                <div className="p-4 max-h-64 overflow-y-auto">
-                  {tempCart.length === 0 ? (
-                    <p className="text-gray-500 text-center py-4">Daftar belanja kosong</p>
-                  ) : (
-                    <ul className="divide-y divide-gray-200">
-                      {tempCart.map((item, index) => (
-                        <li key={index} className="py-2">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                              <div className="text-xs text-gray-500">
-                                {item.quantity} x Rp {item.price.toLocaleString('id-ID')}
-                              </div>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <button 
-                                onClick={() => updateQuantity(item.productId, item.quantity - 1)}
-                                className="text-gray-500 hover:text-gray-700"
-                              >
-                                -
-                              </button>
-                              <span className="text-sm">{item.quantity}</span>
-                              <button 
-                                onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                                className="text-gray-500 hover:text-gray-700"
-                              >
-                                +
-                              </button>
-                              <button 
-                                onClick={() => removeFromTempCart(item.productId)}
-                                className="text-red-500 hover:text-red-700 ml-2"
-                              >
-                                <ShoppingCart className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </div>
-                          <div className="text-sm text-right text-pastel-purple-600 mt-1">
-                            Rp {(item.price * item.quantity).toLocaleString('id-ID')}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
+
+                <div className="p-4">
+                  {activeTab === 'cart' && (
+                    <>
+                      <div className="px-2 py-3">
+                        <div className="flex justify-between items-center mb-2">
+                          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Daftar Belanja</h2>
+                          <span className="bg-pastel-purple-100 dark:bg-pastel-purple-900 text-pastel-purple-800 dark:text-pastel-purple-200 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                            {tempCart.length} item
+                          </span>
+                        </div>
+
+                        {tempCart.length > 0 && (
+                            <button onClick={() => setShowClearCartModal(true)} className="mb-2 p-1.5 text-gray-500 hover:text-red-600 dark:hover:text-red-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 float-right" title="Kosongkan Keranjang">
+                                <Trash2 className="h-4 w-4" />
+                            </button>
+                        )}
+                      </div>
+
+                      <div className="max-h-64 overflow-y-auto">
+                        {tempCart.length === 0 ? (
+                          <p className="text-gray-500 dark:text-gray-400 text-center py-4">Daftar belanja kosong</p>
+                        ) : (
+                          <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                            {tempCart.map((item) => (
+                              <CartItem
+                                key={item.productId}
+                                item={item}
+                                updateQuantity={updateQuantity}
+                                removeFromCart={removeFromTempCart}
+                                darkMode={darkMode}
+                              />
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+
+                      <div className="mt-4">
+                        <button onClick={() => setShowSendConfirmModal(true)} disabled={tempCart.length === 0 || !!error} className="w-full flex justify-center items-center py-3 px-4 border rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-pastel-purple-600 to-indigo-600 hover:from-pastel-purple-700 hover:to-indigo-700 disabled:opacity-50">
+                          <Send className="h-4 w-4 mr-2" /> Kirim Daftar Belanja
+                        </button>
+                      </div>
+                    </>
+                  )}
+
+                  {activeTab === 'history' && (
+                    <PelayanHistory darkMode={darkMode} attendantId={session?.user?.id} />
                   )}
                 </div>
-              </div>
-
-              {/* Send to Cashier */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Kirim ke Kasir</h2>
-                <button
-                  onClick={sendToCashier}
-                  disabled={tempCart.length === 0}
-                  className="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-pastel-purple-600 hover:bg-pastel-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pastel-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Send className="h-4 w-4 mr-2" />
-                  Kirim Daftar Belanja
-                </button>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Customer Modal */}
-        {showCustomerModal && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-[100]">
-            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-              <div className="mt-3">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Pilih Pelanggan</h3>
-                  <button
-                    onClick={() => setShowCustomerModal(false)}
-                    className="text-gray-500 hover:text-gray-700"
-                  >
-                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-                <div className="max-h-60 overflow-y-auto">
-                  {customers.map(customer => (
-                    <div
-                      key={customer.id}
-                      className="p-3 border-b border-gray-200 hover:bg-gray-50 cursor-pointer"
-                      onClick={() => {
-                        setSelectedCustomer(customer);
-                        setShowCustomerModal(false);
-                      }}
-                    >
-                      <div className="font-medium text-gray-900">{customer.name}</div>
-                      <div className="text-sm text-gray-600">{customer.membershipType}</div>
-                    </div>
-                  ))}
-                </div>
+
+        {showBarcodeScanner && <BarcodeScanner onScan={handleBarcodeScan} onClose={handleScannerClose} />}
+        
+        <ConfirmationModal
+            isOpen={showSendConfirmModal}
+            onClose={() => setShowSendConfirmModal(false)}
+            onConfirm={handleConfirmSend}
+            title="Konfirmasi Pengiriman"
+            message={`Anda akan mengirim ${tempCart.length} item ke kasir ${selectedCustomer ? `untuk pelanggan ${selectedCustomer.name}` : ''}. Lanjutkan?`}
+            confirmText="Lanjutkan"
+            cancelText="Batal"
+            isLoading={isSubmitting}
+            variant="info"
+        />
+
+        {/* Modal untuk menambahkan catatan */}
+        {showNoteModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
+            <div className={`rounded-xl shadow-xl w-full max-w-md ${
+              darkMode ? 'bg-gray-800' : 'bg-white'
+            }`}>
+              <div className={`p-6 border-b ${
+                darkMode ? 'border-gray-700' : 'border-gray-200'
+              }`}>
+                <h3 className={`text-xl font-bold ${
+                  darkMode ? 'text-white' : 'text-gray-900'
+                }`}>
+                  Tambahkan Catatan
+                </h3>
+                <p className={`mt-1 ${
+                  darkMode ? 'text-gray-400' : 'text-gray-500'
+                }`}>
+                  Silakan tambahkan catatan atau ciri khusus untuk daftar belanja ini
+                </p>
+              </div>
+
+              <div className="p-6">
+                <textarea
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="Contoh: Pesanan catering untuk 50 orang, minta kantong besar"
+                  className={`w-full h-32 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                    darkMode
+                      ? 'border-gray-600 bg-gray-700 text-white'
+                      : 'border-gray-300 bg-white text-gray-900'
+                  }`}
+                />
+              </div>
+
+              <div className={`p-6 border-t flex justify-end space-x-3 ${
+                darkMode ? 'border-gray-700' : 'border-gray-200'
+              }`}>
+                <button
+                  onClick={() => {
+                    setShowNoteModal(false);
+                    setNote('');
+                  }}
+                  className={`px-4 py-2 rounded-lg ${
+                    darkMode
+                      ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                      : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+                  }`}
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleSendWithNote}
+                  disabled={isSubmitting}
+                  className={`px-4 py-2 rounded-lg flex items-center ${
+                    darkMode
+                      ? 'bg-pastel-purple-600 hover:bg-pastel-purple-700 text-white'
+                      : 'bg-pastel-purple-600 hover:bg-pastel-purple-700 text-white'
+                  } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {isSubmitting ? 'Mengirim...' : 'Kirim ke Daftar Tangguhkan'}
+                </button>
               </div>
             </div>
           </div>
         )}
+
+        <ConfirmationModal
+            isOpen={showClearCartModal}
+            onClose={() => setShowClearCartModal(false)}
+            onConfirm={handleClearCart}
+            title="Konfirmasi Hapus Keranjang"
+            message="Apakah Anda yakin ingin menghapus semua item dari daftar belanja?"
+            confirmText="Ya, Hapus"
+            cancelText="Batal"
+            variant="danger"
+        />
       </div>
     </ProtectedRoute>
   );

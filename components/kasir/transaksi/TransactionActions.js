@@ -13,7 +13,7 @@ const TransactionActions = ({
 }) => {
   return (
     <div className="flex items-center space-x-2">
-      <Tooltip content="Tangguhkan Transaksi">
+      <Tooltip content="Tangguhkan Transaksi (SHIFT+S)" darkMode={darkMode}>
         <button
           onClick={onSuspend}
           disabled={isCartEmpty || isLoading}
@@ -26,7 +26,7 @@ const TransactionActions = ({
           <Archive size={22} />
         </button>
       </Tooltip>
-      <Tooltip content="Daftar Ditangguhkan">
+      <Tooltip content="Daftar Ditangguhkan" darkMode={darkMode}>
         <button
           onClick={onShowList}
           disabled={isLoading}

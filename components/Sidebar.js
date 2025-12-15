@@ -152,6 +152,11 @@ const Sidebar = ({ children }) => {
     { title: "Produk", href: "/kasir/produk", icon: ShoppingBag, type: 'item', roles: ['CASHIER'] },
     { title: "Kategori", href: "/kasir/kategori", icon: Tag, type: 'item', roles: ['CASHIER'] },
 
+    // ATTENDANT menus
+    { title: "Pelayan", type: 'heading', roles: ['ATTENDANT'] },
+    { title: "Dashboard", href: "/pelayan", icon: Home, type: 'item', roles: ['ATTENDANT'] },
+    { title: "Profil Saya", href: "/pelayan/profil", icon: UserCog, type: 'item', roles: ['ATTENDANT'] },
+
     // WAREHOUSE menus
     { title: "Dashboard", href: "/warehouse", icon: Home, type: 'item', roles: ['WAREHOUSE'] },
     { title: "Stok Gudang", href: "/warehouse/stock", icon: Package, type: 'item', roles: ['WAREHOUSE'] },

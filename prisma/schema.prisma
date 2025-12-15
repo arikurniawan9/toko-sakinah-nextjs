@@ -253,14 +253,16 @@ model PurchaseItem {
 }
 
 model SuspendedSale {
-  id        String   @id @default(cuid())
-  storeId   String
-  name      String?
-  cartItems String
-  memberId  String?
-  notes     String?
-  createdAt DateTime @default(now())
-  store     Store    @relation(fields: [storeId], references: [id])
+  id                   String   @id @default(cuid())
+  storeId              String
+  name                 String?
+  cartItems            String
+  memberId             String?
+  notes                String?
+  additionalDiscount   Int?     @default(0)
+  selectedAttendantId  String?
+  createdAt            DateTime @default(now())
+  store                Store    @relation(fields: [storeId], references: [id])
 
   @@index([storeId])
 }

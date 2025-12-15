@@ -9,7 +9,7 @@ import { generateShortCode } from '@/lib/utils';
 export async function GET(request) {
   const session = await getServerSession(authOptions);
 
-  if (!session || !['CASHIER', 'ADMIN'].includes(session.user.role)) {
+  if (!session || !['CASHIER', 'ADMIN', 'ATTENDANT'].includes(session.user.role)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -19,24 +19,38 @@ export async function GET(request) {
     const page = parseInt(searchParams.get('page') || '1');
     const search = searchParams.get('search') || '';
 
-    // Ambil storeId dari session
-    const storeId = session.user.storeId;
-    if (!storeId) {
-      return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
+    const globalSearch = searchParams.get('global') === 'true';
+
+    let baseWhereClause = {};
+    if (!globalSearch) {
+      // Ambil storeId dari session
+      let storeId = session.user.storeId;
+
+      // Untuk role ATTENDANT, jika tidak ada storeId, coba dapatkan dari storeUser
+      if (!storeId && session.user.role === 'ATTENDANT') {
+        const storeUser = await prisma.storeUser.findFirst({
+          where: {
+            userId: session.user.id,
+            role: 'ATTENDANT',
+            status: { in: ['AKTIF', 'ACTIVE'] }
+          },
+          select: {
+            storeId: true
+          }
+        });
+
+        if (storeUser && storeUser.storeId) {
+          storeId = storeUser.storeId;
+        } else {
+          return NextResponse.json({ error: 'Pelayan tidak dikaitkan dengan toko manapun' }, { status: 400 });
+        }
+      } else if (!storeId) {
+        return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
+      }
+      baseWhereClause.storeId = storeId;
     }
 
     const skip = (page - 1) * limit;
-
-    // Periksa apakah permintaan datang dari komponen pemilihan member untuk transaksi
-    // Parameter all sekarang diabaikan karena member HARUS terikat ke toko
-    // Tidak ada lagi fitur untuk menampilkan semua member tanpa memperhatikan toko
-    const memberUrl = new URL(request.url);
-    // showAll parameter tidak lagi digunakan untuk mencegah cross-store access
-    // const showAll = memberUrl.searchParams.get('all'); // Parameter untuk menampilkan semua member
-
-    let baseWhereClause = {
-      storeId: storeId, // Selalu filter berdasarkan toko yang terkait dengan pengguna
-    };
 
     const whereClause = search
       ? {
@@ -83,7 +97,7 @@ export async function GET(request) {
 export async function POST(request) {
   const session = await getServerSession(authOptions);
 
-  if (!session || !['CASHIER', 'ADMIN'].includes(session.user.role)) {
+  if (!session || !['CASHIER', 'ADMIN', 'ATTENDANT'].includes(session.user.role)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -118,7 +132,7 @@ export async function POST(request) {
       const storeUser = await prisma.storeUser.findFirst({
         where: {
           userId: session.user.id,
-          status: 'AKTIF',
+          status: { in: ['AKTIF', 'ACTIVE'] },
         },
         select: {
           storeId: true
@@ -229,8 +243,27 @@ export async function DELETE(request) {
 
     if (id) {
       // Dapatkan storeId dari sesi
-      const storeId = session.user.storeId;
-      if (!storeId) {
+      let storeId = session.user.storeId;
+
+      // Untuk role ATTENDANT, jika tidak ada storeId, coba dapatkan dari storeUser
+      if (!storeId && session.user.role === 'ATTENDANT') {
+        const storeUser = await prisma.storeUser.findFirst({
+          where: {
+            userId: session.user.id,
+            role: 'ATTENDANT',
+            status: { in: ['AKTIF', 'ACTIVE'] }
+          },
+          select: {
+            storeId: true
+          }
+        });
+
+        if (storeUser && storeUser.storeId) {
+          storeId = storeUser.storeId;
+        } else {
+          return NextResponse.json({ error: 'Pelayan tidak dikaitkan dengan toko manapun' }, { status: 400 });
+        }
+      } else if (!storeId) {
         return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
       }
 
@@ -264,8 +297,27 @@ export async function DELETE(request) {
       }
 
       // Dapatkan storeId dari sesi
-      const storeId = session.user.storeId;
-      if (!storeId) {
+      let storeId = session.user.storeId;
+
+      // Untuk role ATTENDANT, jika tidak ada storeId, coba dapatkan dari storeUser
+      if (!storeId && session.user.role === 'ATTENDANT') {
+        const storeUser = await prisma.storeUser.findFirst({
+          where: {
+            userId: session.user.id,
+            role: 'ATTENDANT',
+            status: { in: ['AKTIF', 'ACTIVE'] }
+          },
+          select: {
+            storeId: true
+          }
+        });
+
+        if (storeUser && storeUser.storeId) {
+          storeId = storeUser.storeId;
+        } else {
+          return NextResponse.json({ error: 'Pelayan tidak dikaitkan dengan toko manapun' }, { status: 400 });
+        }
+      } else if (!storeId) {
         return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
       }
 
@@ -317,8 +369,27 @@ export async function PUT(request) {
     }
 
     // Dapatkan storeId dari session
-    const storeId = session.user.storeId;
-    if (!storeId) {
+    let storeId = session.user.storeId;
+
+    // Untuk role ADMIN, jika tidak ada storeId, coba dapatkan dari storeUser
+    if (!storeId && session.user.role === 'ADMIN') {
+      const storeUser = await prisma.storeUser.findFirst({
+        where: {
+          userId: session.user.id,
+          role: 'ADMIN',
+          status: { in: ['AKTIF', 'ACTIVE'] }
+        },
+        select: {
+          storeId: true
+        }
+      });
+
+      if (storeUser && storeUser.storeId) {
+        storeId = storeUser.storeId;
+      } else {
+        return NextResponse.json({ error: 'Admin tidak dikaitkan dengan toko manapun' }, { status: 400 });
+      }
+    } else if (!storeId) {
       return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
     }
 

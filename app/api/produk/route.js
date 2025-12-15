@@ -43,8 +43,8 @@ const productUpdateSchema = productSchema.extend({
 // GET /api/produk - Get all products with pagination, search, and filtering
 export async function GET(request) {
   const session = await getSession();
-  // Allow both ADMIN and CASHIER roles to access products
-  if (!session || !['ADMIN', 'CASHIER'].includes(session.user.role)) {
+  // Allow ADMIN, CASHIER, and ATTENDANT roles to access products
+  if (!session || !['ADMIN', 'CASHIER', 'ATTENDANT'].includes(session.user.role)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -82,8 +82,33 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Parameter filter harus berupa angka' }, { status: 400 });
     }
 
+    // Ambil storeId dari session
+    let storeId = session.user.storeId;
+
+    // Untuk role ATTENDANT, jika tidak ada storeId, coba dapatkan dari storeUser
+    if (!storeId && session.user.role === 'ATTENDANT') {
+      const storeUser = await prisma.storeUser.findFirst({
+        where: {
+          userId: session.user.id,
+          role: 'ATTENDANT',
+          status: { in: ['AKTIF', 'ACTIVE'] }
+        },
+        select: {
+          storeId: true
+        }
+      });
+
+      if (storeUser && storeUser.storeId) {
+        storeId = storeUser.storeId;
+      } else {
+        return NextResponse.json({ error: 'Pelayan tidak dikaitkan dengan toko manapun' }, { status: 400 });
+      }
+    } else if (!storeId) {
+      return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
+    }
+
     // Buat cache key berdasarkan parameter
-    const cacheKey = `products:${session.user.storeId}:${page}:${limit}:${search}:${category}:${productCode}:${supplier}:${minStock}:${maxStock}:${minPrice}:${maxPrice}`;
+    const cacheKey = `products:${storeId}:${page}:${limit}:${search}:${category}:${productCode}:${supplier}:${minStock}:${maxStock}:${minPrice}:${maxPrice}`;
 
     // Coba ambil dari cache dulu
     const cachedData = await getFromCache(cacheKey);
@@ -94,7 +119,7 @@ export async function GET(request) {
     const offset = (page - 1) * limit;
 
     const where = {
-      storeId: session.user.storeId, // Filter by store ID
+      storeId: storeId, // Filter by store ID
       ...(productCode && { productCode: { equals: productCode } }),
       ...(category && { categoryId: category }),
       ...(supplier && { supplierId: supplier }),
@@ -217,6 +242,31 @@ export async function POST(request) {
     const validatedData = productSchema.parse(body);
     const { priceTiers, ...productData } = validatedData;
 
+    // Ambil storeId dari session
+    let storeId = session.user.storeId;
+
+    // Untuk role ADMIN, jika tidak ada storeId, coba dapatkan dari storeUser
+    if (!storeId && session.user.role === 'ADMIN') {
+      const storeUser = await prisma.storeUser.findFirst({
+        where: {
+          userId: session.user.id,
+          role: 'ADMIN',
+          status: { in: ['AKTIF', 'ACTIVE'] }
+        },
+        select: {
+          storeId: true
+        }
+      });
+
+      if (storeUser && storeUser.storeId) {
+        storeId = storeUser.storeId;
+      } else {
+        return NextResponse.json({ error: 'Admin tidak dikaitkan dengan toko manapun' }, { status: 400 });
+      }
+    } else if (!storeId) {
+      return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
+    }
+
     // Sanitasi dan validasi tambahan
     const sanitizedProductData = {
       ...productData,
@@ -229,7 +279,7 @@ export async function POST(request) {
       where: {
         productCode_storeId: {
           productCode: sanitizedProductData.productCode,
-          storeId: session.user.storeId
+          storeId: storeId
         }
       },
     });
@@ -248,7 +298,7 @@ export async function POST(request) {
       let defaultSupplier = await prisma.supplier.findFirst({
         where: {
           name: "Tidak Ada",
-          storeId: session.user.storeId
+          storeId: storeId
         }
       });
 
@@ -257,7 +307,7 @@ export async function POST(request) {
           data: {
             name: "Tidak Ada",
             code: "NO-SUP",
-            store: { connect: { id: session.user.storeId } }
+            store: { connect: { id: storeId } }
           }
         });
       }
@@ -268,7 +318,7 @@ export async function POST(request) {
       const product = await tx.product.create({
         data: {
           ...restProductData,
-          store: { connect: { id: session.user.storeId } },
+          store: { connect: { id: storeId } },
           category: { connect: { id: categoryId } },
           supplier: { connect: { id: finalSupplierId } },
         },
@@ -333,10 +383,35 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'ID produk mengandung karakter berbahaya' }, { status: 400 });
     }
 
+    // Ambil storeId dari session
+    let storeId = session.user.storeId;
+
+    // Untuk role ADMIN, jika tidak ada storeId, coba dapatkan dari storeUser
+    if (!storeId && session.user.role === 'ADMIN') {
+      const storeUser = await prisma.storeUser.findFirst({
+        where: {
+          userId: session.user.id,
+          role: 'ADMIN',
+          status: { in: ['AKTIF', 'ACTIVE'] }
+        },
+        select: {
+          storeId: true
+        }
+      });
+
+      if (storeUser && storeUser.storeId) {
+        storeId = storeUser.storeId;
+      } else {
+        return NextResponse.json({ error: 'Admin tidak dikaitkan dengan toko manapun' }, { status: 400 });
+      }
+    } else if (!storeId) {
+      return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
+    }
+
     const duplicateProduct = await prisma.product.findFirst({
       where: {
         productCode: productData.productCode,
-        storeId: session.user.storeId, // Tambahkan storeId ke kondisi pencarian
+        storeId: storeId, // Tambahkan storeId ke kondisi pencarian
         id: { not: id },
       },
     });
@@ -349,7 +424,7 @@ export async function PUT(request) {
     const existingProduct = await prisma.product.findUnique({
       where: {
         id,
-        storeId: session.user.storeId // Tambahkan storeId ke kondisi pencarian
+        storeId: storeId // Tambahkan storeId ke kondisi pencarian
       },
       include: {
         category: true,
@@ -379,7 +454,7 @@ export async function PUT(request) {
       let defaultSupplier = await prisma.supplier.findFirst({
         where: {
           name: "Tidak Ada",
-          storeId: session.user.storeId
+          storeId: storeId
         }
       });
 
@@ -388,7 +463,7 @@ export async function PUT(request) {
           data: {
             name: "Tidak Ada",
             code: "NO-SUP",
-            store: { connect: { id: session.user.storeId } }
+            store: { connect: { id: storeId } }
           }
         });
       }
@@ -399,11 +474,11 @@ export async function PUT(request) {
       const product = await tx.product.update({
         where: {
           id,
-          storeId: session.user.storeId // Tambahkan storeId ke kondisi update
+          storeId: storeId // Tambahkan storeId ke kondisi update
         },
         data: {
           ...restProductData,
-          store: { connect: { id: session.user.storeId } },
+          store: { connect: { id: storeId } },
           category: { connect: { id: categoryId } },
           supplier: { connect: { id: finalSupplierId } },
         },
@@ -496,11 +571,36 @@ export async function DELETE(request) {
       }
     }
 
+    // Ambil storeId dari session
+    let storeId = session.user.storeId;
+
+    // Untuk role ADMIN, jika tidak ada storeId, coba dapatkan dari storeUser
+    if (!storeId && session.user.role === 'ADMIN') {
+      const storeUser = await prisma.storeUser.findFirst({
+        where: {
+          userId: session.user.id,
+          role: 'ADMIN',
+          status: { in: ['AKTIF', 'ACTIVE'] }
+        },
+        select: {
+          storeId: true
+        }
+      });
+
+      if (storeUser && storeUser.storeId) {
+        storeId = storeUser.storeId;
+      } else {
+        return NextResponse.json({ error: 'Admin tidak dikaitkan dengan toko manapun' }, { status: 400 });
+      }
+    } else if (!storeId) {
+      return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
+    }
+
     // Pastikan produk yang akan dihapus milik toko yang sesuai
     const productsWithSales = await prisma.saleDetail.count({
       where: {
         productId: { in: idsToDelete },
-        product: { storeId: session.user.storeId } // Tambahkan filter storeId
+        product: { storeId: storeId } // Tambahkan filter storeId
       },
     });
 
@@ -515,7 +615,7 @@ export async function DELETE(request) {
     const deletedProducts = await prisma.product.findMany({
       where: {
         id: { in: idsToDelete },
-        storeId: session.user.storeId // Tambahkan filter storeId
+        storeId: storeId // Tambahkan filter storeId
       },
       include: {
         category: true,

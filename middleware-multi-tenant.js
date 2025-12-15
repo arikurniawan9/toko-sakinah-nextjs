@@ -90,7 +90,16 @@ function authMiddleware(req) {
         // Kecualikan halaman admin untuk admin toko yang seharusnya bisa mengakses dashboard
         if (pathname.startsWith('/admin') && token.role === ROLES.ADMIN) {
           // Admin toko akan diarahkan ke dashboard admin toko masing-masing
-        } else {
+        }
+        // Kecualikan juga halaman pelayan untuk pelayan yang seharusnya bisa mengakses dashboard pelayan
+        else if (pathname.startsWith('/pelayan') && token.role === ROLES.ATTENDANT) {
+          // Pelayan akan diarahkan ke dashboard pelayan toko masing-masing
+        }
+        // Kecualikan juga halaman kasir untuk kasir yang seharusnya bisa mengakses dashboard kasir
+        else if (pathname.startsWith('/kasir') && token.role === ROLES.CASHIER) {
+          // Kasir akan diarahkan ke dashboard kasir toko masing-masing
+        }
+        else {
           // Jika user belum memiliki akses ke toko, arahkan ke halaman unauthorized
           // untuk mencegah loop redirect yang terjadi jika langsung mengarah ke dashboard
           if (!pathname.startsWith('/api/')) { // Hanya untuk halaman UI, bukan API

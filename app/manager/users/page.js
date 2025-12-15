@@ -18,7 +18,7 @@ export default function ManagerAllUsersManagement() {
   const { data: session } = useSession();
   const canManageUsers = session?.user?.role === 'MANAGER';
 
-  // Fetch all users using the manager-specific API endpoint
+  // Fetch all users with their associated stores using the manager-specific API endpoint
   const {
     users,
     loading,
@@ -39,9 +39,9 @@ export default function ManagerAllUsersManagement() {
     handleStatusFilter,
     clearFilters,
     hasActiveFilters
-  } = useUserTable('', '/api/manager/users');
+  } = useUserTable('', '/api/manager/users-with-stores');
 
-  // When creating a user, it will use the manager API
+  // When creating/editing a user, it will use the original manager API endpoint
   const {
     showModal,
     editingUser,
@@ -151,6 +151,31 @@ export default function ManagerAllUsersManagement() {
       )
     },
     {
+      key: 'stores',
+      title: 'Toko Terkait',
+      render: (value, row) => (
+        <div className="max-w-xs">
+          {row.stores && row.stores.length > 0 ? (
+            <div className="space-y-1">
+              {row.stores.map((store, index) => (
+                <div key={index} className="text-xs">
+                  <span className="font-medium">{store.name}</span>
+                  <span className="ml-2 px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-[0.6rem]">
+                    {store.roleInStore}
+                  </span>
+                  <span className="ml-1 text-gray-500 dark:text-gray-400">
+                    ({store.status})
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <span className="text-gray-500 dark:text-gray-400 italic">Tidak ada toko</span>
+          )}
+        </div>
+      )
+    },
+    {
       key: 'status',
       title: 'Status',
       sortable: true,
@@ -214,7 +239,7 @@ export default function ManagerAllUsersManagement() {
           darkMode={darkMode}
           showAdd={canManageUsers}
           pagination={paginationData}
-          mobileColumns={['name', 'role', 'status']}
+          mobileColumns={['name', 'role', 'stores', 'status']}
           rowActions={renderRowActions}
         />
       </div>
