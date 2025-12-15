@@ -26,6 +26,7 @@ export const PelayanStateProvider = ({ children }) => {
   const [tempCart, setTempCart] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [defaultCustomer, setDefaultCustomer] = useState(null);
+  const [quickProducts, setQuickProducts] = useState([]);
   
   const [isInitialLoading, setIsInitialLoading] = useState(false);
   const [isSearchingProducts, setIsSearchingProducts] = useState(false);
@@ -58,6 +59,47 @@ export const PelayanStateProvider = ({ children }) => {
       setProducts([]);
     } finally {
       setIsSearchingProducts(false);
+    }
+  }, [showNotification]);
+
+  // Fetch products by category
+  const fetchProductsByCategory = useCallback(async (categoryId) => {
+    setIsSearchingProducts(true);
+    try {
+      setError(null);
+      const url = `/api/produk?categoryId=${encodeURIComponent(categoryId)}`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Gagal memuat produk berdasarkan kategori.');
+      }
+      const data = await response.json();
+      if (data.error) throw new Error(data.error);
+      const transformedProducts = transformProductsForDisplay(data.products);
+      setProducts(transformedProducts);
+    } catch (err) {
+      setError(`Tidak dapat mengambil data produk berdasarkan kategori: ${err.message}`);
+      showNotification(err.message, 'error');
+      setProducts([]);
+    } finally {
+      setIsSearchingProducts(false);
+    }
+  }, [showNotification]);
+
+  // Fetch all categories
+  const fetchCategories = useCallback(async () => {
+    try {
+      const response = await fetch('/api/kategori');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Gagal memuat kategori.');
+      }
+      const data = await response.json();
+      if (data.error) throw new Error(data.error);
+      return data.categories || [];
+    } catch (err) {
+      showNotification(`Tidak dapat mengambil data kategori: ${err.message}`, 'error');
+      return [];
     }
   }, [showNotification]);
 
@@ -118,7 +160,7 @@ export const PelayanStateProvider = ({ children }) => {
   }, [showNotification]);
 
   // Cart Management
-  const addToTempCart = useCallback((product) => {
+  const addToTempCart = useCallback((product, note = '') => {
     if (!product || !product.id) {
       showNotification('Produk tidak valid.', 'error');
       return;
@@ -138,10 +180,30 @@ export const PelayanStateProvider = ({ children }) => {
           item.productId === product.id ? { ...item, quantity: item.quantity + 1 } : item
         );
       }
-      return [ ...prevCart, { productId: product.id, name: product.name, price: product.sellingPrice || 0, quantity: 1, image: product.image, stock: product.stock } ];
+      return [
+        ...prevCart,
+        {
+          productId: product.id,
+          name: product.name,
+          price: product.sellingPrice || 0,
+          quantity: 1,
+          image: product.image,
+          stock: product.stock,
+          note: note // Tambahkan catatan
+        }
+      ];
     });
     showNotification(`${product.name} ditambahkan ke keranjang.`, 'info');
   }, [showNotification]);
+
+  // Fungsi untuk menambahkan catatan ke item di keranjang
+  const addNoteToCartItem = useCallback((productId, note) => {
+    setTempCart(prevCart => {
+      return prevCart.map(item =>
+        item.productId === productId ? { ...item, note } : item
+      );
+    });
+  }, []);
 
   const removeFromTempCart = (productId) => {
     setTempCart(prevCart => prevCart.filter(item => item.productId !== productId));
@@ -207,6 +269,49 @@ export const PelayanStateProvider = ({ children }) => {
     }
   }, [tempCart, session, selectedCustomer, defaultCustomer, showNotification]);
 
+  // Quick Products Management
+  const addQuickProduct = useCallback((product) => {
+    setQuickProducts(prev => {
+      // Jangan tambahkan produk yang sudah ada
+      if (prev.some(p => p.id === product.id)) {
+        return prev;
+      }
+      // Batasi jumlah produk quick add (misalnya 10 produk)
+      const newProducts = [...prev, product];
+      return newProducts.length > 10 ? newProducts.slice(0, 10) : newProducts;
+    });
+  }, []);
+
+  const removeQuickProduct = useCallback((productId) => {
+    setQuickProducts(prev => prev.filter(p => p.id !== productId));
+  }, []);
+
+  const loadQuickProducts = useCallback(() => {
+    if (session?.user?.id) {
+      // Ambil dari localStorage atau API berdasarkan ID pengguna
+      const savedProducts = localStorage.getItem(`quickProducts_${session.user.id}`);
+      if (savedProducts) {
+        setQuickProducts(JSON.parse(savedProducts));
+      }
+    }
+  }, [session]);
+
+  const saveQuickProducts = useCallback(() => {
+    if (session?.user?.id) {
+      localStorage.setItem(`quickProducts_${session.user.id}`, JSON.stringify(quickProducts));
+    }
+  }, [quickProducts, session]);
+
+  // Muat quick products saat komponen dimount
+  useEffect(() => {
+    loadQuickProducts();
+  }, [loadQuickProducts]);
+
+  // Simpan quick products saat ada perubahan
+  useEffect(() => {
+    saveQuickProducts();
+  }, [saveQuickProducts]);
+
   const value = {
     products,
     customers,
@@ -214,6 +319,7 @@ export const PelayanStateProvider = ({ children }) => {
     selectedCustomer,
     setSelectedCustomer,
     defaultCustomer,
+    quickProducts,
     isInitialLoading,
     isSearchingProducts,
     isSearchingCustomers,
@@ -221,6 +327,8 @@ export const PelayanStateProvider = ({ children }) => {
     error,
     setError,
     fetchProducts,
+    fetchProductsByCategory,
+    fetchCategories,
     searchCustomers,
     fetchDefaultCustomer,
     addToTempCart,
@@ -228,6 +336,9 @@ export const PelayanStateProvider = ({ children }) => {
     updateQuantity,
     handleClearCart,
     sendToCashier,
+    addQuickProduct,
+    removeQuickProduct,
+    addNoteToCartItem,
   };
 
   return (

@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import ProtectedRoute from '../../components/ProtectedRoute';
-import { Search, ShoppingCart, Users, Send, Camera, Sun, Moon, LogOut, AlertCircle, Trash2, X, History, Bell } from 'lucide-react';
+import { Search, ShoppingCart, Users, Send, Camera, Sun, Moon, LogOut, AlertCircle, Trash2, X, History, Bell, Package, TrendingUp, ShoppingCartIcon, User, Star, Edit3 } from 'lucide-react';
 import BarcodeScanner from '../../components/BarcodeScanner';
 import { useNotification } from '../../components/notifications/NotificationProvider';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -14,13 +14,33 @@ import { usePelayanState } from '../../components/pelayan/PelayanStateContext';
 import PelayanHistory from '../../components/pelayan/PelayanHistory';
 import PelayanNotifications from '../../components/pelayan/PelayanNotifications';
 import AttendantMemberSelection from '../../components/pelayan/AttendantMemberSelection';
+import QuickAddPanel from '../../components/pelayan/QuickAddPanel';
+import AttendantStats from '../../components/pelayan/AttendantStats';
+import CartItemNoteModal from '../../components/pelayan/CartItemNoteModal';
 
 // Komponen untuk satu produk - menggunakan memo untuk mencegah rendering ulang yang tidak perlu
-const ProductItem = ({ product, isOutOfStock, addToCart, darkMode }) => {
+const ProductItem = ({ product, isOutOfStock, addToCart, addQuickProduct, removeQuickProduct, quickProducts, darkMode }) => {
   const productName = product.name || 'Produk tidak dikenal';
   const productCode = product.productCode || 'Tidak ada kode';
   const productSellingPrice = product.sellingPrice || 0;
   const productStock = product.stock || 0;
+
+  const handleQuickToggle = (e) => {
+    e.stopPropagation(); // Mencegah klik ke parent (menambahkan ke keranjang)
+    const exists = quickProducts.some(p => p.id === product.id);
+    if (exists) {
+      removeQuickProduct(product.id);
+    } else {
+      addQuickProduct(product);
+    }
+  };
+
+  const handleAddToCart = (e) => {
+    e.stopPropagation(); // Mencegah event propagasi ke parent
+    addToCart(product);
+  };
+
+  const isQuick = quickProducts.some(p => p.id === product.id);
 
   return (
     <div
@@ -43,18 +63,44 @@ const ProductItem = ({ product, isOutOfStock, addToCart, darkMode }) => {
         <div className="font-medium text-gray-900 dark:text-white truncate">{productName}</div>
         <div className="text-sm text-gray-600 dark:text-gray-300">Kode: {productCode}</div>
       </div>
-      <div className="text-right">
+      <div className="flex flex-col items-end">
         <div className="font-semibold text-pastel-purple-600 dark:text-pastel-purple-400">
           Rp {productSellingPrice.toLocaleString('id-ID')}
         </div>
         <div className="text-xs text-gray-500 dark:text-gray-400">Stok: {productStock}</div>
+        <div className="flex space-x-2 mt-1">
+          <button
+            className={`p-1 rounded-full ${
+              isQuick
+                ? (darkMode ? 'bg-yellow-500/20' : 'bg-yellow-100')
+                : (darkMode ? 'hover:bg-gray-600' : 'hover:bg-gray-200')
+            }`}
+            onClick={handleQuickToggle}
+            title={isQuick ? "Hapus dari produk cepat" : "Tambah ke produk cepat"}
+          >
+            {isQuick ? (
+              <Star className={`h-4 w-4 ${darkMode ? 'text-yellow-400' : 'text-yellow-500'}`} fill="currentColor" />
+            ) : (
+              <Star className={`h-4 w-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+            )}
+          </button>
+          <button
+            className={`p-1 rounded-full ${
+              darkMode ? 'hover:bg-gray-600' : 'hover:bg-gray-200'
+            }`}
+            onClick={handleAddToCart}
+            title="Tambah langsung ke keranjang"
+          >
+            <ShoppingCart className={`h-4 w-4 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+          </button>
+        </div>
       </div>
     </div>
   );
 };
 
 // Komponen untuk satu item di keranjang - menggunakan memo untuk mencegah rendering ulang yang tidak perlu
-const CartItem = ({ item, updateQuantity, removeFromCart, darkMode }) => {
+const CartItem = ({ item, updateQuantity, removeFromCart, darkMode, onEditNote }) => {
   const itemPrice = item.price || 0;
   const itemQuantity = item.quantity || 0;
   const itemSubtotal = itemPrice * itemQuantity;
@@ -65,11 +111,26 @@ const CartItem = ({ item, updateQuantity, removeFromCart, darkMode }) => {
         <div className="flex-1 min-w-0">
           <div className="text-sm font-medium text-gray-900 dark:text-white truncate">{item.name || 'Produk tidak dikenal'}</div>
           <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{itemQuantity} x Rp {itemPrice.toLocaleString('id-ID')}</div>
+          {item.note && (
+            <div className={`text-xs mt-1 p-2 rounded flex items-start ${
+              darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
+            }`}>
+              <span className="font-medium mr-2">Catatan:</span>
+              <span className="truncate">{item.note}</span>
+            </div>
+          )}
         </div>
         <div className="flex items-center space-x-2 ml-2">
           <button onClick={() => updateQuantity(item.productId, itemQuantity - 1)} className="w-6 h-6 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700">-</button>
           <span className="text-sm dark:text-white min-w-[20px] text-center">{itemQuantity}</span>
           <button onClick={() => updateQuantity(item.productId, itemQuantity + 1)} className="w-6 h-6 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700">+</button>
+          <button
+            onClick={() => onEditNote(item)}
+            className="ml-2 text-blue-500"
+            title="Tambah/Edit catatan"
+          >
+            <Edit3 className="h-4 w-4" />
+          </button>
           <button onClick={() => removeFromCart(item.productId)} className="ml-2 text-red-500" title="Hapus item dari keranjang">
             <Trash2 className="h-4 w-4" />
           </button>
@@ -95,6 +156,8 @@ export default function AttendantDashboard() {
   const [note, setNote] = useState('');
   const [activeTab, setActiveTab] = useState('cart'); // 'cart' or 'history'
   const [darkMode, setDarkMode] = useState(false);
+  const [showCartItemNoteModal, setShowCartItemNoteModal] = useState(false);
+  const [currentCartItem, setCurrentCartItem] = useState(null);
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
@@ -105,12 +168,15 @@ export default function AttendantDashboard() {
     selectedCustomer,
     setSelectedCustomer,
     defaultCustomer,
+    quickProducts,
     isInitialLoading,
     isSearchingProducts,
     isSubmitting,
     error,
     setError,
     fetchProducts,
+    fetchProductsByCategory,
+    fetchCategories,
     fetchDefaultCustomer,
     addToTempCart,
     removeFromTempCart,
@@ -118,6 +184,9 @@ export default function AttendantDashboard() {
     handleClearCart: clearCartFromContext,
     sendToCashier,
     searchCustomers,
+    addQuickProduct,
+    removeQuickProduct,
+    addNoteToCartItem,
   } = usePelayanState();
 
   // Memoisasi total belanja di keranjang
@@ -256,6 +325,110 @@ export default function AttendantDashboard() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
+              <AttendantStats
+                attendantId={session?.user?.id}
+                darkMode={darkMode}
+              />
+
+              {/* Statistik Langsung Keranjang */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className={`p-4 rounded-lg shadow ${
+                  darkMode ? 'bg-gray-800' : 'bg-white'
+                }`}>
+                  <div className="flex items-center">
+                    <div className={`p-3 rounded-full ${
+                      darkMode ? 'bg-purple-900/30' : 'bg-purple-100'
+                    }`}>
+                      <ShoppingCartIcon className="h-6 w-6 text-pastel-purple-600" />
+                    </div>
+                    <div className="ml-4">
+                      <p className={`text-sm ${
+                        darkMode ? 'text-gray-400' : 'text-gray-600'
+                      }`}>Item Keranjang</p>
+                      <p className={`text-xl font-bold ${
+                        darkMode ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        {tempCart.length}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={`p-4 rounded-lg shadow ${
+                  darkMode ? 'bg-gray-800' : 'bg-white'
+                }`}>
+                  <div className="flex items-center">
+                    <div className={`p-3 rounded-full ${
+                      darkMode ? 'bg-blue-900/30' : 'bg-blue-100'
+                    }`}>
+                      <Package className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <div className="ml-4">
+                      <p className={`text-sm ${
+                        darkMode ? 'text-gray-400' : 'text-gray-600'
+                      }`}>Total Item</p>
+                      <p className={`text-xl font-bold ${
+                        darkMode ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        {tempCart.reduce((total, item) => total + item.quantity, 0)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={`p-4 rounded-lg shadow ${
+                  darkMode ? 'bg-gray-800' : 'bg-white'
+                }`}>
+                  <div className="flex items-center">
+                    <div className={`p-3 rounded-full ${
+                      darkMode ? 'bg-green-900/30' : 'bg-green-100'
+                    }`}>
+                      <TrendingUp className="h-6 w-6 text-green-600" />
+                    </div>
+                    <div className="ml-4">
+                      <p className={`text-sm ${
+                        darkMode ? 'text-gray-400' : 'text-gray-600'
+                      }`}>Total</p>
+                      <p className={`text-xl font-bold ${
+                        darkMode ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        Rp {cartTotal.toLocaleString('id-ID')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={`p-4 rounded-lg shadow ${
+                  darkMode ? 'bg-gray-800' : 'bg-white'
+                }`}>
+                  <div className="flex items-center">
+                    <div className={`p-3 rounded-full ${
+                      darkMode ? 'bg-yellow-900/30' : 'bg-yellow-100'
+                    }`}>
+                      <User className="h-6 w-6 text-yellow-600" />
+                    </div>
+                    <div className="ml-4">
+                      <p className={`text-sm ${
+                        darkMode ? 'text-gray-400' : 'text-gray-600'
+                      }`}>Pelanggan</p>
+                      <p className={`text-xl font-bold ${
+                        darkMode ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        {selectedCustomer ? selectedCustomer.name.split(' ')[0] : 'UMUM'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <QuickAddPanel
+                addToCart={addToTempCart}
+                quickProducts={quickProducts}
+                addQuickProduct={addQuickProduct}
+                removeQuickProduct={removeQuickProduct}
+                darkMode={darkMode}
+              />
+
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
                 <div className="relative">
                   <input
@@ -288,6 +461,9 @@ export default function AttendantDashboard() {
                           product={product}
                           isOutOfStock={isOutOfStock}
                           addToCart={addToTempCart}
+                          addQuickProduct={addQuickProduct}
+                          removeQuickProduct={removeQuickProduct}
+                          quickProducts={quickProducts}
                           darkMode={darkMode}
                         />
                       );
@@ -370,6 +546,10 @@ export default function AttendantDashboard() {
                                 item={item}
                                 updateQuantity={updateQuantity}
                                 removeFromCart={removeFromTempCart}
+                                onEditNote={(item) => {
+                                  setCurrentCartItem(item);
+                                  setShowCartItemNoteModal(true);
+                                }}
                                 darkMode={darkMode}
                               />
                             ))}
@@ -484,6 +664,14 @@ export default function AttendantDashboard() {
             confirmText="Ya, Hapus"
             cancelText="Batal"
             variant="danger"
+        />
+
+        <CartItemNoteModal
+          isOpen={showCartItemNoteModal}
+          onClose={() => setShowCartItemNoteModal(false)}
+          onSave={addNoteToCartItem}
+          item={currentCartItem}
+          darkMode={darkMode}
         />
       </div>
     </ProtectedRoute>
