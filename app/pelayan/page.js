@@ -4,13 +4,13 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import ProtectedRoute from '../../components/ProtectedRoute';
-import { Search, ShoppingCart, Users, Send, Camera, Sun, Moon, LogOut, AlertCircle, Trash2, X, History, Bell, Package, TrendingUp, ShoppingCartIcon, User, Star, Edit3 } from 'lucide-react';
+import { Search, ShoppingCart, Users, Send, Camera, Sun, Moon, LogOut, AlertCircle, Trash2, X, History, Bell, Package, TrendingUp, ShoppingCartIcon, User, Star, Edit3, BarChart3 } from 'lucide-react';
 import BarcodeScanner from '../../components/BarcodeScanner';
 import { useNotification } from '../../components/notifications/NotificationProvider';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import { useDebounce } from '../../lib/hooks/useDebounce';
-import { usePelayanState } from '../../components/pelayan/PelayanStateContext';
+import { usePelayanState, default as PelayanStateProvider } from '../../components/pelayan/PelayanStateProvider';
 import PelayanHistory from '../../components/pelayan/PelayanHistory';
 import PelayanNotifications from '../../components/pelayan/PelayanNotifications';
 import AttendantMemberSelection from '../../components/pelayan/AttendantMemberSelection';
@@ -143,7 +143,7 @@ const CartItem = ({ item, updateQuantity, removeFromCart, darkMode, onEditNote }
   );
 };
 
-export default function AttendantDashboard() {
+function AttendantDashboard() {
   const { data: session, status } = useSession();
   
   // Local UI state
@@ -325,109 +325,113 @@ export default function AttendantDashboard() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
-              <AttendantStats
-                attendantId={session?.user?.id}
-                darkMode={darkMode}
-              />
-
               {/* Statistik Langsung Keranjang */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className={`p-4 rounded-lg shadow ${
+                <div className={`p-3 rounded-lg shadow ${
                   darkMode ? 'bg-gray-800' : 'bg-white'
                 }`}>
-                  <div className="flex items-center">
-                    <div className={`p-3 rounded-full ${
-                      darkMode ? 'bg-purple-900/30' : 'bg-purple-100'
-                    }`}>
-                      <ShoppingCartIcon className="h-6 w-6 text-pastel-purple-600" />
-                    </div>
-                    <div className="ml-4">
-                      <p className={`text-sm ${
-                        darkMode ? 'text-gray-400' : 'text-gray-600'
-                      }`}>Item Keranjang</p>
-                      <p className={`text-xl font-bold ${
-                        darkMode ? 'text-white' : 'text-gray-900'
-                      }`}>
-                        {tempCart.length}
-                      </p>
-                    </div>
-                  </div>
+                  <p className={`text-xs ${
+                    darkMode ? 'text-gray-400' : 'text-gray-600'
+                  }`}>Item</p>
+                  <p className={`text-lg font-bold ${
+                    darkMode ? 'text-white' : 'text-gray-900'
+                  }`}>
+                    {tempCart.length}
+                  </p>
                 </div>
 
-                <div className={`p-4 rounded-lg shadow ${
+                <div className={`p-3 rounded-lg shadow ${
                   darkMode ? 'bg-gray-800' : 'bg-white'
                 }`}>
-                  <div className="flex items-center">
-                    <div className={`p-3 rounded-full ${
-                      darkMode ? 'bg-blue-900/30' : 'bg-blue-100'
-                    }`}>
-                      <Package className="h-6 w-6 text-blue-600" />
-                    </div>
-                    <div className="ml-4">
-                      <p className={`text-sm ${
-                        darkMode ? 'text-gray-400' : 'text-gray-600'
-                      }`}>Total Item</p>
-                      <p className={`text-xl font-bold ${
-                        darkMode ? 'text-white' : 'text-gray-900'
-                      }`}>
-                        {tempCart.reduce((total, item) => total + item.quantity, 0)}
-                      </p>
-                    </div>
-                  </div>
+                  <p className={`text-xs ${
+                    darkMode ? 'text-gray-400' : 'text-gray-600'
+                  }`}>Jumlah</p>
+                  <p className={`text-lg font-bold ${
+                    darkMode ? 'text-white' : 'text-gray-900'
+                  }`}>
+                    {tempCart.reduce((total, item) => total + item.quantity, 0)}
+                  </p>
                 </div>
 
-                <div className={`p-4 rounded-lg shadow ${
+                <div className={`p-3 rounded-lg shadow ${
                   darkMode ? 'bg-gray-800' : 'bg-white'
                 }`}>
-                  <div className="flex items-center">
-                    <div className={`p-3 rounded-full ${
-                      darkMode ? 'bg-green-900/30' : 'bg-green-100'
-                    }`}>
-                      <TrendingUp className="h-6 w-6 text-green-600" />
-                    </div>
-                    <div className="ml-4">
-                      <p className={`text-sm ${
-                        darkMode ? 'text-gray-400' : 'text-gray-600'
-                      }`}>Total</p>
-                      <p className={`text-xl font-bold ${
-                        darkMode ? 'text-white' : 'text-gray-900'
-                      }`}>
-                        Rp {cartTotal.toLocaleString('id-ID')}
-                      </p>
-                    </div>
-                  </div>
+                  <p className={`text-xs ${
+                    darkMode ? 'text-gray-400' : 'text-gray-600'
+                  }`}>Total</p>
+                  <p className={`text-lg font-bold ${
+                    darkMode ? 'text-white' : 'text-gray-900'
+                  }`}>
+                    Rp {cartTotal.toLocaleString('id-ID')}
+                  </p>
                 </div>
 
-                <div className={`p-4 rounded-lg shadow ${
+                <div className={`p-3 rounded-lg shadow ${
                   darkMode ? 'bg-gray-800' : 'bg-white'
                 }`}>
-                  <div className="flex items-center">
-                    <div className={`p-3 rounded-full ${
-                      darkMode ? 'bg-yellow-900/30' : 'bg-yellow-100'
-                    }`}>
-                      <User className="h-6 w-6 text-yellow-600" />
-                    </div>
-                    <div className="ml-4">
-                      <p className={`text-sm ${
-                        darkMode ? 'text-gray-400' : 'text-gray-600'
-                      }`}>Pelanggan</p>
-                      <p className={`text-xl font-bold ${
-                        darkMode ? 'text-white' : 'text-gray-900'
-                      }`}>
-                        {selectedCustomer ? selectedCustomer.name.split(' ')[0] : 'UMUM'}
-                      </p>
-                    </div>
-                  </div>
+                  <p className={`text-xs ${
+                    darkMode ? 'text-gray-400' : 'text-gray-600'
+                  }`}>Pelanggan</p>
+                  <p className={`text-lg font-bold truncate ${
+                    darkMode ? 'text-white' : 'text-gray-900'
+                  }`}>
+                    {selectedCustomer ? selectedCustomer.name.split(' ')[0] : 'UMUM'}
+                  </p>
                 </div>
               </div>
 
-              <QuickAddPanel
-                addToCart={addToTempCart}
-                quickProducts={quickProducts}
-                addQuickProduct={addQuickProduct}
-                removeQuickProduct={removeQuickProduct}
-                darkMode={darkMode}
-              />
+              {/* Tombol untuk navigasi ke halaman produk cepat dan statistik */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <button
+                  onClick={() => window.location.href = '/pelayan/produk-cepat'}
+                  className={`p-4 rounded-lg shadow flex items-center justify-center ${
+                    darkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="text-center">
+                    <div className={`p-3 rounded-full ${
+                      darkMode ? 'bg-blue-900/30' : 'bg-blue-100'
+                    } inline-block`}>
+                      <Package className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <p className={`mt-2 font-medium ${
+                      darkMode ? 'text-white' : 'text-gray-900'
+                    }`}>
+                      Produk Cepat
+                    </p>
+                    <p className={`text-sm ${
+                      darkMode ? 'text-gray-400' : 'text-gray-500'
+                    }`}>
+                      {quickProducts.length} produk
+                    </p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => window.location.href = '/pelayan/statistik'}
+                  className={`p-4 rounded-lg shadow flex items-center justify-center ${
+                    darkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="text-center">
+                    <div className={`p-3 rounded-full ${
+                      darkMode ? 'bg-purple-900/30' : 'bg-purple-100'
+                    } inline-block`}>
+                      <BarChart3 className="h-6 w-6 text-purple-600" />
+                    </div>
+                    <p className={`mt-2 font-medium ${
+                      darkMode ? 'text-white' : 'text-gray-900'
+                    }`}>
+                      Statistik Saya
+                    </p>
+                    <p className={`text-sm ${
+                      darkMode ? 'text-gray-400' : 'text-gray-500'
+                    }`}>
+                      Lihat kinerja
+                    </p>
+                  </div>
+                </button>
+              </div>
 
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
                 <div className="relative">
@@ -677,3 +681,14 @@ export default function AttendantDashboard() {
     </ProtectedRoute>
   );
 }
+
+// Wrapper component untuk menyediakan state pelayan
+function AttendantPageWrapper() {
+  return (
+    <PelayanStateProvider>
+      <AttendantDashboard />
+    </PelayanStateProvider>
+  );
+}
+
+export default AttendantPageWrapper;

@@ -22,12 +22,10 @@ export function Providers({ children }) {
           <UserThemeProvider>
             <NotificationProvider>
               <SessionProvider>
-                <PelayanStateProvider>
-                  <AutoLogoutProvider>
-                    <ShopNameUpdater />
-                    {children}
-                  </AutoLogoutProvider>
-                </PelayanStateProvider>
+                <AutoLogoutProvider>
+                  <ShopNameUpdater />
+                  {children}
+                </AutoLogoutProvider>
               </SessionProvider>
             </NotificationProvider>
           </UserThemeProvider>
