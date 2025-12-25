@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Save, X, User, AtSign, Lock, Mail, Building, Shield, Phone, Home } from 'lucide-react';
 import { ROLES } from '@/lib/constants';
 
@@ -17,6 +17,22 @@ const UserModal = ({
   stores = [],
 }) => {
   const [showPassword, setShowPassword] = useState(false);
+
+  // Handle ESC key press to close modal
+  useEffect(() => {
+    if (!showModal) return;
+
+    const handleEscKey = (event) => {
+      if (event.key === 'Escape') {
+        closeModal();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [showModal, closeModal]);
 
   if (!showModal) return null;
 

@@ -92,7 +92,7 @@ const DistributionReceipt = forwardRef(({ distributionData }, ref) => {
             return (
               <div key={index} className="flex justify-between text-xs print:text-xs">
                 <div className="flex-1">
-                  <div>{item.product?.name || item.productName || 'Produk Tidak Dikenal'}</div>
+                  <div>{item.product?.name || item.productName || item.name || 'Produk Tidak Dikenal'}</div>
                   <div className="text-gray-500 dark:text-gray-400 print:text-gray-600">
                     {item.product?.productCode || item.productCode || 'N/A'}
                   </div>

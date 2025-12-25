@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Save, X } from 'lucide-react';
 
 const CategoryModal = ({
@@ -12,6 +12,22 @@ const CategoryModal = ({
   setFormError,
   darkMode,
 }) => {
+  // Handle ESC key press to close modal
+  useEffect(() => {
+    if (!showModal) return;
+
+    const handleEscKey = (event) => {
+      if (event.key === 'Escape') {
+        closeModal();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [showModal, closeModal]);
+
   if (!showModal) return null;
 
   const handleOverlayClick = (e) => {

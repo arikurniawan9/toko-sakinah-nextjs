@@ -48,7 +48,12 @@ export async function PUT(request) {
         },
       },
       include: {
-        product: true,
+        product: {
+          include: {
+            supplier: true,
+            category: true,
+          }
+        },
       }
     });
 
@@ -70,11 +75,38 @@ export async function PUT(request) {
           },
         });
 
+        // First, ensure the supplier exists in the target store (create if doesn't exist)
+        const supplierInStore = await tx.supplier.findFirst({
+          where: {
+            code: distribution.product.supplier.code, // Use supplier code to identify
+            storeId: session.user.storeId
+          }
+        });
+
+        let targetSupplierId = supplierInStore?.id;
+        if (!supplierInStore) {
+          // Create the supplier in the target store
+          const newSupplier = await tx.supplier.create({
+            data: {
+              storeId: session.user.storeId,
+              code: distribution.product.supplier.code,
+              name: distribution.product.supplier.name,
+              contactPerson: distribution.product.supplier.contactPerson,
+              address: distribution.product.supplier.address,
+              phone: distribution.product.supplier.phone,
+              email: distribution.product.supplier.email,
+            }
+          });
+          targetSupplierId = newSupplier.id;
+        } else {
+          targetSupplierId = supplierInStore.id;
+        }
+
         // Create a purchase record for the store to represent this accepted product in the batch
         await tx.purchase.create({
           data: {
             storeId: session.user.storeId,
-            supplierId: distribution.product.supplierId,
+            supplierId: targetSupplierId,
             userId: session.user.id,
             purchaseDate: new Date(distribution.distributedAt),
             totalAmount: distribution.totalAmount,
@@ -91,16 +123,68 @@ export async function PUT(request) {
           },
         });
 
-        // Update product stock in the store
-        await tx.product.update({
+        // First, ensure the category exists in the target store (create if doesn't exist)
+        const categoryInStore = await tx.category.findFirst({
           where: {
-            id: distribution.productId,
+            name: distribution.product.category.name, // Use category name to identify
             storeId: session.user.storeId
+          }
+        });
+
+        let targetCategoryId = categoryInStore?.id;
+        if (!categoryInStore) {
+          // Create the category in the target store
+          const newCategory = await tx.category.create({
+            data: {
+              storeId: session.user.storeId,
+              name: distribution.product.category.name,
+              description: distribution.product.category.description,
+            }
+          });
+          targetCategoryId = newCategory.id;
+        } else {
+          targetCategoryId = categoryInStore.id;
+        }
+
+        // Update product stock in the store using upsert to handle cases where product doesn't exist yet
+        await tx.product.upsert({
+          where: {
+            productCode_storeId: {
+              productCode: distribution.product.productCode,
+              storeId: session.user.storeId
+            }
           },
-          data: {
+          update: {
             stock: {
               increment: distribution.quantity
-            }
+            },
+            // Update other product fields if needed
+            name: distribution.product.name,
+            description: distribution.product.description,
+            purchasePrice: distribution.product.purchasePrice,
+            retailPrice: distribution.product.retailPrice,
+            silverPrice: distribution.product.silverPrice,
+            goldPrice: distribution.product.goldPrice,
+            platinumPrice: distribution.product.platinumPrice,
+            categoryId: targetCategoryId,
+            supplierId: targetSupplierId,
+          },
+          create: {
+            // Create new product record for this store
+            // Use the productCode and storeId as the unique identifier instead of sharing IDs
+            storeId: session.user.storeId,
+            categoryId: targetCategoryId,
+            name: distribution.product.name,
+            productCode: distribution.product.productCode,
+            stock: distribution.quantity, // Set initial stock to the distributed quantity
+            purchasePrice: distribution.product.purchasePrice,
+            retailPrice: distribution.product.retailPrice,
+            silverPrice: distribution.product.silverPrice,
+            goldPrice: distribution.product.goldPrice,
+            platinumPrice: distribution.product.platinumPrice,
+            supplierId: targetSupplierId,
+            description: distribution.product.description,
+            image: distribution.product.image,
           }
         });
         results.push(updatedDist);

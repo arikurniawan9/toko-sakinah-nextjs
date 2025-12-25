@@ -6,7 +6,7 @@
 // Supports barcode scanner input: automatically selects user when exact code is scanned
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Search, X, User } from 'lucide-react';
 
 export default function UserSelectionModal({ isOpen, onClose, users, onSelectUser, darkMode }) {
@@ -25,6 +25,22 @@ export default function UserSelectionModal({ isOpen, onClose, users, onSelectUse
       (user.code && user.code.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   }, [users, searchTerm]);
+
+  // Handle ESC key press to close modal
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleEscKey = (event) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) {
     return null;

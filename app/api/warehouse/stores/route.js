@@ -19,9 +19,11 @@ export async function GET(request) {
     }
 
     // Fetch all stores except the warehouse store itself
+    // The warehouse master store is identified by WAREHOUSE_STORE_ID code
+    // We exclude it from the list to prevent warehouse from distributing to itself
     const stores = await globalPrisma.store.findMany({
       where: {
-        id: {
+        code: {
           not: WAREHOUSE_STORE_ID,
         },
       },
@@ -29,6 +31,8 @@ export async function GET(request) {
         name: 'asc',
       },
     });
+
+    console.log(`Fetched ${stores.length} stores for warehouse distribution (excluding warehouse master store)`);
 
     return NextResponse.json({ stores });
   } catch (error) {

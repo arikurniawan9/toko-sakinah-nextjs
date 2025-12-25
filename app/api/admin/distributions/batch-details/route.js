@@ -88,9 +88,27 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Distribution batch not found or already processed' }, { status: 404 });
     }
 
+    // Create a readable batch ID in format: DIST-YYYYMMDD-XXXXX
+    // For consistency, we'll use the first distribution item's timestamp to generate a deterministic ID
+    const batchDate = new Date(batchItems[0].distributedAt);
+    const year = batchDate.getFullYear().toString();
+    const month = (batchDate.getMonth() + 1).toString().padStart(2, '0');
+    const day = batchDate.getDate().toString().padStart(2, '0');
+    const datePart = `${year}${month}${day}`;
+
+    // Use a hash of the distributedByUserId to generate a consistent sequence number
+    let hash = 0;
+    for (let i = 0; i < distributedByUserId.length; i++) {
+      const char = distributedByUserId.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    const sequenceNum = Math.abs(hash) % 99999 + 1; // Ensure it's within 5 digits
+    const batchId = `DIST-${datePart}-${sequenceNum.toString().padStart(5, '0')}`;
+
     // Return the batch details along with some summary info
     return NextResponse.json({
-      batchId: `${date}-${distributedByUserId}-${storeId}`, // A unique identifier for this batch
+      batchId: batchId, // A readable unique identifier for this batch
       distributedAt: batchItems[0].distributedAt,
       distributedBy: batchItems[0].distributedByUser,
       storeName: batchItems[0].store.name,

@@ -45,15 +45,35 @@ export async function GET(request) {
       },
     });
 
+    // Track sequence numbers per date for batch IDs
+    const batchSequenceCounters = {};
+
     // Grouping in-memory for now to avoid complex Prisma groupBy with relations and date manipulation
     // This will group by date (YYYY-MM-DD) and distributedByUserId
     const groupedDistributions = allPendingDistributions.reduce((acc, dist) => {
       const dateKey = dist.distributedAt.toISOString().split('T')[0];
+      const datePrefix = dateKey.replace(/-/g, ''); // Convert YYYY-MM-DD to YYYYMMDD
       const batchKey = `${dateKey}-${dist.distributedBy}`;
 
       if (!acc[batchKey]) {
+        // Create a readable batch ID in format: DIST-YYYYMMDD-XXXXX
+        const batchDate = new Date(dist.distributedAt);
+        const year = batchDate.getFullYear().toString();
+        const month = (batchDate.getMonth() + 1).toString().padStart(2, '0');
+        const day = batchDate.getDate().toString().padStart(2, '0');
+        const datePart = `${year}${month}${day}`;
+
+        // Increment sequence counter for this date
+        if (!batchSequenceCounters[datePart]) {
+          batchSequenceCounters[datePart] = 1;
+        } else {
+          batchSequenceCounters[datePart]++;
+        }
+
+        const batchId = `DIST-${datePart}-${batchSequenceCounters[datePart].toString().padStart(5, '0')}`;
+
         acc[batchKey] = {
-          id: batchKey,
+          id: batchId, // Use readable batch ID instead of composite key
           distributedAt: dist.distributedAt, // Use the actual distributedAt of the first item
           distributedByUserId: dist.distributedBy,
           distributedByUserName: dist.distributedByUser?.name || 'N/A',

@@ -5,6 +5,7 @@ import prisma from '@/lib/prisma';
 import { ROLES } from '@/lib/constants';
 import { logWarehouseDistribution } from '@/lib/auditLogger';
 import { notificationManager, NOTIFICATION_TYPES, SEVERITY_LEVELS } from '@/lib/notificationManager';
+import { generateDistributionInvoiceNumber } from '@/utils/invoiceNumber';
 
 export async function POST(request) {
   try {
@@ -81,6 +82,9 @@ export async function POST(request) {
         totalAmount += item.quantity * warehouseProduct.Product.purchasePrice;
       }
 
+      // Generate invoice number for this distribution batch
+      const invoiceNumber = generateDistributionInvoiceNumber();
+
       // Create individual warehouse distribution records for each product
       const distributionRecords = [];
       for (const item of items) {
@@ -136,10 +140,12 @@ export async function POST(request) {
           },
         });
 
+        // Add the invoice number to each record temporarily
+        distributionRecord.invoiceNumber = invoiceNumber;
         distributionRecords.push(distributionRecord);
       }
 
-      // Return the first distribution record as reference
+      // Return the first distribution record as reference with invoice number
       const distribution = distributionRecords[0];
 
       // Log aktivitas distribusi gudang
@@ -323,10 +329,24 @@ export async function GET(request) {
         }
       });
 
-      // Return the first record as the main reference but with all items
+      // Generate a consistent invoice number for this distribution batch
+      // based on the distribution date, store name, and distributedBy
+      const dateStr = new Date(referenceDistribution.distributedAt).toISOString().split('T')[0].replace(/-/g, '');
+      // Use store name, take first 3 characters and make uppercase
+      const storeNameCode = referenceDistribution.store.name.substring(0, 3).replace(/\s+/g, '').toUpperCase();
+      const userCode = referenceDistribution.distributedByUser.username.substring(0, 3) || referenceDistribution.distributedBy.substring(0, 3);
+
+      // Create a unique but consistent identifier
+      const invoiceNumber = `DIST-${dateStr}-${storeNameCode}-${userCode.toUpperCase()}`;
+
+      // Return the first record as the main reference but with all items and invoice number
       return NextResponse.json({
         ...referenceDistribution,
-        items: allDistributionItems
+        invoiceNumber,
+        items: allDistributionItems.map(item => ({
+          ...item,
+          invoiceNumber // Add invoice number to each item as well
+        }))
       });
     }
 

@@ -5,7 +5,15 @@ import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
 import { ROLES } from '@/lib/constants';
 
-// PUT /api/warehouse/distribution/[id] - Update distribution status (accept/reject)
+/**
+ * PUT /api/warehouse/distribution/[id] - Update distribution status (accept/reject)
+ *
+ * When accepting a distribution, this function now ensures that:
+ * 1. Category from the distributed product is saved to the target store (if not exists)
+ * 2. Supplier from the distributed product is saved to the target store (if not exists)
+ * 3. Product is saved to the target store with appropriate category and supplier (if not exists)
+ * 4. Stock quantity is updated in the target store
+ */
 export async function PUT(request, { params }) {
   try {
     const session = await getServerSession(authOptions);
@@ -33,7 +41,12 @@ export async function PUT(request, { params }) {
         storeId: session.user.storeId, // Ensure it's for the user's store
       },
       include: {
-        product: true,
+        product: {
+          include: {
+            category: true,
+            supplier: true,
+          }
+        },
         store: true,
       }
     });
@@ -61,11 +74,90 @@ export async function PUT(request, { params }) {
 
       // If accepted, add the products to the store's stock
       if (status === 'ACCEPTED') {
-        // Find or create store product
+        // Check if category exists in the target store, if not create it
+        let storeCategory = await tx.category.findFirst({
+          where: {
+            storeId: distribution.storeId,
+            name: distribution.product.category.name, // Use category name to identify
+          }
+        });
+
+        if (!storeCategory) {
+          // Create category in the target store
+          storeCategory = await tx.category.create({
+            data: {
+              storeId: distribution.storeId,
+              name: distribution.product.category.name,
+              description: distribution.product.category.description || '',
+            }
+          });
+          console.log(`Created new category "${distribution.product.category.name}" in store "${distribution.store.name}"`);
+        } else {
+          console.log(`Category "${distribution.product.category.name}" already exists in store "${distribution.store.name}"`);
+        }
+
+        // Check if supplier exists in the target store, if not create it
+        let storeSupplier = await tx.supplier.findFirst({
+          where: {
+            storeId: distribution.storeId,
+            code: distribution.product.supplier.code, // Use supplier code to identify
+          }
+        });
+
+        if (!storeSupplier) {
+          // Create supplier in the target store
+          storeSupplier = await tx.supplier.create({
+            data: {
+              storeId: distribution.storeId,
+              code: distribution.product.supplier.code,
+              name: distribution.product.supplier.name,
+              contactPerson: distribution.product.supplier.contactPerson || '',
+              address: distribution.product.supplier.address || '',
+              phone: distribution.product.supplier.phone || '',
+              email: distribution.product.supplier.email || '',
+            }
+          });
+          console.log(`Created new supplier "${distribution.product.supplier.name}" in store "${distribution.store.name}"`);
+        } else {
+          console.log(`Supplier "${distribution.product.supplier.name}" already exists in store "${distribution.store.name}"`);
+        }
+
+        // Check if the product already exists in the target store
+        // We'll use productCode to identify if product already exists in the store
+        let storeProductRecord = await tx.product.findFirst({
+          where: {
+            storeId: distribution.storeId,
+            productCode: distribution.product.productCode,
+          }
+        });
+
+        if (!storeProductRecord) {
+          // Create new product in the target store with the appropriate category and supplier IDs
+          storeProductRecord = await tx.product.create({
+            data: {
+              storeId: distribution.storeId,
+              categoryId: storeCategory.id, // Use the category ID from the target store
+              supplierId: storeSupplier.id, // Use the supplier ID from the target store
+              name: distribution.product.name,
+              productCode: distribution.product.productCode,
+              stock: 0, // Initialize with 0 stock, will be updated below
+              purchasePrice: distribution.product.purchasePrice,
+              retailPrice: distribution.product.retailPrice,
+              silverPrice: distribution.product.silverPrice,
+              goldPrice: distribution.product.goldPrice,
+              platinumPrice: distribution.product.platinumPrice,
+              image: distribution.product.image || null,
+              description: distribution.product.description || null,
+            }
+          });
+        }
+
+        // Now update the store product quantity
+        // Find or create store product record for stock tracking
         let storeProduct = await tx.storeProduct.findUnique({
           where: {
             productId_storeId: {
-              productId: distribution.productId,
+              productId: storeProductRecord.id, // Use the ID of the product in the target store
               storeId: distribution.storeId,
             }
           }
@@ -76,7 +168,7 @@ export async function PUT(request, { params }) {
           await tx.storeProduct.update({
             where: {
               productId_storeId: {
-                productId: distribution.productId,
+                productId: storeProductRecord.id, // Use the ID of the product in the target store
                 storeId: distribution.storeId,
               }
             },
@@ -90,7 +182,7 @@ export async function PUT(request, { params }) {
           // Create new store product if it doesn't exist
           await tx.storeProduct.create({
             data: {
-              productId: distribution.productId,
+              productId: storeProductRecord.id, // Use the ID of the product in the target store
               storeId: distribution.storeId,
               quantity: distribution.quantity,
               reserved: 0, // No reserved quantity initially
@@ -101,7 +193,7 @@ export async function PUT(request, { params }) {
         // Create stock log entry
         await tx.stockLog.create({
           data: {
-            productId: distribution.productId,
+            productId: storeProductRecord.id, // Use the ID of the product in the target store
             storeId: distribution.storeId,
             type: 'IN',
             quantity: distribution.quantity,
@@ -110,6 +202,8 @@ export async function PUT(request, { params }) {
             createdById: session.user.id,
           }
         });
+
+        console.log(`Distribution accepted: Product "${distribution.product.name}" with category "${distribution.product.category.name}" and supplier "${distribution.product.supplier.name}" have been saved to store "${distribution.store.name}"`);
       }
 
       return updatedDist;

@@ -72,6 +72,13 @@ export default function WarehouseDistributionPage() {
         }
       },
     },
+    {
+      keys: 'alt+p',
+      callback: () => {
+        // Open user selection modal for attendant selection
+        setIsUserModalOpen(true);
+      },
+    },
   ];
   useHotkeys(hotkeys, [isSubmitting, distributionItems]);
 
@@ -180,6 +187,7 @@ export default function WarehouseDistributionPage() {
           </p>
           <div className={`mt-2 text-xs flex items-center gap-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
             <span className="flex items-center gap-1"><strong className="border rounded px-1.5 py-0.5">Alt + S</strong> Fokus Cari</span>
+            <span className="flex items-center gap-1"><strong className="border rounded px-1.5 py-0.5">Alt + P</strong> Pilih Pelayan</span>
             <span className="flex items-center gap-1"><strong className="border rounded px-1.5 py-0.5">Alt + Enter</strong> Simpan</span>
           </div>
         </div>

@@ -147,14 +147,11 @@ export default function PendingDistributions() {
       title: 'No.',
       render: (_, __, index) => (currentPage - 1) * itemsPerPage + index + 1,
     },
-    { 
+    {
       key: 'id', // This is the batch ID generated in the API
-      title: 'ID Batch', 
+      title: 'ID Batch',
       sortable: false, // Not directly sortable as it's a composite ID
-      render: (value) => {
-        const parts = value.split('-');
-        return `${parts[0]}-${parts[1].substring(0, 4)}...`; // Display first part of date and truncated user ID
-      }
+      render: (value) => value // Display the full batch ID
     },
     { 
       key: 'distributedByUserName', 

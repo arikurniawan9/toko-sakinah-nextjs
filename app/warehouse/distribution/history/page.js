@@ -9,6 +9,7 @@ import { Package, Search, Calendar, Printer, Eye, X, AlertTriangle, CheckCircle 
 import DataTable from '../../../../components/DataTable';
 import ConfirmationModal from '../../../../components/ConfirmationModal';
 import DistributionReceiptModal from '../../../../components/warehouse/DistributionReceiptModal';
+import DistributionDetailModal from '../../../../components/warehouse/DistributionDetailModal';
 
 export default function WarehouseDistributionHistoryPage() {
   const { data: session } = useSession();
@@ -26,6 +27,7 @@ export default function WarehouseDistributionHistoryPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedDistribution, setSelectedDistribution] = useState(null);
 
   // Fetch warehouse distributions
@@ -53,7 +55,8 @@ export default function WarehouseDistributionHistoryPage() {
         params.append('endDate', endDate);
       }
 
-      const response = await fetch(`/api/warehouse/distribution?${params.toString()}`);
+      // Use the grouped API to get distributions grouped by date, store, and distributor
+      const response = await fetch(`/api/warehouse/distribution/grouped?${params.toString()}`);
       const data = await response.json();
 
       if (!response.ok) {
@@ -76,23 +79,29 @@ export default function WarehouseDistributionHistoryPage() {
       const distributionRecord = await response.json();
 
       if (response.ok) {
-        // Since each product creates a separate distribution record, we need to get all records
-        // with the same combination of warehouseId, storeId, and distributedAt
-        // This is a workaround since we don't have a parent ID for the distribution batch
-        // For now, we'll just use the single record with the understanding that
-        // in the current implementation, the first record serves as the representative
-
-        // Let's check if the distribution has the necessary fields already
-        const distributionForReceipt = {
-          ...distributionRecord,
-          // Items will be handled by the receipt component using the single record
-          // If we had a proper batch ID, we could fetch all related records
-        };
-
-        setSelectedDistribution(distributionForReceipt);
+        // The API will return the distribution with all related items
+        // The structure is already handled correctly in the API
+        setSelectedDistribution(distributionRecord);
         setShowReceiptModal(true);
       } else {
         throw new Error('Gagal mengambil data distribusi untuk struk');
+      }
+    } catch (error) {
+      setError(error.message);
+    }
+  };
+
+  const handleViewDetails = async (distributionId) => {
+    try {
+      // Fetch the specific distribution record to get all details
+      const response = await fetch(`/api/warehouse/distribution?id=${distributionId}`);
+      const distributionRecord = await response.json();
+
+      if (response.ok) {
+        setSelectedDistribution(distributionRecord);
+        setShowDetailModal(true);
+      } else {
+        throw new Error('Gagal mengambil data distribusi untuk detail');
       }
     } catch (error) {
       setError(error.message);
@@ -107,8 +116,16 @@ export default function WarehouseDistributionHistoryPage() {
     },
     {
       key: 'id',
-      title: 'ID Distribusi',
+      title: 'No. Invoice',
       sortable: true,
+      render: (value, row) => (
+        <div>
+          <div className="font-medium">{row.invoiceNumber || value}</div>
+          <div className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+            ID: {value}
+          </div>
+        </div>
+      )
     },
     {
       key: 'store.name',
@@ -132,16 +149,20 @@ export default function WarehouseDistributionHistoryPage() {
     {
       key: 'items',
       title: 'Jumlah Barang',
-      render: (value) => {
-        const totalItems = value?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+      render: (value, row) => {
+        // For grouped distributions, the totalItems is already calculated
+        // If it's not available, calculate from items array
+        const totalItems = row.totalItems || (value?.reduce((sum, item) => sum + item.quantity, 0) || 0);
         return totalItems.toLocaleString('id-ID');
       }
     },
     {
       key: 'items',
       title: 'Total Harga',
-      render: (value) => {
-        const totalAmount = value?.reduce((sum, item) => sum + item.totalAmount, 0) || 0;
+      render: (value, row) => {
+        // For grouped distributions, the totalAmount is already calculated
+        // If it's not available, calculate from items array
+        const totalAmount = row.totalAmount || (value?.reduce((sum, item) => sum + item.totalAmount, 0) || 0);
         return `Rp ${totalAmount.toLocaleString('id-ID')}`;
       }
     },
@@ -175,9 +196,16 @@ export default function WarehouseDistributionHistoryPage() {
   const renderRowActions = (row) => (
     <div className="flex space-x-2">
       <button
-        onClick={() => handlePrintReceipt(row.id)}
+        onClick={() => handleViewDetails(row.id)}
         className="p-2 text-blue-500 hover:text-blue-700 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/30"
-        title="Cetak Struk"
+        title="Lihat Detail"
+      >
+        <Eye size={20} />
+      </button>
+      <button
+        onClick={() => handlePrintReceipt(row.id)}
+        className="p-2 text-green-500 hover:text-green-700 rounded-full hover:bg-green-100 dark:hover:bg-green-900/30"
+        title="Cetak Faktur"
       >
         <Printer size={20} />
       </button>
@@ -276,7 +304,7 @@ export default function WarehouseDistributionHistoryPage() {
             Riwayat Distribusi Gudang
           </h1>
           <p className={`mt-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-            Lihat dan cetak struk distribusi ke toko-toko
+            Lihat dan cetak faktur distribusi ke toko-toko
           </p>
         </div>
 
@@ -317,7 +345,7 @@ export default function WarehouseDistributionHistoryPage() {
             onItemsPerPageChange={setItemsPerPage}
             darkMode={darkMode}
             pagination={paginationData}
-            mobileColumns={['store.name', 'distributedAt', 'status']}
+            mobileColumns={['id', 'store.name', 'distributedAt', 'status']}
             rowActions={renderRowActions}
             emptyMessage="Tidak ada riwayat distribusi ditemukan"
           />
@@ -339,6 +367,15 @@ export default function WarehouseDistributionHistoryPage() {
             distributionData={selectedDistribution}
             isOpen={showReceiptModal}
             onClose={() => setShowReceiptModal(false)}
+          />
+        )}
+
+        {/* Detail Modal */}
+        {showDetailModal && selectedDistribution && (
+          <DistributionDetailModal
+            distribution={selectedDistribution}
+            isOpen={showDetailModal}
+            onClose={() => setShowDetailModal(false)}
           />
         )}
       </main>

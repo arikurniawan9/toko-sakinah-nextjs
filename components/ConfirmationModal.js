@@ -2,6 +2,7 @@
 'use client';
 
 import { X, AlertTriangle, AlertCircle } from 'lucide-react';
+import { useEffect } from 'react';
 
 export default function ConfirmationModal({
   isOpen,
@@ -16,6 +17,22 @@ export default function ConfirmationModal({
   icon = null, // Custom icon component
 }) {
   if (!isOpen) return null;
+
+  // Handle ESC key press to close modal
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleEscKey = (event) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [isOpen, onClose]);
 
   // Warna dan ikon berdasarkan variant
   const variantConfig = {

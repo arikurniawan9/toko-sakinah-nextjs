@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, AlertTriangle } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 
@@ -18,7 +18,7 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, storeName }) => {
     // Validasi password di sini akan tergantung pada implementasi backend Anda
     // Untuk saat ini, saya akan mengirim password ke fungsi onConfirm
     // dan membiarkan fungsi tersebut menangani verifikasi
-    
+
     try {
       await onConfirm(password);
       setPassword('');
@@ -35,6 +35,22 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, storeName }) => {
     setError('');
     onClose();
   };
+
+  // Handle ESC key press to close modal
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleEscKey = (event) => {
+      if (event.key === 'Escape') {
+        handleClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [isOpen, handleClose]);
 
   if (!isOpen) return null;
 

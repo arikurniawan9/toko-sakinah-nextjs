@@ -150,6 +150,27 @@ export async function GET(request) {
       return acc;
     }, []).sort((a, b) => b.quantitySold - a.quantitySold);
 
+    // --- Chart Data (Sales & Profit by Day) ---
+    const salesByDay = salesInRange.reduce((acc, sale) => {
+        const date = sale.createdAt.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+  
+        const profitForSale = sale.total - sale.saleDetails.reduce((costSum, detail) => {
+          const purchasePrice = detail.product?.purchasePrice || 0;
+          return costSum + (purchasePrice * detail.quantity);
+        }, 0);
+  
+        if (!acc[date]) {
+          acc[date] = { date, totalSales: 0, totalProfit: 0 };
+        }
+  
+        acc[date].totalSales += sale.total;
+        acc[date].totalProfit += profitForSale;
+  
+        return acc;
+      }, {});
+  
+      const salesData = Object.values(salesByDay).sort((a, b) => new Date(a.date) - new Date(b.date));
+
 
     return NextResponse.json({
       totalProducts,
@@ -163,6 +184,8 @@ export async function GET(request) {
       recentTransactions,
       // Best selling products
       bestSellingProducts,
+      // Data for chart
+      salesData,
     });
 
   } catch (error) {

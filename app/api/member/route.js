@@ -66,6 +66,14 @@ export async function GET(request) {
     const [members, total] = await Promise.all([
       prisma.member.findMany({
         where: whereClause,
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          code: true,
+          membershipType: true,
+          discount: true,
+        },
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },

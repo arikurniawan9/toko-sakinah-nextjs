@@ -424,33 +424,11 @@ export default function ProductManagement() {
     { key: 'productCode', title: 'Kode', sortable: true },
     { key: 'name', title: 'Nama', sortable: true },
     {
-      key: 'purchasePrice', title: 'Harga Beli',
-      render: (value, row) => `Rp ${row.purchasePrice?.toLocaleString('id-ID') || 0}`,
-      sortable: true
-    },
-    {
       key: 'retailPrice', title: 'Harga Jual/Eceran',
       render: (value, row) => `Rp ${row.retailPrice?.toLocaleString('id-ID') || 0}`,
       sortable: true
     },
-    {
-      key: 'silverPrice', title: 'Harga Member Silver',
-      render: (value, row) => `Rp ${row.silverPrice?.toLocaleString('id-ID') || 0}`,
-      sortable: true
-    },
-    {
-      key: 'goldPrice', title: 'Harga Member Gold',
-      render: (value, row) => `Rp ${row.goldPrice?.toLocaleString('id-ID') || 0}`,
-      sortable: true
-    },
-    {
-      key: 'platinumPrice', title: 'Harga Member Platinum (Partai)',
-      render: (value, row) => `Rp ${row.platinumPrice?.toLocaleString('id-ID') || 0}`,
-      sortable: true
-    },
-    { key: 'stock', title: 'Stok', sortable: true },
-    { key: 'category', title: 'Kategori', render: (value, row) => row.category?.name || '-', sortable: true },
-    { key: 'supplier', title: 'Supplier', render: (value, row) => row.supplier?.name || '-', sortable: true }
+    { key: 'stock', title: 'Stok', sortable: true }
   ];
 
   const enhancedProducts = products.map(product => ({
@@ -527,53 +505,22 @@ export default function ProductManagement() {
             </div>
           </div>
 
-          <div className={`p-4 border-b ${darkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}>
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 w-full">
-                <div>
-                  <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Kategori</label>
-                  <AutoCompleteSearch
-                    key={!hasActiveFilters}
-                    placeholder="Semua Kategori"
-                    searchFunction={searchCategories}
-                    onSelect={handleCategoryFilterSelect}
-                    darkMode={darkMode}
-                  />
+          {hasActiveFilters && (
+            <div className={`p-4 border-b ${darkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}>
+              <div className="flex flex-col sm:flex-row gap-2 items-center justify-between">
+                <div className="text-sm text-gray-600 dark:text-gray-300">
+                  Filter aktif: {searchTerm && `Pencarian: "${searchTerm}", `}
+                  {categoryFilter && `Kategori: ${categoryFilter}, `}
+                  {supplierFilter && `Supplier: ${supplierFilter}, `}
+                  {minStock && `Min Stok: ${minStock}, `}
+                  {maxStock && `Max Stok: ${maxStock}, `}
+                  {minPrice && `Min Harga: ${minPrice}, `}
+                  {maxPrice && `Max Harga: ${maxPrice}`}
                 </div>
-                <div>
-                  <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Supplier</label>
-                  <AutoCompleteSearch
-                    key={!hasActiveFilters}
-                    placeholder="Semua Supplier"
-                    searchFunction={searchSuppliers}
-                    onSelect={handleSupplierFilterSelect}
-                    darkMode={darkMode}
-                  />
-                </div>
-                <div>
-                  <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Min Stok</label>
-                  <input type="number" value={minStock} onChange={(e) => handleMinStockFilter(e.target.value)} placeholder="Min" className={`w-full px-3 py-2 border rounded-md shadow-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:outline-none focus:ring-2 focus:ring-theme-purple-500`} />
-                </div>
-                <div>
-                  <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Max Stok</label>
-                  <input type="number" value={maxStock} onChange={(e) => handleMaxStockFilter(e.target.value)} placeholder="Max" className={`w-full px-3 py-2 border rounded-md shadow-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:outline-none focus:ring-2 focus:ring-theme-purple-500`} />
-                </div>
-                <div>
-                  <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Min Harga</label>
-                  <input type="number" value={minPrice} onChange={(e) => handleMinPriceFilter(e.target.value)} placeholder="Min" className={`w-full px-3 py-2 border rounded-md shadow-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:outline-none focus:ring-2 focus:ring-theme-purple-500`} />
-                </div>
-                <div>
-                  <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Max Harga</label>
-                  <input type="number" value={maxPrice} onChange={(e) => handleMaxPriceFilter(e.target.value)} placeholder="Max" className={`w-full px-3 py-2 border rounded-md shadow-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:outline-none focus:ring-2 focus:ring-theme-purple-500`} />
-                </div>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-2 items-end">
-                {hasActiveFilters && (
-                  <button onClick={clearFilters} className={`px-3 py-2 rounded-md text-sm font-medium ${darkMode ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-800'}`}>Reset Filter</button>
-                )}
+                <button onClick={clearFilters} className={`px-3 py-2 rounded-md text-sm font-medium ${darkMode ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-800'}`}>Reset Filter</button>
               </div>
             </div>
-          </div>
+          )}
 
           <DataTable
             data={enhancedProducts}
