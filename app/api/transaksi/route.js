@@ -165,7 +165,9 @@ export async function POST(request) {
     attendantId,
     paymentMethod, // Add payment method
     status, // Tambahkan status transaksi
-    referenceNumber // Tambahkan reference number untuk pembayaran non-tunai
+    referenceNumber, // Tambahkan reference number untuk pembayaran non-tunai
+    discount = 0, // Item discount (optional, default 0)
+    additionalDiscount = 0 // Overall discount (optional, default 0)
   } = body;
 
   if (!items || items.length === 0) {
@@ -222,7 +224,10 @@ export async function POST(request) {
         }
       }
 
-      // 2. Create the Sale record
+      // 2. Create the Sale record - use total as the final amount since there's no grandTotal field in schema
+      // The additional discount should be added to the existing discount field
+      const totalDiscount = discount + additionalDiscount; // Combine item discount and overall discount
+
       const newSale = await tx.sale.create({
         data: {
           invoiceNumber: newInvoiceNumber,
@@ -231,10 +236,11 @@ export async function POST(request) {
           attendantId: attendantId,
           memberId: memberId,
           paymentMethod: paymentMethod || 'CASH', // Include payment method, default to CASH
-          total: total,
+          total: total, // Original total before discount
           tax: tax,
           payment: payment,
           change: change,
+          discount: totalDiscount, // Combined discount (item discount + overall discount)
           status: status || 'PAID', // Gunakan status yang dikirim, default ke 'PAID'
           referenceNumber: referenceNumber || null, // Simpan reference number jika ada
           saleDetails: {
@@ -243,6 +249,7 @@ export async function POST(request) {
               productId: item.productId,
               quantity: item.quantity,
               price: item.price,
+              discount: item.discount || 0, // Item discount per detail
               subtotal: item.price * item.quantity,
             })),
           },
@@ -275,15 +282,16 @@ export async function POST(request) {
 
       // 4. Jika status UNPAID, PARTIALLY_PAID, CREDIT, atau CREDIT_PAID, buat juga entri di Receivable
       if ((status === 'UNPAID' || status === 'PARTIALLY_PAID' || status === 'CREDIT' || status === 'CREDIT_PAID') && memberId) {
-        // Sisa hutang adalah total - jumlah yang dibayar
-        const remainingAmount = total - (payment || 0);
+        // Sisa hutang adalah total setelah semua diskon dikurangi - jumlah yang dibayar
+        const finalTotal = total - totalDiscount;
+        const remainingAmount = finalTotal - (payment || 0);
         if (remainingAmount > 0) {
           await tx.receivable.create({
             data: {
               storeId: session.user.storeId, // Tambahkan storeId dari session user
               saleId: newSale.id,
               memberId: memberId,
-              amountDue: total, // Total asli
+              amountDue: finalTotal, // Jumlah setelah semua diskon diterapkan
               amountPaid: payment || 0, // Jumlah yang sudah dibayar sebagai DP
               status: payment > 0 ? 'PARTIALLY_PAID' : 'UNPAID', // Status tergantung pembayaran
             }

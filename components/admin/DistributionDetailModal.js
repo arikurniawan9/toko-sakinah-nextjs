@@ -33,10 +33,10 @@ export default function DistributionDetailModal({
     };
   }, [isOpen, onClose]);
 
-  // Load batch details when modal opens
+  // Load distribution details when modal opens
   useEffect(() => {
     if (isOpen && distribution) {
-      fetchBatchDetails();
+      fetchDistributionDetails();
     } else {
       // Reset state when modal closes
       setBatchDetails(null);
@@ -44,29 +44,26 @@ export default function DistributionDetailModal({
     }
   }, [isOpen, distribution]);
 
-  const fetchBatchDetails = async () => {
+  const fetchDistributionDetails = async () => {
     if (!distribution) return;
 
     setLoading(true);
     setError('');
     try {
-      // Extract the date from the distribution and get all distributions with same date, store, and distributedBy
-      const date = new Date(distribution.distributedAt).toISOString().split('T')[0];
-
-      // Call the grouped API to get all distributions in the same batch
+      // Call the individual API to get details for this specific distribution
       const response = await fetch(
-        `/api/warehouse/distribution/grouped/${distribution.distributionId || distribution.id}`
+        `/api/warehouse/distribution/individual/${distribution.distributionId || distribution.id}`
       );
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch batch details');
+        throw new Error(data.error || 'Failed to fetch distribution details');
       }
 
-      setBatchDetails(data);
+      setBatchDetails(data); // Keep same state name for consistency
     } catch (err) {
       setError(err.message);
-      console.error('Error fetching batch details:', err);
+      console.error('Error fetching distribution details:', err);
     } finally {
       setLoading(false);
     }
@@ -83,13 +80,13 @@ export default function DistributionDetailModal({
       key: 'product.name',
       title: 'Nama Produk',
       sortable: true,
-      render: (value) => value || 'N/A'
+      render: (value, row) => value || row.productName || 'N/A'
     },
     {
       key: 'product.productCode',
       title: 'Kode Produk',
       sortable: true,
-      render: (value) => value || 'N/A'
+      render: (value, row) => value || row.productCode || 'N/A'
     },
     {
       key: 'quantity',
@@ -138,8 +135,8 @@ export default function DistributionDetailModal({
               <div className="flex items-center">
                 <Hash className="h-5 w-5 mr-2 text-blue-500" />
                 <div>
-                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>ID Batch:</p>
-                  <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{batchDetails.invoiceNumber || batchDetails.id}</p>
+                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>ID Distribusi:</p>
+                  <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{batchDetails.id}</p>
                 </div>
               </div>
               <div className="flex items-center">
@@ -161,7 +158,7 @@ export default function DistributionDetailModal({
               <div className="flex items-center">
                 <Package className="h-5 w-5 mr-2 text-blue-500" />
                 <div>
-                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total Item:</p>
+                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Jumlah Produk:</p>
                   <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                     {batchDetails.items ? batchDetails.items.length :
                      batchDetails.itemCount ? batchDetails.itemCount.toLocaleString('id-ID') : '1'}
@@ -197,7 +194,7 @@ export default function DistributionDetailModal({
 
           {/* Products Table */}
           <div className="mb-6">
-            <h3 className={`text-lg font-semibold mb-3 ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>Daftar Produk dalam Batch Ini</h3>
+            <h3 className={`text-lg font-semibold mb-3 ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>Detail Produk dalam Distribusi Ini</h3>
 
             {loading ? (
               <div className="flex justify-center items-center py-8">
@@ -211,12 +208,13 @@ export default function DistributionDetailModal({
             ) : batchDetails ? (
               <div className={`rounded-lg border ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
                 <DataTable
-                  data={batchDetails.items || []} // Use items array if available
+                  data={batchDetails.items || (batchDetails.product ? [batchDetails] : [])} // Use items array if available, otherwise single distribution if it has product data
                   columns={productColumns}
                   loading={false}
                   darkMode={darkMode}
-                  emptyMessage="Tidak ada produk dalam batch ini."
+                  emptyMessage="Tidak ada produk dalam distribusi ini."
                   mobileColumns={['product.name', 'quantity', 'totalAmount']}
+                  rowActions={null} // Explicitly disable row actions to prevent action column
                 />
               </div>
             ) : (
@@ -228,6 +226,94 @@ export default function DistributionDetailModal({
 
           {/* Action Buttons - Hidden during print */}
           <div className="flex justify-end space-x-3 print:hidden">
+            <button
+              onClick={async () => {
+                // Reject the individual distribution
+                try {
+                  const response = await fetch(`/api/warehouse/distribution/${distribution.distributionId || distribution.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      status: 'REJECTED'
+                    })
+                  });
+
+                  if (response.ok) {
+                    alert('Distribusi berhasil ditolak');
+                    onClose(); // Close the modal after rejection
+                  } else {
+                    const result = await response.json();
+                    alert(`Gagal menolak distribusi: ${result.error || 'Unknown error'}`);
+                  }
+                } catch (error) {
+                  alert(`Error saat menolak distribusi: ${error.message}`);
+                }
+              }}
+              className={`px-4 py-2 rounded-lg ${
+                darkMode ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
+              }`}
+            >
+              Tolak Individu
+            </button>
+            <button
+              onClick={async () => {
+                // Accept the individual distribution
+                try {
+                  const response = await fetch(`/api/warehouse/distribution/${distribution.distributionId || distribution.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      status: 'ACCEPTED'
+                    })
+                  });
+
+                  if (response.ok) {
+                    alert('Distribusi berhasil diterima');
+                    onClose(); // Close the modal after acceptance
+                  } else {
+                    const result = await response.json();
+                    alert(`Gagal menerima distribusi: ${result.error || 'Unknown error'}`);
+                  }
+                } catch (error) {
+                  alert(`Error saat menerima distribusi: ${error.message}`);
+                }
+              }}
+              className={`px-4 py-2 rounded-lg ${
+                darkMode ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-green-500 hover:bg-green-600 text-white'
+              }`}
+            >
+              Terima Individu
+            </button>
+            <button
+              onClick={async () => {
+                // Accept the entire batch based on the distribution's date, store, and distributor
+                try {
+                  const response = await fetch('/api/admin/distribution/batch-accept', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      distributionId: distribution.distributionId || distribution.id
+                    })
+                  });
+
+                  if (response.ok) {
+                    const result = await response.json();
+                    alert(`${result.message}`);
+                    onClose(); // Close the modal after acceptance
+                  } else {
+                    const result = await response.json();
+                    alert(`Gagal menerima batch distribusi: ${result.error || 'Unknown error'}`);
+                  }
+                } catch (error) {
+                  alert(`Error saat menerima batch distribusi: ${error.message}`);
+                }
+              }}
+              className={`px-4 py-2 rounded-lg ${
+                darkMode ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'
+              }`}
+            >
+              Terima Batch
+            </button>
             <button
               onClick={onClose}
               className={`px-4 py-2 rounded-lg ${

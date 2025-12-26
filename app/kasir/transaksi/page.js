@@ -24,6 +24,7 @@ import AddMemberModal from "@/components/kasir/transaksi/AddMemberModal";
 import ReceivablesModal from "@/components/kasir/transaksi/ReceivablesModal";
 import AllReceivablesModal from "@/components/kasir/transaksi/AllReceivablesModal";
 import LowStockModal from "@/components/kasir/transaksi/LowStockModal";
+import DiscountInput from "@/components/kasir/transaksi/DiscountInput";
 import { useReactToPrint } from "react-to-print";
 import { printThermalReceipt } from "@/utils/thermalPrint";
 import { useProductSearch } from "@/lib/hooks/kasir/useProductSearch";
@@ -44,6 +45,7 @@ export default function KasirTransaksiPage() {
   const [selectedAttendant, setSelectedAttendant] = useState(null);
   const [defaultMember, setDefaultMember] = useState(null); // State for the default member
   const [payment, setPayment] = useState(0);
+  const [additionalDiscount, setAdditionalDiscount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [showMembersModal, setShowMembersModal] = useState(false);
   const [showAttendantsModal, setShowAttendantsModal] = useState(false);
@@ -69,17 +71,15 @@ export default function KasirTransaksiPage() {
     cart,
     setCart,
     calculation,
-    initializeNotification,
     removeFromCart,
     updateQuantity,
     addToCart,
-    calculateTransaction
+    calculateTransaction,
+    overallDiscount,
+    setOverallDiscountValue,
+    resetCart
   } = useTransactionCart();
 
-  // Inisialisasi notifikasi di hook
-  useEffect(() => {
-    initializeNotification(showNotification);
-  }, [initializeNotification, showNotification]);
 
   // --- Product Search Logic ---
   const {
@@ -196,12 +196,11 @@ export default function KasirTransaksiPage() {
             price: getTierPrice(item, item.quantity, selectedMember?.membershipType || 'RETAIL'),
             discount: getTierPrice(item, 1, selectedMember?.membershipType || 'RETAIL') - getTierPrice(item, item.quantity, selectedMember?.membershipType || 'RETAIL'),
           })),
-          total: calculation.grandTotal,
+          total: calculation.subTotal || 0, // Kirim total sebelum diskon
           payment: payment, // Kirim jumlah pembayaran sebagai DP (uang muka)
           change: 0, // Tidak ada kembalian untuk transaksi hutang
           tax: calculation.tax,
-          discount: calculation.totalDiscount,
-          additionalDiscount: additionalDiscount,
+          discount: (calculation.itemDiscount || 0) + (additionalDiscount || 0), // Combined discount (item + overall)
           status: payment > 0 ? 'CREDIT_PAID' : 'CREDIT', // Gunakan CREDIT untuk hutang penuh, CREDIT_PAID untuk sebagian bayar
         }),
       });
@@ -209,8 +208,9 @@ export default function KasirTransaksiPage() {
       const result = await response.json();
 
       if (response.ok) {
-        // Hitung sisa yang harus dibayar
-        const remainingAmount = calculation.grandTotal - payment;
+        // Hitung sisa yang harus dibayar berdasarkan total setelah semua diskon
+        const finalTotal = calculation.subTotal - ((calculation.itemDiscount || 0) + (additionalDiscount || 0));
+        const remainingAmount = finalTotal - payment;
         // Tampilkan modal sukses untuk transaksi hutang
         setSuccessMessage('Transaksi Hutang Berhasil Disimpan');
         setSuccessDetails(
@@ -357,11 +357,11 @@ export default function KasirTransaksiPage() {
             price: getTierPrice(item, item.quantity, selectedMember?.membershipType || 'RETAIL'),
             discount: getTierPrice(item, 1, selectedMember?.membershipType || 'RETAIL') - getTierPrice(item, item.quantity, selectedMember?.membershipType || 'RETAIL'),
           })),
-          total: calculation.grandTotal,
+          total: calculation.subTotal || 0, // Total sebelum diskon
           payment: payment,
-          change: payment - calculation.grandTotal,
+          change: payment - (calculation.subTotal - (calculation.itemDiscount + (additionalDiscount || 0))), // Change based on final total after all discounts
           tax: calculation.tax,
-          discount: calculation.totalDiscount, // This will now include item discount only
+          discount: (calculation.itemDiscount || 0) + (additionalDiscount || 0), // Combined discount (item + overall)
         }),
       });
 
@@ -722,9 +722,9 @@ export default function KasirTransaksiPage() {
   };
 
   useEffect(() => {
-    // Gunakan fungsi dari hook untuk menghitung transaksi
-    calculateTransaction(cart, selectedMember, getTierPrice);
-  }, [cart, selectedMember, getTierPrice, calculateTransaction]);
+    // Gunakan fungsi dari hook untuk menghitung transaksi dengan diskon tambahan
+    calculateTransaction(cart, selectedMember, getTierPrice, additionalDiscount);
+  }, [cart, selectedMember, getTierPrice, additionalDiscount, calculateTransaction]);
 
   // Fungsi untuk menambah member baru
   const handleAddMember = async (memberData) => {
@@ -918,6 +918,8 @@ export default function KasirTransaksiPage() {
                 calculation={calculation}
                 payment={payment}
                 setPayment={setPayment}
+                additionalDiscount={additionalDiscount}
+                setAdditionalDiscount={setAdditionalDiscount}
                 initiatePaidPayment={initiatePaidPayment}
                 initiateUnpaidPayment={initiateUnpaidPayment}
                 referenceNumber={referenceNumber}
