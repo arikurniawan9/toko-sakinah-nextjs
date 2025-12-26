@@ -112,6 +112,7 @@ const Sidebar = ({ children }) => {
     { title: "Manajemen Toko", href: "/manager/stores", icon: ShoppingBag, type: 'item', roles: ['MANAGER'] },
     { title: "Monitor Toko", href: "/manager/monitor-all", icon: Monitor, type: 'item', roles: ['MANAGER'] },
     { title: "Cetak Laporan Toko", href: "/manager/print-reports", icon: Printer, type: 'item', roles: ['MANAGER'] },
+    { title: "Log Aktivitas", href: "/manager/activity-log", icon: Activity, type: 'item', roles: ['MANAGER'] },
     { title: "Backup & Restore", href: "/manager/backup-restore", icon: HardDrive, type: 'item', roles: ['MANAGER'] },
     { title: "Manajemen Pengguna", type: 'heading', roles: ['MANAGER'] },
     { title: "Semua Pengguna", href: "/manager/users", icon: Users, type: 'item', roles: ['MANAGER'] },

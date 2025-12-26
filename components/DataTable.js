@@ -16,6 +16,7 @@ export default function DataTable({
   selectedRows = [],
   onSelectAll,
   onSelectRow,
+  isAllSelected = null, // ADDED: Allow external control of select-all checkbox state
   darkMode = false,
   actions = true,
   showToolbar = true,
@@ -304,7 +305,8 @@ export default function DataTable({
                       type="checkbox"
                       checked={selectedRows.includes(row.id)}
                       onChange={() => onSelectRow(row.id)}
-                      className="mt-1 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+                      disabled={row.isCurrentUser}
+                      className={`${row.isCurrentUser ? 'cursor-not-allowed opacity-50' : ''} mt-1 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500`}
                     />
                   )}
                   <div className="flex gap-1 ml-2">
@@ -351,6 +353,7 @@ export default function DataTable({
                     <input
                       type="checkbox"
                       onChange={onSelectAll}
+                      checked={isAllSelected !== null ? isAllSelected : (data && data.length > 0 && data.every(row => selectedRows.includes(row.id)))}
                       className="rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
                     />
                   </th>
@@ -414,7 +417,8 @@ export default function DataTable({
                                         type="checkbox"
                                         checked={selectedRows.includes(rowId)}
                                         onChange={() => onSelectRow(rowId)}
-                                        className="rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+                                        disabled={row.isCurrentUser}
+                                        className={`${row.isCurrentUser ? 'cursor-not-allowed opacity-50' : ''} rounded border-gray-300 text-cyan-600 focus:ring-cyan-500`}
                                       />
                                     </td>
                                   )}

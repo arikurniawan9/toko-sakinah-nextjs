@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { Save, X } from 'lucide-react';
+import { useEscapeKey } from '@/lib/hooks/useEscapeKey';
 import Tooltip from '../Tooltip';
 import CategoryPickerModal from '../kategori/CategoryPickerModal';
 import SupplierPickerModal from '../supplier/SupplierPickerModal';
@@ -23,6 +24,9 @@ export default function ProductModal({
 
   const [isCategoryPickerOpen, setIsCategoryPickerOpen] = useState(false);
   const [isSupplierPickerOpen, setIsSupplierPickerOpen] = useState(false);
+
+  // Gunakan hook untuk menangani tombol ESC
+  useEscapeKey(closeModal, showModal);
 
   // --- Selection Handlers ---
 

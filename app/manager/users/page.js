@@ -86,6 +86,9 @@ export default function ManagerAllUsersManagement() {
   }, [canManageUsers]);
 
   const handleSelectRow = (id) => {
+    // Jangan izinkan memilih akun sendiri (jika itu adalah akun manager)
+    if (session?.user?.id === id) return;
+
     setSelectedRows(prev =>
       prev.includes(id) ? prev.filter(rowId => rowId !== id) : [...prev, id]
     );
@@ -93,9 +96,13 @@ export default function ManagerAllUsersManagement() {
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      const allRowIds = users.map(u => u.id);
+      // Pilih semua baris kecuali akun sendiri
+      const allRowIds = users
+        .filter(u => u.id !== session?.user?.id)
+        .map(u => u.id);
       setSelectedRows(allRowIds);
     } else {
+      // Hapus semua pilihan kecuali akun sendiri
       setSelectedRows([]);
     }
   };
@@ -107,7 +114,17 @@ export default function ManagerAllUsersManagement() {
 
   const handleDelete = (ids) => {
     if (!canManageUsers) return;
-    setItemsToDelete(ids);
+
+    // Filter out the current user's ID from the deletion list
+    const userIdsToDelete = ids.filter(id => id !== session?.user?.id);
+
+    // If no IDs remain after filtering, don't show the modal
+    if (userIdsToDelete.length === 0) {
+      setTableError('Anda tidak dapat menghapus akun sendiri.');
+      return;
+    }
+
+    setItemsToDelete(userIdsToDelete);
     setShowDeleteModal(true);
   };
 
@@ -249,33 +266,41 @@ export default function ManagerAllUsersManagement() {
     setShowTransferModal(true);
   };
 
-  const renderRowActions = (row) => (
-    <div className="flex items-center space-x-2">
-      <button
-        onClick={() => openModalForEdit(row)}
-        className="p-1 text-blue-500 hover:text-blue-700"
-        title="Edit"
-      >
-        <Edit size={18} />
-      </button>
-      {row.role !== 'MANAGER' && (
+  const renderRowActions = (row) => {
+    const isCurrentUser = session?.user?.id === row.id;
+    const canEdit = !isCurrentUser && canManageUsers;
+    const canDelete = !isCurrentUser && canManageUsers && row.role !== 'MANAGER';
+
+    return (
+      <div className="flex items-center space-x-2">
         <button
-          onClick={() => openTransferModal(row)}
-          className="p-1 text-green-500 hover:text-green-700"
-          title="Pindahkan ke Toko Lain"
+          onClick={() => canEdit ? openModalForEdit(row) : undefined}
+          className={`${canEdit ? 'p-1 text-blue-500 hover:text-blue-700 cursor-pointer' : 'p-1 text-gray-400 cursor-not-allowed'}`}
+          title={canEdit ? "Edit" : "Tidak dapat mengedit akun sendiri"}
+          disabled={!canEdit}
         >
-          <MoveRight size={18} />
+          <Edit size={18} />
         </button>
-      )}
-      <button
-        onClick={() => handleDelete([row.id])}
-        className="p-1 text-red-500 hover:text-red-700"
-        title="Hapus"
-      >
-        <Trash2 size={18} />
-      </button>
-    </div>
-  );
+        {row.role !== 'MANAGER' && (
+          <button
+            onClick={() => openTransferModal(row)}
+            className="p-1 text-green-500 hover:text-green-700"
+            title="Pindahkan ke Toko Lain"
+          >
+            <MoveRight size={18} />
+          </button>
+        )}
+        <button
+          onClick={() => canDelete ? handleDelete([row.id]) : undefined}
+          className={`${canDelete ? 'p-1 text-red-500 hover:text-red-700 cursor-pointer' : 'p-1 text-gray-400 cursor-not-allowed'}`}
+          title={canDelete ? "Hapus" : "Tidak dapat menghapus akun sendiri"}
+          disabled={!canDelete}
+        >
+          <Trash2 size={18} />
+        </button>
+      </div>
+    );
+  };
 
   const paginationData = {
     currentPage,
@@ -298,7 +323,7 @@ export default function ManagerAllUsersManagement() {
       
       <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
         <DataTable
-          data={users}
+          data={users.map(user => ({...user, isCurrentUser: session?.user?.id === user.id}))}
           columns={columns}
           loading={loading}
           onAdd={canManageUsers ? openModalForCreate : undefined}
@@ -308,6 +333,10 @@ export default function ManagerAllUsersManagement() {
           pagination={paginationData}
           mobileColumns={['name', 'role', 'stores', 'status']}
           rowActions={renderRowActions}
+          selectedRows={selectedRows}
+          onSelectRow={handleSelectRow}
+          onSelectAll={handleSelectAll}
+          isAllSelected={users.length > 0 && users.filter(u => u.id !== session?.user?.id).every(u => selectedRows.includes(u.id))}
         />
       </div>
 

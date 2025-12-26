@@ -106,6 +106,23 @@ export default function WarehouseUserManagement() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
 
+  // ESC key to close modals
+  useEffect(() => {
+    const handleEscKey = (event) => {
+      if (event.key === 'Escape') {
+        if (showModal) closeModal();
+        if (showDeleteModal) setShowDeleteModal(false);
+        if (showDetailModal) setShowDetailModal(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [showModal, showDeleteModal, showDetailModal, closeModal]);
+
   const handleViewDetail = (user) => {
     setSelectedUser(user);
     setShowDetailModal(true);

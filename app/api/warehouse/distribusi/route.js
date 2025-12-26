@@ -6,7 +6,7 @@ import globalPrisma from '@/lib/prisma';
 import { ROLES } from '@/lib/constants';
 
 // Ini adalah endpoint untuk distribusi produk dari master gudang ke toko tertentu
-const WAREHOUSE_STORE_ID = 'WAREHOUSE_MASTER_STORE'; // ID khusus untuk menyimpan master data
+const WAREHOUSE_STORE_ID = 'GM001'; // ID khusus untuk menyimpan master data
 const WAREHOUSE_STORE_NAME = 'Master Data Gudang'; // Nama untuk store virtual
 
 export async function POST(request) {

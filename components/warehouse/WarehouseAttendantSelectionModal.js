@@ -39,6 +39,22 @@ const WarehouseAttendantSelectionModal = ({
     }
   }, [isOpen]);
 
+  // Handle ESC key press to close modal
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleEscKey = (event) => {
+      if (event.key === 'Escape') {
+        onToggle(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [isOpen, onToggle]);
+
   // Handle barcode scanning - simplified from cashier version for warehouse context, just search
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {

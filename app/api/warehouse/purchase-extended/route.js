@@ -23,7 +23,7 @@ export async function POST(request) {
 
     // For WAREHOUSE role users, we'll use the warehouse master store
     // If user is WAREHOUSE role, they operate on the warehouse master store
-    let effectiveStoreId = 'WAREHOUSE_MASTER_STORE';
+    let effectiveStoreId = 'GM001';
 
     // If user has MANAGER role, they must have a specific store context
     if (session.user.role === ROLES.MANAGER) {
@@ -112,7 +112,7 @@ export async function POST(request) {
             category = await prisma.category.findFirst({
               where: {
                 name: item.categoryName,
-                storeId: 'WAREHOUSE_MASTER_STORE'
+                storeId: 'GM001'
               }
             });
             
@@ -152,7 +152,7 @@ export async function POST(request) {
             supplier = await prisma.supplier.findFirst({
               where: {
                 code: item.supplierCode,
-                storeId: 'WAREHOUSE_MASTER_STORE'
+                storeId: 'GM001'
               }
             });
             
@@ -217,7 +217,7 @@ export async function POST(request) {
         let masterProduct = await prisma.product.findFirst({
           where: {
             productCode: item.productCode,
-            storeId: 'WAREHOUSE_MASTER_STORE'
+            storeId: 'GM001'
           }
         });
 
@@ -226,7 +226,7 @@ export async function POST(request) {
           let masterCategory = await prisma.category.findFirst({
             where: {
               name: item.categoryName,
-              storeId: 'WAREHOUSE_MASTER_STORE'
+              storeId: 'GM001'
             }
           });
 
@@ -236,7 +236,7 @@ export async function POST(request) {
               data: {
                 name: item.categoryName,
                 description: item.categoryDescription || null,
-                storeId: 'WAREHOUSE_MASTER_STORE'
+                storeId: 'GM001'
               }
             });
           }
@@ -244,7 +244,7 @@ export async function POST(request) {
           let masterSupplier = await prisma.supplier.findFirst({
             where: {
               code: item.supplierCode,
-              storeId: 'WAREHOUSE_MASTER_STORE'
+              storeId: 'GM001'
             }
           });
 
@@ -258,7 +258,7 @@ export async function POST(request) {
                 address: item.address || null,
                 phone: item.phone || null,
                 email: item.email || null,
-                storeId: 'WAREHOUSE_MASTER_STORE'
+                storeId: 'GM001'
               }
             });
           }
@@ -276,7 +276,7 @@ export async function POST(request) {
               silverPrice: item.silverPrice || 0,
               goldPrice: item.goldPrice || 0,
               platinumPrice: item.platinumPrice || 0,
-              storeId: 'WAREHOUSE_MASTER_STORE',
+              storeId: 'GM001',
               description: item.description || null,
               image: item.image || null
             }
@@ -334,7 +334,7 @@ export async function POST(request) {
         const masterProduct = await prisma.product.findFirst({
           where: {
             productCode: originalItem.productCode,
-            storeId: 'WAREHOUSE_MASTER_STORE'
+            storeId: 'GM001'
           }
         });
 
@@ -380,7 +380,7 @@ export async function POST(request) {
         },
         ipAddress,
         userAgent,
-        'WAREHOUSE_MASTER_STORE' // Log ke store gudang
+        'GM001' // Log ke store gudang
       );
 
       return purchase;

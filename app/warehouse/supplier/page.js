@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useKeyboardShortcut } from '../../../lib/hooks/useKeyboardShortcut';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useUserTheme } from '../../../components/UserThemeContext';
 import { useSession } from 'next-auth/react';
@@ -63,6 +64,44 @@ export default function SupplierManagementPage() {
   const [showImportModal, setShowImportModal] = useState(false); // ADDED: State for import modal
   const [showDetailModal, setShowDetailModal] = useState(false); // State for detail modal
   const [selectedSupplier, setSelectedSupplier] = useState(null); // Selected supplier for detail
+
+  // ESC key to close modals
+  useEffect(() => {
+    const handleEscKey = (event) => {
+      if (event.key === 'Escape') {
+        if (showModal) closeModal();
+        if (showDeleteModal) setShowDeleteModal(false);
+        if (showImportModal) setShowImportModal(false);
+        if (showDetailModal) setShowDetailModal(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [showModal, showDeleteModal, showImportModal, showDetailModal, closeModal]);
+
+  // Keyboard shortcuts
+  useKeyboardShortcut({
+    'n': () => canManageSuppliers && openModalForCreate(), // Tambah supplier baru
+    'ctrl+n': () => canManageSuppliers && openModalForCreate(), // Tambah supplier baru
+    'i': () => canManageSuppliers && setShowImportModal(true), // Import
+    'ctrl+i': () => canManageSuppliers && setShowImportModal(true), // Import
+    'e': () => canManageSuppliers && document.querySelector('button[title="Ekspor"]')?.click(), // Export
+    'ctrl+e': () => canManageSuppliers && document.querySelector('button[title="Ekspor"]')?.click(), // Export
+    '/': (e) => {
+      e.preventDefault();
+      document.querySelector('input[placeholder*="Cari"]')?.focus();
+    }, // Fokus ke search
+    'ctrl+s': (e) => {
+      e.preventDefault();
+      if (showModal) {
+        handleSave();
+      }
+    }, // Simpan jika modal terbuka
+  });
 
   const handleSelectRow = (id) => {
     setSelectedRows(prev =>

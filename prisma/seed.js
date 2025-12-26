@@ -55,10 +55,10 @@ async function main() {
 
   // 4. Buat Store Master untuk Gudang (jika belum ada)
   const masterStore = await prisma.store.upsert({
-    where: { code: "WAREHOUSE_MASTER_STORE" },
+    where: { code: "GM001" },
     update: {},
     create: {
-      code: "WAREHOUSE_MASTER_STORE",
+      code: "GM001",
       name: "Gudang Master",
       description: "Toko virtual untuk menyimpan data master produk gudang.",
       status: "ACTIVE",

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Search, Plus, Download, Upload, Trash2, Folder, Edit, Eye } from 'lucide-react';
+import { useKeyboardShortcut } from '../../../lib/hooks/useKeyboardShortcut';
 import ProtectedRoute from '../../../components/ProtectedRoute';
 import { useUserTheme } from '../../../components/UserThemeContext';
 import { useSession } from 'next-auth/react';
@@ -146,8 +147,36 @@ export default function WarehouseProductsPage() {
   // Cached data for forms
   const { categories, loading: categoriesLoading, error: categoriesError } = useCachedCategories();
   const { suppliers, loading: suppliersLoading, error: suppliersError } = useCachedSuppliers();
-  
+
   const isInitialDataLoading = categoriesLoading || suppliersLoading;
+
+  // Keyboard shortcuts
+  useKeyboardShortcut({
+    'n': () => isWarehouse && openModalForCreate(), // Tambah produk baru
+    'ctrl+n': () => isWarehouse && openModalForCreate(), // Tambah produk baru
+    'i': () => document.querySelector('input[type="file"]')?.click(), // Import
+    'ctrl+i': () => document.querySelector('input[type="file"]')?.click(), // Import
+    'e': () => isWarehouse && handleExport(), // Export
+    'ctrl+e': () => isWarehouse && handleExport(), // Export
+    '/': (e) => {
+      e.preventDefault();
+      document.querySelector('input[placeholder="Cari produk..."]')?.focus();
+    }, // Fokus ke search
+    'ctrl+s': (e) => {
+      e.preventDefault();
+      if (showModal) {
+        handleSave();
+      }
+    }, // Simpan jika modal terbuka
+    'escape': () => {
+      if (showModal) closeModal();
+      if (showDetailModal) setShowDetailModal(false);
+      if (showAddStockModal) setShowAddStockModal(false);
+      if (showDeleteModal) setShowDeleteModal(false);
+      if (showExportFormatModal) setShowExportFormatModal(false);
+      if (showImportConfirmModal) setShowImportConfirmModal(false);
+    } // Tutup modal dengan ESC
+  });
 
   const { selectedRows, handleSelectAll, handleSelectRow, clearSelection, setSelectedRows } = useTableSelection(products);
 

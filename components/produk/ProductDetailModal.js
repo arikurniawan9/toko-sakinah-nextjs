@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { X, Tag, Truck, Package, DollarSign, Scale, Info, Hash } from 'lucide-react';
+import { useEscapeKey } from '@/lib/hooks/useEscapeKey';
 import Tooltip from '../Tooltip';
 import ProductBarcodePreview from '../admin/ProductBarcodePreview';
 import { generateSingleProductBarcodePDF } from '../admin/ProductBarcodePDFGenerator';
@@ -17,6 +18,9 @@ export default function ProductDetailModal({
   const [showBarcodePreview, setShowBarcodePreview] = useState(false);
 
   if (!isOpen || !product) return null;
+
+  // Gunakan hook untuk menangani tombol ESC
+  useEscapeKey(onClose, isOpen);
 
   const handlePrintBarcode = () => {
     if (!product) return;

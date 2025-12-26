@@ -3,6 +3,7 @@
 
 import { Save, X, Plus, Trash2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useEscapeKey } from '../../lib/hooks/useEscapeKey';
 import Tooltip from '../../components/Tooltip';
 import ButtonSelector from '../../components/ButtonSelector';
 
@@ -22,6 +23,9 @@ export default function WarehouseProductModal({
   onSuccess
 }) {
   if (!showModal) return null;
+
+  // Gunakan hook untuk menangani tombol ESC
+  useEscapeKey(closeModal, showModal);
 
   // --- Selection Handlers ---
 

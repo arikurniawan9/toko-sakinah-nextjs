@@ -7,7 +7,7 @@ import { ROLES } from '@/lib/constants';
 
 // Ini adalah endpoint untuk manajemen master kategori gudang
 // Kita menggunakan toko dengan ID khusus untuk menyimpan master data gudang
-const WAREHOUSE_STORE_ID = 'WAREHOUSE_MASTER_STORE'; // ID khusus untuk menyimpan master data
+const WAREHOUSE_STORE_ID = 'GM001'; // ID khusus untuk menyimpan master data
 const WAREHOUSE_STORE_NAME = 'Master Data Gudang'; // Nama untuk store virtual
 
 export async function GET(request) {

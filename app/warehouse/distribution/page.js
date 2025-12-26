@@ -82,6 +82,22 @@ export default function WarehouseDistributionPage() {
   ];
   useHotkeys(hotkeys, [isSubmitting, distributionItems]);
 
+  // ESC key to close modals
+  useEffect(() => {
+    const handleEscKey = (event) => {
+      if (event.key === 'Escape') {
+        setIsUserModalOpen(false);
+        setShowReceiptModal(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, []);
+
 
   // Fetch data for dropdowns
   useEffect(() => {

@@ -22,7 +22,7 @@ export async function POST(request) {
     // Ambil semua produk yang ada di warehouse master store
     const warehouseProducts = await globalPrisma.product.findMany({
       where: {
-        storeId: 'WAREHOUSE_MASTER_STORE'
+        storeId: 'GM001'
       }
     });
 
@@ -40,7 +40,7 @@ export async function POST(request) {
           where: {
             productCode: warehouseProduct.productCode,
             storeId: {
-              not: 'WAREHOUSE_MASTER_STORE' // Bukan dari warehouse master store
+              not: 'GM001' // Bukan dari warehouse master store
             }
           },
           orderBy: {

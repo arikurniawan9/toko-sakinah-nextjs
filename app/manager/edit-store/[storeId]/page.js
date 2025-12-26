@@ -25,6 +25,7 @@ export default function EditStorePage() {
     adminEmployeeNumber: '', // Added for editable admin employee number
   });
   const [adminUser, setAdminUser] = useState(null); // To store admin user details
+  const [warehouseUser, setWarehouseUser] = useState(null); // To store warehouse user details for warehouse master store
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showTempAdminPassword, setShowTempAdminPassword] = useState(''); // To show new password after reset
@@ -46,6 +47,7 @@ export default function EditStorePage() {
       if (response.ok) {
         const data = await response.json();
         const fetchedStore = data.store;
+
         setFormData({
           name: fetchedStore.name || '',
           description: fetchedStore.description || '',
@@ -53,10 +55,24 @@ export default function EditStorePage() {
           phone: fetchedStore.phone || '',
           email: fetchedStore.email || '',
           status: fetchedStore.status || 'ACTIVE',
+          code: fetchedStore.code || '', // Store the store code
           adminUsername: fetchedStore.adminUser?.username || '', // Initialize admin username
           adminEmployeeNumber: fetchedStore.adminUser?.employeeNumber || '', // Initialize admin employee number
         });
         setAdminUser(fetchedStore.adminUser); // Set admin user details
+
+        // Check if this is the warehouse master store and get warehouse user details
+        if (fetchedStore.code === 'GM001') { // Warehouse master store code
+          const warehouseUsersResponse = await fetch('/api/warehouse/users?role=WAREHOUSE');
+          if (warehouseUsersResponse.ok) {
+            const warehouseUsersData = await warehouseUsersResponse.json();
+            // Find the warehouse user that was created during seeding (usually with username 'gudang')
+            const warehouseUser = warehouseUsersData.users?.find(user => user.username === 'gudang');
+            if (warehouseUser) {
+              setWarehouseUser(warehouseUser);
+            }
+          }
+        }
       } else {
         const errData = await response.json();
         setError(errData.error || 'Gagal memuat detail toko');
@@ -262,64 +278,108 @@ export default function EditStorePage() {
 
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Informasi Akun Admin Toko</h2>
 
-          {adminUser ? (
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="adminUsername" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-                  Username Admin
-                </label>
-                <input
-                  type="text"
-                  id="adminUsername"
-                  name="adminUsername"
-                  value={formData.adminUsername}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
-                  placeholder="Username untuk admin toko"
-                />
+          {/* Check if this is the warehouse master store */}
+          {formData.code === 'GM001' ? (
+            // For warehouse master store, show the existing warehouse user account
+            warehouseUser ? (
+              <div className="space-y-4">
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                  <h3 className="text-lg font-semibold text-blue-800 dark:text-blue-200 mb-2">Akun Gudang Master</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-600 dark:text-gray-300">Nama</p>
+                      <p className="font-medium">{warehouseUser.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600 dark:text-gray-300">Username</p>
+                      <p className="font-medium">{warehouseUser.username}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600 dark:text-gray-300">Kode Pegawai</p>
+                      <p className="font-medium">{warehouseUser.employeeNumber || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600 dark:text-gray-300">Peran</p>
+                      <p className="font-medium">{warehouseUser.role}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400 italic">
+                  <p>*) Akun gudang master sudah dibuat saat seeding dan tidak dapat diedit di sini.</p>
+                </div>
               </div>
-
-              <div>
-                <label htmlFor="adminEmployeeNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-                  Kode Pegawai Admin
-                </label>
-                <input
-                  type="text"
-                  id="adminEmployeeNumber"
-                  name="adminEmployeeNumber"
-                  value={formData.adminEmployeeNumber}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
-                  placeholder="Kode pegawai untuk admin toko"
-                />
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Akun gudang master tidak ditemukan.</p>
+                <Link href="/admin/users">
+                  <span className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <UserPlus size={18} className="mr-2" />
+                    Kelola Akun Gudang
+                  </span>
+                </Link>
               </div>
-
-              <div>
-                <button
-                  type="button"
-                  onClick={handleResetAdminPassword}
-                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                  disabled={loading}
-                >
-                  {loading ? 'Mengatur ulang...' : 'Reset Password Admin'}
-                </button>
-                {showTempAdminPassword && (
-                  <p className="mt-2 text-sm text-green-600 dark:text-green-400">
-                    Password baru: <span className="font-mono">{showTempAdminPassword}</span> (Harap catat dan sampaikan ke admin toko)
-                  </p>
-                )}
-              </div>
-            </div>
+            )
           ) : (
-            <div className="text-center py-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Tidak ada akun admin toko yang ditemukan untuk toko ini.</p>
-              <Link href={`/manager/create-admin/${storeId}`}>
-                <span className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                  <UserPlus size={18} className="mr-2" />
-                  Buat Akun Admin
-                </span>
-              </Link>
-            </div>
+            // For regular stores, show the existing admin or create option
+            adminUser ? (
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="adminUsername" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                    Username Admin
+                  </label>
+                  <input
+                    type="text"
+                    id="adminUsername"
+                    name="adminUsername"
+                    value={formData.adminUsername}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                    placeholder="Username untuk admin toko"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="adminEmployeeNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                    Kode Pegawai Admin
+                  </label>
+                  <input
+                    type="text"
+                    id="adminEmployeeNumber"
+                    name="adminEmployeeNumber"
+                    value={formData.adminEmployeeNumber}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                    placeholder="Kode pegawai untuk admin toko"
+                  />
+                </div>
+
+                <div>
+                  <button
+                    type="button"
+                    onClick={handleResetAdminPassword}
+                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                    disabled={loading}
+                  >
+                    {loading ? 'Mengatur ulang...' : 'Reset Password Admin'}
+                  </button>
+                  {showTempAdminPassword && (
+                    <p className="mt-2 text-sm text-green-600 dark:text-green-400">
+                      Password baru: <span className="font-mono">{showTempAdminPassword}</span> (Harap catat dan sampaikan ke admin toko)
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Tidak ada akun admin toko yang ditemukan untuk toko ini.</p>
+                <Link href={`/manager/create-admin/${storeId}`}>
+                  <span className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                    <UserPlus size={18} className="mr-2" />
+                    Buat Akun Admin
+                  </span>
+                </Link>
+              </div>
+            )
           )}
 
           <div className="flex justify-end space-x-4 pt-6">
