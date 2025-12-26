@@ -78,9 +78,15 @@ const UserModal = ({
             <div className="sm:flex sm:items-start">
               <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
                 <h3 className={`text-lg leading-6 font-medium ${
-                  darkMode ? 'text-theme-purple-400' : 'text-theme-purple-800'
+                  darkMode ? 'text-theme-purple-400' : 'text-gray-900'
                 }`} id="modal-title">
-                  {editingUser ? (isAttendantForm ? 'Edit Pelayan' : 'Edit User') : (isAttendantForm ? `Tambah Pelayan Baru untuk ${currentStoreName || 'Toko Ini'}` : 'Tambah User Baru')}
+                  {editingUser 
+                    ? (isAttendantForm ? 'Edit Pelayan' : 'Edit User') 
+                    : (isAttendantForm 
+                        ? <>Tambah Pelayan Baru untuk <span className={`font-bold ${darkMode ? 'text-green-400' : 'text-green-600'}`}>{currentStoreName || 'Toko Ini'}</span></>
+                        : 'Tambah User Baru'
+                      )
+                  }
                 </h3>
                 <div className="mt-4 w-full">
                   {error && (
