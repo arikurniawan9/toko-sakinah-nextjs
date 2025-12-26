@@ -724,8 +724,8 @@ export default function KasirTransaksiPage() {
 
   useEffect(() => {
     // Gunakan fungsi dari hook untuk menghitung transaksi
-    calculateTransaction(cart, selectedMember, additionalDiscount, getTierPrice);
-  }, [cart, selectedMember, additionalDiscount, getTierPrice, calculateTransaction]);
+    calculateTransaction(cart, selectedMember, getTierPrice);
+  }, [cart, selectedMember, getTierPrice, calculateTransaction]);
 
   // Fungsi untuk menambah member baru
   const handleAddMember = async (memberData) => {
