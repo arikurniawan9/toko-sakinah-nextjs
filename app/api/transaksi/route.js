@@ -161,8 +161,6 @@ export async function POST(request) {
     payment,
     change,
     tax,
-    discount,
-    additionalDiscount,
     memberId,
     attendantId,
     paymentMethod, // Add payment method
@@ -234,8 +232,6 @@ export async function POST(request) {
           memberId: memberId,
           paymentMethod: paymentMethod || 'CASH', // Include payment method, default to CASH
           total: total,
-          discount: discount,
-          additionalDiscount: additionalDiscount,
           tax: tax,
           payment: payment,
           change: change,
@@ -247,7 +243,6 @@ export async function POST(request) {
               productId: item.productId,
               quantity: item.quantity,
               price: item.price,
-              discount: item.discount,
               subtotal: item.price * item.quantity,
             })),
           },

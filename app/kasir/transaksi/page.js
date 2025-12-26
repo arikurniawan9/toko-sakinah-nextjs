@@ -52,7 +52,6 @@ export default function KasirTransaksiPage() {
   const [isSuspendedListModalOpen, setIsSuspendedListModalOpen] =
     useState(false);
   const [receiptData, setReceiptData] = useState(null);
-  const [additionalDiscount, setAdditionalDiscount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [referenceNumber, setReferenceNumber] = useState("");
   const [showReceiptModal, setShowReceiptModal] = useState(false);
@@ -128,7 +127,6 @@ export default function KasirTransaksiPage() {
     setSelectedAttendant(null);
     setPayment(0);
     setSearchTerm("");
-    setAdditionalDiscount(0);
     setPaymentMethod("CASH");
     setReferenceNumber("");
   }, [
@@ -137,7 +135,6 @@ export default function KasirTransaksiPage() {
     setSelectedAttendant,
     setPayment,
     setSearchTerm,
-    setAdditionalDiscount,
     setPaymentMethod,
     setReferenceNumber,
   ]);
@@ -241,7 +238,7 @@ export default function KasirTransaksiPage() {
     } finally {
       setLoading(false);
     }
-  }, [calculation, session, selectedAttendant, selectedMember, cart, getTierPrice, paymentMethod, additionalDiscount, payment, referenceNumber]);
+  }, [calculation, session, selectedAttendant, selectedMember, cart, getTierPrice, paymentMethod, payment, referenceNumber]);
 
   const initiateUnpaidPayment = () => {
     // Tambahkan konfirmasi untuk pembayaran hutang
@@ -365,8 +362,7 @@ export default function KasirTransaksiPage() {
           payment: payment,
           change: payment - calculation.grandTotal,
           tax: calculation.tax,
-          discount: calculation.totalDiscount, // This will now include item and member discount
-          additionalDiscount: additionalDiscount, // Send additional discount separately
+          discount: calculation.totalDiscount, // This will now include item discount only
         }),
       });
 
@@ -482,7 +478,7 @@ export default function KasirTransaksiPage() {
       // Reset reference number in finally block to ensure it's always cleared
       setReferenceNumber("");
     }
-  }, [calculation, payment, session, selectedAttendant, selectedMember, cart, getTierPrice, defaultMember, additionalDiscount, paymentMethod, referenceNumber]);
+  }, [calculation, payment, session, selectedAttendant, selectedMember, cart, getTierPrice, defaultMember, paymentMethod, referenceNumber]);
 
   const handleSuspendSale = async ({ name, notes }) => {
     if (cart.length === 0) {
@@ -500,7 +496,6 @@ export default function KasirTransaksiPage() {
           notes,
           memberId: selectedMember?.id || defaultMember?.id || null,
           cartItems: cart, // The API expects the cart items
-          additionalDiscount: additionalDiscount, // Simpan diskon tambahan
           selectedAttendantId: selectedAttendant?.id, // Simpan ID pelayan yang dipilih
         }),
       });
@@ -557,7 +552,6 @@ export default function KasirTransaksiPage() {
     setCart(suspendedSale.cartItems);
     setSelectedMember(memberToSelect);
     setSelectedAttendant(attendantToSelect);
-    setAdditionalDiscount(suspendedSale.additionalDiscount || 0); // Kembalikan diskon tambahan jika ada
 
     // Close the modal
     setIsSuspendedListModalOpen(false);
@@ -931,8 +925,6 @@ export default function KasirTransaksiPage() {
                 setReferenceNumber={setReferenceNumber}
                 loading={loading}
                 darkMode={darkMode}
-                additionalDiscount={additionalDiscount}
-                setAdditionalDiscount={setAdditionalDiscount}
                 sessionStatus={session?.status ?? "loading"}
                 paymentMethod={paymentMethod}
                 setPaymentMethod={setPaymentMethod}
