@@ -11,6 +11,7 @@ const MemberModal = ({
   error,
   setFormError,
   darkMode,
+  currentStoreName, // New prop for displaying store name in header
 }) => {
   if (!showModal) return null;
 
@@ -34,9 +35,12 @@ const MemberModal = ({
             <div className="sm:flex sm:items-start">
               <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
                 <h3 className={`text-lg leading-6 font-medium ${
-                  darkMode ? 'text-theme-purple-400' : 'text-theme-purple-800'
+                  darkMode ? 'text-theme-purple-400' : 'text-gray-900'
                 }`} id="modal-title">
-                  {editingMember ? 'Edit Member' : 'Tambah Member Baru'}
+                  {editingMember 
+                    ? 'Edit Member' 
+                    : <>Tambah Member Baru untuk <span className={`font-bold ${darkMode ? 'text-green-400' : 'text-green-600'}`}>{currentStoreName || 'Toko Ini'}</span></>
+                  }
                 </h3>
                 <div className="mt-4 w-full">
                   {error && (
@@ -127,7 +131,7 @@ const MemberModal = ({
                       placeholder="Masukkan alamat member"
                     ></textarea>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4"> {/* Changed from sm:grid-cols-2 to grid-cols-1 */}
                     <div>
                       <label htmlFor="membershipType" className={`block text-sm font-medium ${
                         darkMode ? 'text-gray-300' : 'text-gray-700'
@@ -145,30 +149,10 @@ const MemberModal = ({
                             : 'border-theme-purple-300 text-gray-900'
                         }`}
                       >
-                        <option className={`${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-gray-900'}`} value="SILVER">Silver (3% diskon)</option>
-                        <option className={`${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-gray-900'}`} value="GOLD">Gold (4% diskon)</option>
-                        <option className={`${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-gray-900'}`} value="PLATINUM">Platinum (5% diskon)</option>
+                        <option className={`${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-gray-900'}`} value="SILVER">Silver</option>
+                        <option className={`${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-gray-900'}`} value="GOLD">Gold</option>
+                        <option className={`${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-gray-900'}`} value="PLATINUM">Platinum</option>
                       </select>
-                    </div>
-                    <div>
-                      <label htmlFor="discount" className={`block text-sm font-medium ${
-                        darkMode ? 'text-gray-300' : 'text-gray-700'
-                      } mb-1`}>
-                        Diskon (%)
-                      </label>
-                      <input
-                        type="number"
-                        name="discount"
-                        id="discount"
-                        value={formData.discount}
-                        onChange={handleInputChange}
-                        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-theme-purple-500 focus:border-theme-purple-500 sm:text-sm ${
-                          darkMode 
-                            ? 'bg-gray-700 border-gray-600 text-white' 
-                            : 'border-theme-purple-300 text-gray-900'
-                        }`}
-                        placeholder="Persentase diskon"
-                      />
                     </div>
                   </div>
                 </div>

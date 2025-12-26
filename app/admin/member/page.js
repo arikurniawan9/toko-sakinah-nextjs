@@ -10,6 +10,7 @@ import { useMemberTable } from '../../../lib/hooks/useMemberTable';
 import { useMemberForm } from '../../../lib/hooks/useMemberForm';
 import { useTableSelection } from '../../../lib/hooks/useTableSelection';
 
+import { useSession } from 'next-auth/react'; // Import useSession
 import MemberModal from '../../../components/member/MemberModal';
 import ConfirmationModal from '../../../components/ConfirmationModal';
 import DataTable from '../../../components/DataTable';
@@ -18,6 +19,8 @@ import Breadcrumb from '../../../components/Breadcrumb';
 export default function MemberManagement() {
   const { userTheme } = useUserTheme();
   const darkMode = userTheme.darkMode;
+  const { data: session } = useSession(); // Get session
+  const currentStoreName = session?.user?.storeAccess?.name; // Get current store name
 
   const {
     members,
@@ -191,12 +194,6 @@ export default function MemberManagement() {
       sortable: true
     },
     {
-      key: 'discount',
-      title: 'Diskon (%)',
-      render: (value) => `${value}%`,
-      sortable: true
-    },
-    {
       key: 'createdAt',
       title: 'Tanggal Dibuat',
       render: (value) => new Date(value).toLocaleDateString('id-ID'),
@@ -303,7 +300,7 @@ export default function MemberManagement() {
             showExport={true}
             showItemsPerPage={true}
             pagination={paginationData}
-            mobileColumns={['name', 'phone', 'membershipType', 'discount']} // Show key information on mobile
+            mobileColumns={['name', 'phone', 'membershipType']} // Show key information on mobile
             rowActions={rowActions}
           />
         </div>
@@ -318,6 +315,7 @@ export default function MemberManagement() {
           error={formError}
           setFormError={setFormError}
           darkMode={darkMode}
+          currentStoreName={currentStoreName}
         />
 
         <ConfirmationModal

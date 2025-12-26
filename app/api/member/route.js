@@ -72,7 +72,6 @@ export async function GET(request) {
           phone: true,
           code: true,
           membershipType: true,
-          discount: true,
         },
         skip,
         take: limit,
@@ -111,7 +110,7 @@ export async function POST(request) {
 
   try {
     const body = await request.json();
-    const { name, phone, address, membershipType, discount } = body;
+    const { name, phone, address, membershipType } = body;
 
     // 1. Validasi input dasar
     if (!name || !phone) {
@@ -213,18 +212,12 @@ export async function POST(request) {
     // Konversi membershipType ke huruf kapital untuk konsistensi internal
     const normalizedMembershipType = (membershipType || 'SILVER').toUpperCase();
 
-    // Jika discount tidak disediakan, hitung berdasarkan membershipType
-    const calculatedDiscount = discount !== undefined && discount !== null
-      ? Number(discount)
-      : (normalizedMembershipType === 'GOLD' ? 4 : normalizedMembershipType === 'PLATINUM' ? 5 : 3);
-
     const newMember = await prisma.member.create({
       data: {
         name,
         phone,
         address: address || null,
         membershipType: normalizedMembershipType, // Gunakan format kapital untuk menyimpan
-        discount: calculatedDiscount,
         code: uniqueCode,
         storeId: storeId // Assign to the appropriate store
       },
@@ -359,7 +352,7 @@ export async function PUT(request) {
 
   try {
     const body = await request.json();
-    const { id, name, phone, address, membershipType, discount } = body;
+    const { id, name, phone, address, membershipType } = body;
 
     if (!id || !name || !phone) {
       return NextResponse.json(
@@ -432,11 +425,6 @@ export async function PUT(request) {
     // Konversi membershipType ke huruf kapital untuk konsistensi internal
     const normalizedMembershipType = (membershipType || 'SILVER').toUpperCase();
 
-    // Jika discount tidak disediakan, hitung berdasarkan membershipType
-    const calculatedDiscount = discount !== undefined && discount !== null
-      ? Number(discount)
-      : (normalizedMembershipType === 'GOLD' ? 4 : normalizedMembershipType === 'PLATINUM' ? 5 : 3);
-
     const updatedMember = await prisma.member.update({
       where: { id },
       data: {
@@ -444,7 +432,6 @@ export async function PUT(request) {
         phone,
         address: address || null,
         membershipType: normalizedMembershipType, // Gunakan format kapital untuk menyimpan
-        discount: calculatedDiscount,
       },
     });
 
