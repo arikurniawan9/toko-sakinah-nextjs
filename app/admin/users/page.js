@@ -13,6 +13,7 @@ import { AlertTriangle, CheckCircle, Plus, Edit, Trash2, Eye, Search } from 'luc
 import DataTable from '@/components/DataTable';
 import Breadcrumb from '@/components/Breadcrumb';
 import Tooltip from '@/components/Tooltip';
+import { ROLES } from '@/lib/constants'; // Import ROLES
 
 export default function UserManagement() {
   const { userTheme } = useUserTheme();
@@ -401,6 +402,7 @@ export default function UserManagement() {
               error={formError}
               setFormError={setFormError}
               darkMode={darkMode}
+              allowedRoles={[ROLES.ADMIN, ROLES.CASHIER]} // Only allow Admin and Cashier roles
             />
             <ConfirmationModal
               isOpen={showDeleteModal}
