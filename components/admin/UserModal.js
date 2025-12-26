@@ -15,6 +15,7 @@ const UserModal = ({
   isAttendantForm = false,
   allowedRoles,
   stores = [],
+  currentStoreName, // New prop for displaying store name in header
 }) => {
   const [showPassword, setShowPassword] = useState(false);
 
@@ -79,7 +80,7 @@ const UserModal = ({
                 <h3 className={`text-lg leading-6 font-medium ${
                   darkMode ? 'text-theme-purple-400' : 'text-theme-purple-800'
                 }`} id="modal-title">
-                  {editingUser ? (isAttendantForm ? 'Edit Pelayan' : 'Edit User') : (isAttendantForm ? 'Tambah Pelayan Baru' : 'Tambah User Baru')}
+                  {editingUser ? (isAttendantForm ? 'Edit Pelayan' : 'Edit User') : (isAttendantForm ? `Tambah Pelayan Baru untuk ${currentStoreName || 'Toko Ini'}` : 'Tambah User Baru')}
                 </h3>
                 <div className="mt-4 w-full">
                   {error && (
@@ -285,7 +286,7 @@ const UserModal = ({
                       </div>
                     )}
 
-                    {formData.role && formData.role !== ROLES.MANAGER && formData.role !== ROLES.WAREHOUSE && (
+                    {(!isAttendantForm && formData.role && formData.role !== ROLES.MANAGER && formData.role !== ROLES.WAREHOUSE) && (
                       <div className="mb-4">
                         <label htmlFor="storeId" className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
                           Toko *

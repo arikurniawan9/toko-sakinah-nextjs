@@ -24,6 +24,8 @@ export default function PelayanManagement() {
   const darkMode = userTheme.darkMode;
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === 'ADMIN';
+  const currentStoreId = session?.user?.storeId;
+  const currentStoreName = session?.user?.storeAccess?.name; // Corrected: Access store name from storeAccess
 
   const {
     attendants,
@@ -52,7 +54,11 @@ export default function PelayanManagement() {
     openModalForCreate,
     closeModal,
     handleSave: originalHandleSave,
-  } = useUserForm(fetchAttendants, 'ATTENDANT');
+  } = useUserForm(fetchAttendants, {
+    defaultRole: 'ATTENDANT',
+    currentStoreId: currentStoreId, // Pass currentStoreId to the form hook
+    isAttendantForm: true, // Indicate that this is for attendant creation
+  });
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemsToDelete, setItemsToDelete] = useState([]);
@@ -264,7 +270,7 @@ export default function PelayanManagement() {
             selectedRows={selectedRows}
             onSelectAll={handleSelectAll}
             onSelectRow={handleSelectRow}
-            onAdd={isAdmin ? () => openModalForCreate({ role: 'ATTENDANT'}) : undefined}
+            onAdd={isAdmin ? () => openModalForCreate({ role: 'ATTENDANT', storeId: currentStoreId }) : undefined}
             onSearch={setSearchTerm}
             onItemsPerPageChange={setItemsPerPage}
             darkMode={darkMode}
@@ -307,6 +313,7 @@ export default function PelayanManagement() {
               setFormError={setFormError}
               darkMode={darkMode}
               isAttendantForm={true}
+              currentStoreName={currentStoreName}
             />
             <ConfirmationModal
               isOpen={showDeleteModal}
