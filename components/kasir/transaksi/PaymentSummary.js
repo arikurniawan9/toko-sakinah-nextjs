@@ -17,8 +17,6 @@ const PaymentSummary = memo(({
   setReferenceNumber,
   loading,
   darkMode,
-  additionalDiscount,
-  setAdditionalDiscount,
   sessionStatus,
   selectedMember,
   selectedAttendant,
@@ -92,20 +90,8 @@ const PaymentSummary = memo(({
             </div>
             {calculation.itemDiscount > 0 && (
               <div className={`flex justify-between ${darkMode ? 'text-green-400' : 'text-green-600'}`}>
-                <span>Diskon Tier Harga:</span>
+                <span>Penghematan Member (Harga Tier):</span>
                 <span>-{formatCurrency(calculation.itemDiscount || 0)}</span>
-              </div>
-            )}
-            {calculation.memberDiscount > 0 && (
-              <div className={`flex justify-between ${darkMode ? 'text-green-400' : 'text-green-600'}`}>
-                <span>Diskon Member:</span>
-                <span>-{formatCurrency(calculation.memberDiscount || 0)}</span>
-              </div>
-            )}
-            {additionalDiscount > 0 && (
-              <div className={`flex justify-between ${darkMode ? 'text-green-400' : 'text-green-600'}`}>
-                <span>Diskon Tambahan:</span>
-                <span>-{formatCurrency(additionalDiscount)}</span>
               </div>
             )}
             <div className={`flex justify-between font-bold text-lg border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'} pt-2 mt-2`}>
@@ -135,23 +121,6 @@ const PaymentSummary = memo(({
               <option value="TRANSFER">TRANSFER</option>
               <option value="QRIS">QRIS</option>
             </select>
-          </div>
-          <div>
-            <label htmlFor="additionalDiscount" className={`block text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'} mb-1`}>
-              Diskon Tambahan
-            </label>
-            <input
-              type="number"
-              id="additionalDiscount"
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                darkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-300 bg-white text-gray-900'
-              }`}
-              value={additionalDiscount}
-              onChange={(e) => setAdditionalDiscount(Number(e.target.value))}
-              placeholder="Masukkan diskon tambahan"
-              min="0"
-              max={calculation?.subTotal || 0}
-            />
           </div>
           <div>
             <div className="flex justify-between items-center mb-1">
