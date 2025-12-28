@@ -28,7 +28,8 @@ export default function PrintDistributionInvoice({ params }) {
         setLoading(true);
         setError('');
 
-        const response = await fetch(`/api/warehouse/distribution?id=${params.id}`);
+        // Use the grouped API to get all items in the same distribution batch
+        const response = await fetch(`/api/warehouse/distribution/grouped?id=${params.id}`);
 
         if (!response.ok) {
           throw new Error('Gagal mengambil data distribusi');
@@ -106,16 +107,16 @@ export default function PrintDistributionInvoice({ params }) {
           </div>
 
           {/* Invoice Content */}
-          <div 
+          <div
             ref={printRef}
-            className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 print:p-0 print:shadow-none"
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 print:p-0 print:shadow-none print:bg-white print:rounded-none print:shadow-none print-content"
           >
             {/* Header */}
-            <div className="border-b border-gray-200 dark:border-gray-700 pb-4 mb-6 print:pb-4 print:mb-4">
+            <div className="border-b border-gray-200 dark:border-gray-700 pb-4 mb-6 print:pb-4 print:mb-4 print:border-gray-700">
               <div className="flex justify-between items-start">
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white">FAKTUR DISTRIBUSI</h1>
-                  <p className="text-gray-600 dark:text-gray-400 mt-1">No. Distribusi: {distribution.id}</p>
+                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white">FAKTUR DISTRIBUSI PRODUK</h1>
+                  <p className="text-gray-600 dark:text-gray-400 mt-1">No. Faktur: {distribution.invoiceNumber || distribution.id}</p>
                 </div>
                 <div className="text-right">
                   <div className="text-lg font-semibold text-gray-900 dark:text-white">GUDANG PUSAT</div>
@@ -198,7 +199,7 @@ export default function PrintDistributionInvoice({ params }) {
             )}
 
             {/* Footer */}
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-4 print:pt-4">
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4 print:pt-4 print:border-gray-700">
               <div className="flex justify-between">
                 <div>
                   <p className="text-gray-600 dark:text-gray-400">Dibuat oleh:</p>
@@ -217,12 +218,37 @@ export default function PrintDistributionInvoice({ params }) {
       {/* Print Styles */}
       <style jsx global>{`
         @media print {
+          @page {
+            margin: 0.5in;
+          }
           body {
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
-          button {
-            display: none;
+          button, .print\\:hidden, .no-print {
+            display: none !important;
+          }
+          .print\\:block {
+            display: block !important;
+          }
+          .print\\:shadow-none {
+            box-shadow: none !important;
+          }
+          .print\\:p-0 {
+            padding: 0 !important;
+          }
+          .print\\:bg-gray-100, .print\\:dark\\:bg-gray-900 {
+            background-color: white !important;
+          }
+          .print\\:shadow-lg {
+            box-shadow: none !important;
+          }
+          .print\\:rounded-lg {
+            border-radius: 0 !important;
+          }
+          .print-content {
+            display: block !important;
+            visibility: visible !important;
           }
         }
       `}</style>

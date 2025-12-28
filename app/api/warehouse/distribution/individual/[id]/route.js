@@ -72,22 +72,11 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Distribution not found' }, { status: 404 });
     }
 
-    // Create a readable distribution ID
-    const distDate = new Date(distribution.distributedAt);
-    const year = distDate.getFullYear().toString();
-    const month = (distDate.getMonth() + 1).toString().padStart(2, '0');
-    const day = distDate.getDate().toString().padStart(2, '0');
-    const datePart = `${year}${month}${day}`;
-    
-    // Use a simple sequence based on the distribution ID for uniqueness
-    const distIdSuffix = distribution.id.substring(distribution.id.length - 5).toUpperCase();
-    const distributionId = `DIST-${datePart}-${distIdSuffix}`;
-
     // Format the distribution data to match what the DataTable expects
     // Flatten product properties to avoid nested property access issues in DataTable
     const formattedDistribution = {
       id: distribution.id,
-      invoiceNumber: distributionId, // Use the readable ID as invoice number
+      invoiceNumber: distribution.invoiceNumber, // Use the actual invoice number if available
       distributedAt: distribution.distributedAt,
       distributedByUser: distribution.distributedByUser,
       store: distribution.store,
@@ -106,8 +95,8 @@ export async function GET(request, { params }) {
 
     // Return the distribution with a single formatted item
     return NextResponse.json({
-      id: distributionId, // Generate readable ID for this specific distribution
-      distributionId: distribution.id, // Original distribution ID
+      id: distribution.id, // Use the original distribution ID from the database
+      distributionId: distribution.id, // Original distribution ID (same as id)
       distributedAt: distribution.distributedAt,
       store: distribution.store,
       distributedByUser: distribution.distributedByUser,

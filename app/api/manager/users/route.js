@@ -110,6 +110,11 @@ export async function POST(request) {
       );
     }
 
+    // Validasi panjang nomor telepon
+    if (phone && phone.trim() !== '' && phone.trim().length > 13) {
+      return NextResponse.json({ error: 'Nomor telepon maksimal 13 karakter' }, { status: 400 });
+    }
+
     // Only allow creating global roles via this endpoint
     const validGlobalRoles = [ROLES.WAREHOUSE, ROLES.MANAGER];
     if (!validGlobalRoles.includes(role)) {

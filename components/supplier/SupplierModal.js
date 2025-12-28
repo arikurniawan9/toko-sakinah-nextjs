@@ -156,9 +156,10 @@ const SupplierModal = ({
                                                     id="phone"
                                                     value={formData.phone}
                                                     onChange={handleInputChange}
+                                                    maxLength={13}
                                                     className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-theme-purple-500 focus:border-theme-purple-500 sm:text-sm ${
-                                                      darkMode 
-                                                        ? 'bg-gray-700 border-gray-600 text-white' 
+                                                      darkMode
+                                                        ? 'bg-gray-700 border-gray-600 text-white'
                                                         : 'border-theme-purple-300 text-gray-900'
                                                     }`}
                                                     placeholder="Masukkan nomor telepon"

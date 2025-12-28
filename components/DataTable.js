@@ -35,6 +35,8 @@ export default function DataTable({
   rowActions = null,
   onImport = null, // ADDED: Import handler
   showImport = true, // ADDED: Show import button
+  onTemplateDownload = null, // ADDED: Template download handler
+  showTemplate = false, // ADDED: Show template download button
   additionalActions = [], // ADDED: Additional actions for toolbar
   showFilters = false, // ADDED: Show filter toggle
   filterOptions = [], // ADDED: Filter options
@@ -260,6 +262,15 @@ export default function DataTable({
                       title="Impor"
                     >
                       <Upload className="h-4 w-4" />
+                    </button>
+                  )}
+                  {showTemplate && onTemplateDownload && (
+                    <button
+                      onClick={onTemplateDownload}
+                      className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      title="Template"
+                    >
+                      <FileText className="h-4 w-4" />
                     </button>
                   )}
                 </div>

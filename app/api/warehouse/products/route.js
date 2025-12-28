@@ -70,7 +70,7 @@ export async function GET(request) {
     };
 
     if (search) {
-      whereClause.product = {
+      whereClause.Product = {
         OR: [
             { name: { contains: search, mode: 'insensitive' } },
             { productCode: { contains: search, mode: 'insensitive' } }
@@ -79,7 +79,9 @@ export async function GET(request) {
     }
 
     // Get total count for pagination
-    const totalCount = await prisma.warehouseProduct.count({ where: whereClause });
+    const totalCount = await prisma.warehouseProduct.count({
+      where: whereClause
+    });
 
     // Get warehouse products with pagination
     const warehouseProducts = await prisma.warehouseProduct.findMany({
@@ -268,6 +270,97 @@ export async function POST(request) {
     });
   } catch (error) {
     console.error('Error processing warehouse product (upsert):', error);
+    return NextResponse.json({ error: 'Internal server error: ' + error.message }, { status: 500 });
+  }
+}
+
+export async function PUT(request) {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session || ![ROLES.WAREHOUSE, ROLES.MANAGER].includes(session.user.role)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { id, name, productCode, categoryId, supplierId, stock, purchasePrice, retailPrice, silverPrice, goldPrice, platinumPrice, description } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID produk wajib diisi' }, { status: 400 });
+    }
+
+    const masterStore = await getMasterStore();
+    if (!masterStore) {
+        return NextResponse.json({ error: 'Master store could not be configured.' }, { status: 500 });
+    }
+
+    const centralWarehouse = await prisma.warehouse.findFirst({
+        where: { name: 'Gudang Pusat' }
+    });
+
+    if (!centralWarehouse) {
+        return NextResponse.json({ error: 'Gudang Pusat tidak ditemukan.' }, { status: 500 });
+    }
+
+    const existingProduct = await prisma.product.findUnique({
+      where: { id: id },
+    });
+
+    if (!existingProduct) {
+      return NextResponse.json({ error: 'Produk tidak ditemukan' }, { status: 404 });
+    }
+
+    const product = await prisma.$transaction(async (tx) => {
+      const updatedProduct = await tx.product.update({
+        where: { id: id },
+        data: {
+          name: name,
+          productCode: productCode,
+          categoryId: categoryId,
+          supplierId: supplierId || null,
+          description: description || null,
+          purchasePrice: purchasePrice || 0,
+          retailPrice: retailPrice || 0,
+          silverPrice: silverPrice || 0,
+          goldPrice: goldPrice || 0,
+          platinumPrice: platinumPrice || 0,
+          updatedAt: new Date()
+        },
+        include: { category: true, supplier: true }
+      });
+
+      await tx.warehouseProduct.update({
+        where: {
+          productId_warehouseId: {
+            productId: updatedProduct.id,
+            warehouseId: centralWarehouse.id
+          }
+        },
+        data: {
+          quantity: stock,
+          updatedAt: new Date()
+        }
+      });
+      return updatedProduct;
+    });
+
+    const requestHeaders = new Headers(request.headers);
+    await logProductUpdate(
+        session.user.id,
+        existingProduct,
+        product,
+        masterStore.id,
+        requestHeaders.get('x-forwarded-for') || requestHeaders.get('x-real-ip') || '127.0.0.1',
+        requestHeaders.get('user-agent') || ''
+    );
+
+    return NextResponse.json({
+      success: true,
+      product: product,
+      message: `Produk dengan kode ${productCode} berhasil diperbarui.`
+    });
+  } catch (error) {
+    console.error('Error updating warehouse product:', error);
     return NextResponse.json({ error: 'Internal server error: ' + error.message }, { status: 500 });
   }
 }

@@ -152,18 +152,48 @@ export default function WarehouseProductsPage() {
 
   // Keyboard shortcuts
   useKeyboardShortcut({
-    'n': () => isWarehouse && openModalForCreate(), // Tambah produk baru
-    'ctrl+n': () => isWarehouse && openModalForCreate(), // Tambah produk baru
-    'i': () => document.querySelector('input[type="file"]')?.click(), // Import
-    'ctrl+i': () => document.querySelector('input[type="file"]')?.click(), // Import
-    'e': () => isWarehouse && handleExport(), // Export
-    'ctrl+e': () => isWarehouse && handleExport(), // Export
-    '/': (e) => {
-      e.preventDefault();
-      document.querySelector('input[placeholder="Cari produk..."]')?.focus();
+    'alt+n': () => isWarehouse && openModalForCreate(), // Tambah produk baru
+    'alt+i': () => {
+      // Memicu fungsi import dengan mengklik input file tersembunyi
+      const hiddenFileInput = document.getElementById('hidden-import-file-input');
+      if (hiddenFileInput) {
+        hiddenFileInput.click();
+      } else {
+        // Jika elemen tidak ditemukan, buat elemen sementara
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.xlsx,.xls,.csv';
+        input.style.display = 'none';
+        input.onchange = (e) => handleImport(e);
+        document.body.appendChild(input);
+        input.click();
+        document.body.removeChild(input);
+      }
+    }, // Import
+    'alt+e': () => isWarehouse && handleExport(), // Export
+    'alt+d': () => {
+      // Download template produk gudang
+      const link = document.createElement('a');
+      link.href = '/templates/contoh-import-produk-gudang.csv';
+      link.download = 'contoh-import-produk-gudang.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }, // Download template
+    'ctrl+k': (e) => {
+      if (e) {
+        e.preventDefault();
+        // Fokus ke search input di DataTable
+        const searchInput = document.querySelector('input[placeholder="Cari produk..."]') ||
+                          document.querySelector('input[placeholder*="Cari"]') ||
+                          document.querySelector('input[type="search"]');
+        if (searchInput && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) {
+          searchInput.focus();
+        }
+      }
     }, // Fokus ke search
-    'ctrl+s': (e) => {
-      e.preventDefault();
+    'alt+s': (e) => {
+      if (e) e.preventDefault();
       if (showModal) {
         handleSave();
       }
@@ -254,33 +284,19 @@ export default function WarehouseProductsPage() {
       e.target.value = '';
       return;
     }
-    
+
     setFileToImport(file); // Store the file in state
 
     const formData = new FormData();
     formData.append('file', file);
-    
+
     await processImport(formData, e);
-  };
-
-  const handleImportWithConfirmation = async (force) => {
-    if (!fileToImport) {
-        toast.error("File import tidak ditemukan. Silakan coba lagi.");
-        return;
-    }
-
-    setShowImportConfirmModal(false);
-    const formData = new FormData();
-    formData.append('file', fileToImport);
-    formData.append('force', String(force));
-
-    await processImport(formData);
   };
 
   const processImport = async (formData, event = null) => {
     setImportLoading(true);
     toast.info('Mengirim file untuk diimpor...');
-    
+
     try {
       const response = await fetch('/api/warehouse/products/import', { method: 'POST', body: formData });
       const result = await response.json();
@@ -316,6 +332,45 @@ export default function WarehouseProductsPage() {
       }
     }
   };
+
+
+  const handleImportWithConfirmation = async (force) => {
+    if (!fileToImport) {
+        toast.error("File import tidak ditemukan. Silakan coba lagi.");
+        return;
+    }
+
+    setShowImportConfirmModal(false);
+    const formData = new FormData();
+    formData.append('file', fileToImport);
+    formData.append('force', String(force));
+
+    setImportLoading(true);
+    toast.info(force ? 'Mengimpor dan menimpa produk yang sudah ada...' : 'Mengimpor dan menambahkan stok produk yang sudah ada...');
+
+    try {
+      const response = await fetch('/api/warehouse/products/import', { method: 'POST', body: formData });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Gagal memproses file import');
+      }
+
+      fetchProducts();
+      toast.success(result.message || `Berhasil mengimpor ${result.importedCount || 0} produk gudang`);
+      if (result.errors && result.errors.length > 0) {
+        console.warn('Import errors:', result.errors);
+        toast.warn(`Beberapa produk gudang gagal diimpor: ${result.errors.length} error(s)`);
+      }
+      // Clear all import related states on success
+      resetImportState();
+    } catch (err) {
+      toast.error('Terjadi kesalahan saat import: ' + err.message);
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
 
   const resetImportState = () => {
     setFileToImport(null);
@@ -418,24 +473,6 @@ export default function WarehouseProductsPage() {
       render: (value) => `Rp ${(value || 0).toLocaleString('id-ID')}`,
       sortable: true
     },
-    {
-      key: 'silverPrice',
-      title: 'Harga Silver',
-      render: (value) => `Rp ${(value || 0).toLocaleString('id-ID')}`,
-      sortable: true
-    },
-    {
-      key: 'goldPrice',
-      title: 'Harga Gold',
-      render: (value) => `Rp ${(value || 0).toLocaleString('id-ID')}`,
-      sortable: true
-    },
-    {
-      key: 'platinumPrice',
-      title: 'Harga Platinum',
-      render: (value) => `Rp ${(value || 0).toLocaleString('id-ID')}`,
-      sortable: true
-    },
     // Kategori and Supplier columns removed as per user request
     // { key: 'category.name', title: 'Kategori', render: (value, row) => row.category?.name || '-', sortable: true },
     // { key: 'supplier.name', title: 'Supplier', render: (value, row) => row.supplier?.name || '-', sortable: true }
@@ -494,102 +531,54 @@ export default function WarehouseProductsPage() {
         <Breadcrumb items={[{ title: 'Produk Gudang', href: '/warehouse/products' }]} darkMode={darkMode} />
         <h1 className={`text-3xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Manajemen Produk Gudang</h1>
 
+        {/* Hidden file input for import shortcut */}
+        <input
+          id="hidden-import-file-input"
+          type="file"
+          accept=".xlsx,.xls,.csv"
+          style={{ display: 'none' }}
+          onChange={(e) => handleImport(e)}
+        />
+
         <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-theme-purple-700' : 'bg-white border-gray-200'} border`}>
-          <div className={`p-4 border-b ${darkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}>
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              {/* Left side: Search and Items per page */}
-              <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
-                <div className="relative w-full sm:flex-1 md:w-64 lg:w-80">
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Cari produk..."
-                    className={`w-full pl-10 pr-4 py-2 border rounded-md shadow-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:outline-none focus:ring-2 focus:ring-theme-purple-500`}
-                  />
-                  <svg
-                    className={`absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    ></path>
-                  </svg>
-                </div>
-                <div className="w-full sm:w-auto">
-                  <select
-                    id="itemsPerPage"
-                    value={itemsPerPage}
-                    onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                    className={`w-full px-3 py-2 border rounded-md shadow-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:outline-none focus:ring-2 focus:ring-theme-purple-500`}
-                  >
-                    <option value={10}>10</option>
-                    <option value={20}>20</option>
-                    <option value={50}>50</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Right side: Action buttons */}
-              <div className="flex items-center justify-start flex-wrap gap-2">
-                {selectedRows.length > 0 && (
-                  <Tooltip content={`Hapus ${selectedRows.length} produk terpilih`}>
-                    <button onClick={handleDeleteMultiple} className="inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"><Trash2 className="h-4 w-4" /><span className="ml-2">{selectedRows.length}</span></button>
-                  </Tooltip>
-                )}
-                <Tooltip content="Import produk dari file">
-                  <label className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${darkMode ? 'text-gray-200 bg-gray-800 hover:bg-gray-700' : 'text-gray-700 bg-gray-100 hover:bg-gray-200'}`}>
-                    <Upload className="h-4 w-4" /><input type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={handleImport} disabled={importLoading} />
-                  </label>
-                </Tooltip>
-                <Tooltip content="Template Produk">
-                  <a href="/templates/contoh-import-produk-gudang.csv" download="contoh-import-produk-gudang.csv" className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${darkMode ? 'text-gray-200 bg-gray-800 hover:bg-gray-700' : 'text-gray-700 bg-gray-100 hover:bg-gray-200'}`}><Folder className="h-4 w-4" /></a>
-                </Tooltip>
-                <Tooltip content="Export data ke file">
-                  <button onClick={handleExport} disabled={exportLoading} className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${darkMode ? 'text-gray-200 bg-gray-800 hover:bg-gray-700' : 'text-gray-700 bg-gray-100 hover:bg-gray-200'}`}>
-                    {exportLoading ? <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> : <Download className="h-4 w-4" />}
-                  </button>
-                </Tooltip>
-                {isWarehouse && 
-                  <Tooltip content={isInitialDataLoading ? "Memuat data..." : "Tambah produk baru"}>
-                    <button 
-                      onClick={openModalForCreate} 
-                      disabled={isInitialDataLoading}
-                      className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      <span>{isInitialDataLoading ? "Memuat..." : "Baru"}</span>
-                    </button>
-                  </Tooltip>
-                }
-              </div>
-            </div>
-          </div>
-
-          {/* Data Table */}
-          <div className="overflow-x-auto">
-            <DataTable
-              data={enhancedProducts}
-              columns={columns}
-              loading={loading || categoriesLoading || suppliersLoading}
-              darkMode={darkMode}
-              pagination={paginationData}
-              mobileColumns={['name', 'stock', 'purchasePrice']}
-              rowActions={rowActions}
-              emptyMessage="Tidak ada produk gudang ditemukan"
-              selectable={true}
-              onSelectAll={handleSelectAll}
-              onSelectRow={handleSelectRow}
-              selectedRows={selectedRows}
-              showSearch={false}
-            />
-          </div>
+          <DataTable
+            data={enhancedProducts}
+            columns={columns}
+            loading={loading || categoriesLoading || suppliersLoading}
+            darkMode={darkMode}
+            pagination={paginationData}
+            mobileColumns={['name', 'stock', 'purchasePrice']}
+            rowActions={rowActions}
+            emptyMessage="Tidak ada produk gudang ditemukan"
+            selectable={true}
+            onSelectAll={handleSelectAll}
+            onSelectRow={handleSelectRow}
+            selectedRows={selectedRows}
+            showSearch={true}
+            onSearch={setSearchTerm}
+            showToolbar={true}
+            showAdd={isWarehouse}
+            onAdd={openModalForCreate}
+            showExport={true}
+            onExport={handleExport}
+            showImport={isWarehouse}
+            onImport={(e) => handleImport(e)}
+            onItemsPerPageChange={setItemsPerPage}
+            itemsPerPage={itemsPerPage}
+            onDeleteMultiple={handleDeleteMultiple}
+            selectedRowsCount={selectedRows.length}
+            importLoading={importLoading}
+            exportLoading={exportLoading}
+            showTemplate={true}
+            onTemplateDownload={() => {
+              const link = document.createElement('a');
+              link.href = '/templates/contoh-import-produk-gudang.csv';
+              link.download = 'contoh-import-produk-gudang.csv';
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }}
+          />
         </div>
 
         {/* Add/Edit Product Modal */}
@@ -638,9 +627,9 @@ export default function WarehouseProductsPage() {
             onConfirm={() => handleImportWithConfirmation(true)}
             onConfirmSecondary={() => handleImportWithConfirmation(false)}
             title="Konfirmasi Import Produk"
-            message={`Terdapat ${duplicateProducts.length} produk yang sudah ada. Apakah Anda ingin menimpa produk yang sudah ada?`}
+            message={`Terdapat ${duplicateProducts.length} produk yang sudah ada di sistem. Apakah Anda ingin menimpa data produk yang sudah ada beserta menambahkan stoknya?`}
             hasSecondaryAction={true}
-            secondaryActionText="Lewati yang sudah ada"
+            secondaryActionText="Tambahkan stok saja"
             primaryActionText="Timpa semua"
           />
         )}
@@ -676,6 +665,19 @@ export default function WarehouseProductsPage() {
                 onSave={fetchProducts} // Refresh the product list after stock update
             />
         )}
+
+        {/* Keyboard Shortcuts Guide */}
+        <div className={`mt-4 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+          <div className="flex flex-wrap gap-3">
+            <span>Tambah: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+N</kbd></span>
+            <span>Import: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+I</kbd></span>
+            <span>Export: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+E</kbd></span>
+            <span>Template: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+D</kbd></span>
+            <span>Cari: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Ctrl+K</kbd></span>
+            <span>Simpan: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+S</kbd></span>
+            <span>Tutup: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>ESC</kbd></span>
+          </div>
+        </div>
       </main>
     </ProtectedRoute>
   );

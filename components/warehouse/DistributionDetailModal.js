@@ -63,9 +63,9 @@ const DistributionDetailModal = ({ isOpen, onClose, distribution }) => {
         <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">No. Distribusi</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">No. Faktur</p>
               <p className="font-medium text-gray-900 dark:text-white">
-                {distribution.invoiceNumber || distribution.id}
+                {distribution.invoiceNumber || 'N/A'}
               </p>
             </div>
             <div>

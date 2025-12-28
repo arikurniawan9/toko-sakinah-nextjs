@@ -1,8 +1,8 @@
 'use client';
 
-import { Component } from 'react';
+import React from 'react';
 
-class ErrorBoundary extends Component {
+class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
     this.state = { hasError: false, error: null, errorInfo: null };
@@ -15,7 +15,7 @@ class ErrorBoundary extends Component {
 
   componentDidCatch(error, errorInfo) {
     // You can also log the error to an error reporting service
-    console.error('Error caught by boundary:', error, errorInfo);
+    console.error('ErrorBoundary caught an error:', error, errorInfo);
     this.setState({
       error: error,
       errorInfo: errorInfo
@@ -26,17 +26,26 @@ class ErrorBoundary extends Component {
     if (this.state.hasError) {
       // You can render any custom fallback UI
       return (
-        <div className="min-h-screen flex items-center justify-center bg-red-50 p-4">
-          <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6 text-center">
-            <h2 className="text-xl font-bold text-red-600 mb-2">Terjadi Kesalahan</h2>
-            <p className="text-gray-600 mb-4">Aplikasi mengalami masalah teknis. Silakan refresh halaman atau coba kembali.</p>
-            <button 
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-            >
-              Muat Ulang Halaman
-            </button>
-          </div>
+        <div className={`p-4 rounded-lg ${this.props.darkMode ? 'bg-red-900/20 text-red-200' : 'bg-red-100 text-red-800'}`}>
+          <h2 className="text-lg font-bold mb-2">Terjadi Kesalahan</h2>
+          <p className="mb-2">Terjadi kesalahan saat memuat komponen ini.</p>
+          {process.env.NODE_ENV === 'development' && (
+            <details className="whitespace-pre-wrap">
+              {this.state.error && this.state.error.toString()}
+              <br />
+              {this.state.errorInfo.componentStack}
+            </details>
+          )}
+          <button
+            onClick={() => window.location.reload()}
+            className={`mt-3 px-4 py-2 rounded ${
+              this.props.darkMode 
+                ? 'bg-red-700 hover:bg-red-600 text-white' 
+                : 'bg-red-600 hover:bg-red-500 text-white'
+            }`}
+          >
+            Muat Ulang Halaman
+          </button>
         </div>
       );
     }

@@ -136,7 +136,7 @@ export default function DistributionDetailModal({
                 <Hash className="h-5 w-5 mr-2 text-blue-500" />
                 <div>
                   <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>ID Distribusi:</p>
-                  <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{batchDetails.id}</p>
+                  <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{batchDetails.distributionId || batchDetails.id}</p>
                 </div>
               </div>
               <div className="flex items-center">

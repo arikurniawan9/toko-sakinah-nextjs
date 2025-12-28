@@ -14,6 +14,13 @@ export async function PUT(request) {
   try {
     const { name, phone, email } = await request.json();
 
+    // Validasi panjang nomor telepon
+    if (phone && phone.trim() !== '' && phone.trim().length > 13) {
+      return NextResponse.json({
+        error: 'Nomor telepon maksimal 13 karakter'
+      }, { status: 400 });
+    }
+
     // Update hanya field yang diperbolehkan untuk diubah pengguna
     const updatedUser = await prisma.user.update({
       where: {

@@ -127,11 +127,11 @@ export async function GET(request, { params }) {
     // Generate a consistent invoice number for this distribution batch
     const dateStr = new Date(referenceDistribution.distributedAt).toISOString().split('T')[0].replace(/-/g, '');
     const storeCode = referenceDistribution.store.code.replace(/\s+/g, '').toUpperCase();
-    
+
     // Use a consistent identifier for this batch
     const batchTime = referenceDistribution.distributedAt.getTime();
     const suffix = String(batchTime % 10000).padStart(4, '0');
-    const invoiceNumber = `DIST-${dateStr}-${storeCode}-${suffix}`;
+    const invoiceNumber = `D-${dateStr}-${storeCode}-${suffix}`;
 
     // Calculate totals for the batch
     const totalQuantity = allDistributionItems.reduce((sum, item) => sum + item.quantity, 0);

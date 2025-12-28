@@ -86,18 +86,24 @@ export default function CategoryManagementPage() {
 
   // Keyboard shortcuts
   useKeyboardShortcut({
-    'n': () => canManageCategories && openModalForCreate(), // Tambah kategori baru
-    'ctrl+n': () => canManageCategories && openModalForCreate(), // Tambah kategori baru
-    'i': () => canManageCategories && setShowImportModal(true), // Import
-    'ctrl+i': () => canManageCategories && setShowImportModal(true), // Import
-    'e': () => canManageCategories && document.querySelector('button[title="Ekspor"]')?.click(), // Export
-    'ctrl+e': () => canManageCategories && document.querySelector('button[title="Ekspor"]')?.click(), // Export
-    '/': (e) => {
-      e.preventDefault();
+    'alt+n': () => canManageCategories && openModalForCreate(), // Tambah kategori baru
+    'alt+i': () => canManageCategories && setShowImportModal(true), // Import
+    'alt+e': () => canManageCategories && document.querySelector('button[title="Ekspor"]')?.click(), // Export
+    'alt+d': () => {
+      // Download template kategori
+      const link = document.createElement('a');
+      link.href = '/templates/contoh-import-kategori.csv';
+      link.download = 'contoh-import-kategori.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }, // Download template
+    'alt+k': (e) => {
+      if (e) e.preventDefault();
       document.querySelector('input[placeholder*="Cari"]')?.focus();
     }, // Fokus ke search
-    'ctrl+s': (e) => {
-      e.preventDefault();
+    'alt+s': (e) => {
+      if (e) e.preventDefault();
       if (showModal) {
         handleSave();
       }
@@ -395,8 +401,8 @@ export default function CategoryManagementPage() {
                   setSuccess('Import kategori berhasil!');
                 }}
                 darkMode={darkMode}
-                importEndpoint="/api/warehouse/categories/import"
-                checkDuplicatesEndpoint="/api/warehouse/categories/check-duplicates"
+                importEndpoint="/api/warehouse/master/kategori/import"
+                checkDuplicatesEndpoint="/api/kategori/check-duplicates"
                 templateGenerator={generateCategoryImportTemplate}
                 entityName="Kategori"
                 schema={z.object({
@@ -421,6 +427,18 @@ export default function CategoryManagementPage() {
             />
           </>
         )}
+        {/* Keyboard Shortcuts Guide */}
+        <div className={`mt-4 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+          <div className="flex flex-wrap gap-3">
+            <span>Tambah: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+N</kbd></span>
+            <span>Import: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+I</kbd></span>
+            <span>Export: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+E</kbd></span>
+            <span>Template: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+D</kbd></span>
+            <span>Cari: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+K</kbd></span>
+            <span>Simpan: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+S</kbd></span>
+            <span>Tutup: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>ESC</kbd></span>
+          </div>
+        </div>
       </main>
     </ProtectedRoute>
   );

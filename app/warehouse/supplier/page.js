@@ -85,18 +85,24 @@ export default function SupplierManagementPage() {
 
   // Keyboard shortcuts
   useKeyboardShortcut({
-    'n': () => canManageSuppliers && openModalForCreate(), // Tambah supplier baru
-    'ctrl+n': () => canManageSuppliers && openModalForCreate(), // Tambah supplier baru
-    'i': () => canManageSuppliers && setShowImportModal(true), // Import
-    'ctrl+i': () => canManageSuppliers && setShowImportModal(true), // Import
-    'e': () => canManageSuppliers && document.querySelector('button[title="Ekspor"]')?.click(), // Export
-    'ctrl+e': () => canManageSuppliers && document.querySelector('button[title="Ekspor"]')?.click(), // Export
-    '/': (e) => {
-      e.preventDefault();
+    'alt+n': () => canManageSuppliers && openModalForCreate(), // Tambah supplier baru
+    'alt+i': () => canManageSuppliers && setShowImportModal(true), // Import
+    'alt+e': () => canManageSuppliers && document.querySelector('button[title="Ekspor"]')?.click(), // Export
+    'alt+d': () => {
+      // Download template supplier
+      const link = document.createElement('a');
+      link.href = '/templates/contoh-import-supplier.csv';
+      link.download = 'contoh-import-supplier.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }, // Download template
+    'alt+k': (e) => {
+      if (e) e.preventDefault();
       document.querySelector('input[placeholder*="Cari"]')?.focus();
     }, // Fokus ke search
-    'ctrl+s': (e) => {
-      e.preventDefault();
+    'alt+s': (e) => {
+      if (e) e.preventDefault();
       if (showModal) {
         handleSave();
       }
@@ -398,7 +404,7 @@ export default function SupplierManagementPage() {
                 schema={z.object({
                   name: z.string().min(1, { message: 'Nama supplier wajib diisi' }),
                   contactPerson: z.string().optional().nullable(),
-                  phone: z.string().optional().nullable(),
+                  phone: z.string().max(13, { message: 'Nomor telepon maksimal 13 karakter' }).optional().nullable(),
                   email: z.string().email('Format email tidak valid').optional().nullable(),
                   address: z.string().optional().nullable(),
                 })}
@@ -503,6 +509,18 @@ export default function SupplierManagementPage() {
             )}
           </>
         )}
+        {/* Keyboard Shortcuts Guide */}
+        <div className={`mt-4 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+          <div className="flex flex-wrap gap-3">
+            <span>Tambah: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+N</kbd></span>
+            <span>Import: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+I</kbd></span>
+            <span>Export: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+E</kbd></span>
+            <span>Template: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+D</kbd></span>
+            <span>Cari: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+K</kbd></span>
+            <span>Simpan: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+S</kbd></span>
+            <span>Tutup: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>ESC</kbd></span>
+          </div>
+        </div>
       </main>
     </ProtectedRoute>
   );

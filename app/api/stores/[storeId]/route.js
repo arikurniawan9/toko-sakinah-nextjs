@@ -65,6 +65,11 @@ export async function PUT(request, { params }) {
     const body = await request.json();
     const { name, description, address, phone, email, status, adminUsername, employeeNumber, resetAdminPassword } = body;
 
+    // Validasi panjang nomor telepon
+    if (phone && phone.trim() !== '' && phone.trim().length > 13) {
+      return NextResponse.json({ error: 'Nomor telepon maksimal 13 karakter' }, { status: 400 });
+    }
+
     // Jika permintaan untuk menghapus (mengubah status ke INACTIVE) dan verifikasi password diperlukan
     if (status === 'INACTIVE' && password) {
       // Verifikasi password

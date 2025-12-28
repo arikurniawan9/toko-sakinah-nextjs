@@ -6,6 +6,7 @@ import { z } from 'zod';
 const importCategorySchema = z.object({
   name: z.string().trim().min(1, { message: 'Nama kategori wajib diisi' }),
   description: z.string().trim().optional().nullable(),
+  icon: z.string().trim().optional().nullable(),
 });
 
 // POST /api/kategori/import - Import categories from Excel/JSON
@@ -50,15 +51,17 @@ export async function POST(request) {
             where: { id: existingCategory.id },
             data: {
               description: validatedCategory.description,
+              icon: validatedCategory.icon,
             },
           });
           importResults.push({ name: validatedCategory.name, status: 'updated' });
         } else {
           // Create new category
-          const { icon, ...categoryData } = validatedCategory; // Exclude icon from data
           await prisma.category.create({
             data: {
-              ...categoryData,
+              name: validatedCategory.name,
+              description: validatedCategory.description,
+              icon: validatedCategory.icon,
               storeId: storeId,
             },
           });

@@ -46,6 +46,11 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Nama gudang wajib diisi' }, { status: 400 });
     }
 
+    // Validasi panjang nomor telepon
+    if (body.phone && body.phone.trim() !== '' && body.phone.trim().length > 13) {
+      return NextResponse.json({ error: 'Nomor telepon maksimal 13 karakter' }, { status: 400 });
+    }
+
     // Create new warehouse
     const newWarehouse = await prisma.warehouse.create({
       data: {
@@ -80,6 +85,11 @@ export async function PUT(request) {
 
     if (!body.id || !body.name) {
       return NextResponse.json({ error: 'ID dan nama gudang wajib diisi' }, { status: 400 });
+    }
+
+    // Validasi panjang nomor telepon
+    if (body.phone && body.phone.trim() !== '' && body.phone.trim().length > 13) {
+      return NextResponse.json({ error: 'Nomor telepon maksimal 13 karakter' }, { status: 400 });
     }
 
     // Update existing warehouse

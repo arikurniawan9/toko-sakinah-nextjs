@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useKeyboardShortcut } from '../../../lib/hooks/useKeyboardShortcut';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useUserTheme } from '@/components/UserThemeContext';
 import { useSession } from 'next-auth/react';
 import { useUserForm } from '@/lib/hooks/useUserForm';
 import { useWarehouseUserTable } from '@/lib/hooks/useWarehouseUserTable';
 import UserModal from '@/components/admin/UserModal';
+import Link from 'next/link';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import { AlertTriangle, CheckCircle, Plus, Edit, Trash2, Search, Eye } from 'lucide-react';
 import DataTable from '@/components/DataTable';
@@ -47,6 +49,27 @@ export default function WarehouseUserManagement() {
     error: formError,
     setError: setFormError,
   } = useUserForm(fetchUsers, { isWarehouseContext: true }); // Warehouse context without default role
+
+  // Keyboard shortcuts
+  useKeyboardShortcut({
+    'alt+n': () => canManageUsers && openModalForCreate(), // Tambah user baru
+    'alt+i': () => canManageUsers && console.log('Import user'), // Import (belum diimplementasikan di halaman ini)
+    'alt+e': () => canManageUsers && console.log('Export user'), // Export (belum diimplementasikan di halaman ini)
+    'alt+d': () => {
+      // Download template user (belum diimplementasikan di halaman ini)
+      console.log('Download template user');
+    }, // Download template
+    'alt+k': (e) => {
+      if (e) e.preventDefault();
+      document.querySelector('input[placeholder*="Cari"]')?.focus();
+    }, // Fokus ke search
+    'alt+s': (e) => {
+      if (e) e.preventDefault();
+      if (showModal) {
+        handleSave();
+      }
+    }, // Simpan jika modal terbuka
+  });
 
   // Override openModalForEdit to handle warehouse context
   const openModalForEdit = (user, isAttendantForm = false) => {
@@ -103,8 +126,6 @@ export default function WarehouseUserManagement() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [selectedRows, setSelectedRows] = useState([]);
   const [successMessage, setSuccessMessage] = useState('');
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null);
 
   // ESC key to close modals
   useEffect(() => {
@@ -112,7 +133,6 @@ export default function WarehouseUserManagement() {
       if (event.key === 'Escape') {
         if (showModal) closeModal();
         if (showDeleteModal) setShowDeleteModal(false);
-        if (showDetailModal) setShowDetailModal(false);
       }
     };
 
@@ -121,12 +141,7 @@ export default function WarehouseUserManagement() {
     return () => {
       document.removeEventListener('keydown', handleEscKey);
     };
-  }, [showModal, showDeleteModal, showDetailModal, closeModal]);
-
-  const handleViewDetail = (user) => {
-    setSelectedUser(user);
-    setShowDetailModal(true);
-  };
+  }, [showModal, showDeleteModal, closeModal]);
 
   const handleSelectRow = (id) => {
     setSelectedRows(prev =>
@@ -232,13 +247,9 @@ export default function WarehouseUserManagement() {
 
   const renderRowActions = (row) => (
     <>
-      <button
-        onClick={() => handleViewDetail(row)}
-        className="p-1 text-green-500 hover:text-green-700 mr-2"
-        title="Lihat Detail"
-      >
+      <Link href={`/warehouse/users/${row.id}`} className="p-1 text-green-500 hover:text-green-700 mr-2" title="Lihat Detail">
         <Eye size={18} />
-      </button>
+      </Link>
       <button
         onClick={() => openModalForEdit(row)}
         className="p-1 text-blue-500 hover:text-blue-700 mr-2"
@@ -248,7 +259,7 @@ export default function WarehouseUserManagement() {
       </button>
       <button
         onClick={() => handleDelete([row.id])}
-        className="p-1 text-red-500 hover:text-red-700"
+        className="p-1 text-red-500 hover:text-red-500"
         title="Hapus"
       >
         <Trash2 size={18} />
@@ -364,98 +375,18 @@ export default function WarehouseUserManagement() {
           />
         </>
       )}
-
-      {/* Detail Modal */}
-      {showDetailModal && selectedUser && (
-        <div className="fixed z-50 inset-0 overflow-y-auto">
-          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-              <div className={`${darkMode ? 'bg-gray-800 bg-opacity-75' : 'bg-gray-500 bg-opacity-75'}`}></div>
-            </div>
-
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-            <div className={`inline-block align-bottom ${
-              darkMode ? 'bg-gray-800' : 'bg-white'
-            } rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full ${
-              darkMode ? 'border-gray-700' : 'border-pastel-purple-200'
-            } border`}>
-              <div className={`px-4 pt-5 pb-4 sm:p-6 sm:pb-4 ${
-                darkMode ? 'bg-gray-800' : 'bg-white'
-              }`}>
-                <div className="sm:flex sm:items-start">
-                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                    <h3 className={`text-lg leading-6 font-medium ${
-                      darkMode ? 'text-cyan-400' : 'text-cyan-800'
-                    }`} id="modal-title">
-                      Detail User
-                    </h3>
-                    <div className="mt-4 w-full">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Nama Lengkap</p>
-                          <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedUser.name}</p>
-                        </div>
-                        <div>
-                          <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Username</p>
-                          <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedUser.username}</p>
-                        </div>
-                        <div>
-                          <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Kode Karyawan</p>
-                          <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedUser.employeeNumber || '-'}</p>
-                        </div>
-                        <div>
-                          <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Kode Pengguna</p>
-                          <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedUser.code || '-'}</p>
-                        </div>
-                        <div>
-                          <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Role</p>
-                          <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                            {selectedUser.role === 'CASHIER' ? 'Kasir' :
-                             selectedUser.role === 'ATTENDANT' ? 'Pelayan' :
-                             selectedUser.role}
-                          </p>
-                        </div>
-                        <div>
-                          <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Status</p>
-                          <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedUser.status}</p>
-                        </div>
-                        <div className="col-span-2">
-                          <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Alamat</p>
-                          <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedUser.address || '-'}</p>
-                        </div>
-                        <div>
-                          <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>No. Telepon</p>
-                          <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedUser.phone || '-'}</p>
-                        </div>
-                        <div>
-                          <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Tanggal Dibuat</p>
-                          <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{new Date(selectedUser.createdAt).toLocaleDateString('id-ID')}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className={`px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse ${
-                darkMode ? 'bg-gray-700' : 'bg-pastel-purple-50'
-              }`}>
-                <button
-                  type="button"
-                  onClick={() => setShowDetailModal(false)}
-                  className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm ${
-                    darkMode
-                      ? 'bg-cyan-600 hover:bg-cyan-700'
-                      : 'bg-cyan-600 hover:bg-cyan-700'
-                  }`}
-                >
-                  Tutup
-                </button>
-              </div>
-            </div>
+        {/* Keyboard Shortcuts Guide */}
+        <div className={`mt-4 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+          <div className="flex flex-wrap gap-3">
+            <span>Tambah: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+N</kbd></span>
+            <span>Import: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+I</kbd></span>
+            <span>Export: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+E</kbd></span>
+            <span>Template: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+D</kbd></span>
+            <span>Cari: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+K</kbd></span>
+            <span>Simpan: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+S</kbd></span>
+            <span>Tutup: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>ESC</kbd></span>
           </div>
         </div>
-      )}
     </main>
   );
 }

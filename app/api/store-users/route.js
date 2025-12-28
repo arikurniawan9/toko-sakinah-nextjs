@@ -31,7 +31,14 @@ export async function GET(request) {
 
     if (session.user.role === 'MANAGER') {
       // Manager can see users across all stores, filtered by role if specified
-      whereClause = {};
+      // If a specific storeId is provided in query params, filter by that store
+      const { searchParams } = new URL(request.url);
+      const requestedStoreId = searchParams.get('storeId');
+      if (requestedStoreId) {
+        whereClause = { storeId: requestedStoreId };
+      } else {
+        whereClause = {};
+      }
     } else {
       // Other roles are restricted to their own store
       const storeId = session.user.storeId;
@@ -133,14 +140,21 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    const body = await request.json();
+
     // For multi-tenant system, get store ID from session
-    const storeId = session.user.storeId;
-    
+    let storeId = session.user.storeId;
+
+    // If user is a MANAGER and no storeId in session, allow storeId from request body
+    if (!storeId && session.user.role === ROLES.MANAGER) {
+      storeId = body.storeId;
+    }
+
     if (!storeId) {
       return NextResponse.json({ error: 'Store ID not found in session' }, { status: 400 });
     }
 
-    const { name, username, employeeNumber, code, password, role, address, phone } = await request.json();
+    const { name, username, employeeNumber, code, password, role, address, phone } = body;
 
     // Validation
     if (!name || !username || !password || !role) {
@@ -245,14 +259,21 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    const body = await request.json();
+
     // For multi-tenant system, get store ID from session
-    const storeId = session.user.storeId;
-    
+    let storeId = session.user.storeId;
+
+    // If user is a MANAGER and no storeId in session, allow storeId from request body
+    if (!storeId && session.user.role === ROLES.MANAGER) {
+      storeId = body.storeId;
+    }
+
     if (!storeId) {
       return NextResponse.json({ error: 'Store ID not found in session' }, { status: 400 });
     }
 
-    const { id, name, username, employeeNumber, password, role, code } = await request.json();
+    const { id, name, username, employeeNumber, password, role, code } = body;
 
     // Validation
     if (!id) {
@@ -329,7 +350,7 @@ export async function PUT(request) {
     }
 
     // Prepare update data for user table
-    const { address, phone } = await request.json(); // Extract address and phone from request
+    const { address, phone } = body; // Extract address and phone from request body
     const updateUserData = {
       name: name.trim(),
       username: username.trim(),
@@ -400,14 +421,21 @@ export async function DELETE(request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    const body = await request.json();
+
     // For multi-tenant system, get store ID from session
-    const storeId = session.user.storeId;
-    
+    let storeId = session.user.storeId;
+
+    // If user is a MANAGER and no storeId in session, allow storeId from request body
+    if (!storeId && session.user.role === ROLES.MANAGER) {
+      storeId = body.storeId;
+    }
+
     if (!storeId) {
       return NextResponse.json({ error: 'Store ID not found in session' }, { status: 400 });
     }
 
-    const { ids } = await request.json();
+    const { ids } = body;
 
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
       return NextResponse.json(

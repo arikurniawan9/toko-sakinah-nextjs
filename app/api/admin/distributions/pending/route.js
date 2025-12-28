@@ -48,19 +48,9 @@ export async function GET(request) {
     // Instead of grouping distributions, return each distribution individually
     // This will ensure each distribution appears as a separate entry
     const individualDistributions = allPendingDistributions.map((dist, index) => {
-      // Create a unique ID for each distribution in the format: DIST-YYYYMMDD-XXXXX
-      const distDate = new Date(dist.distributedAt);
-      const year = distDate.getFullYear().toString();
-      const month = (distDate.getMonth() + 1).toString().padStart(2, '0');
-      const day = distDate.getDate().toString().padStart(2, '0');
-      const datePart = `${year}${month}${day}`;
-
-      // Use the actual distribution ID or create a unique identifier
-      const distId = `DIST-${datePart}-${(index + 1).toString().padStart(5, '0')}`;
-
       return {
-        id: distId, // Unique ID for this individual distribution
-        distributionId: dist.id, // Original distribution ID
+        id: dist.id, // Use the original distribution ID from the database
+        distributionId: dist.id, // Original distribution ID (same as id)
         distributedAt: dist.distributedAt,
         distributedByUserId: dist.distributedBy,
         distributedByUserName: dist.distributedByUser?.name || 'N/A',

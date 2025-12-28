@@ -107,6 +107,20 @@ export async function POST(request) {
       });
     }
 
+    // Periksa apakah kode pegawai sudah ada jika disediakan
+    if (admin.employeeNumber) {
+      const existingEmployee = await prisma.user.findUnique({
+        where: { employeeNumber: admin.employeeNumber },
+      });
+
+      if (existingEmployee) {
+        return new Response(JSON.stringify({ error: 'Kode pegawai sudah digunakan' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     // Hash password
     const hashedPassword = await bcrypt.hash(admin.password, 10);
 

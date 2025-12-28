@@ -27,12 +27,25 @@ export default function PrintDistributionReceiptPage() {
     pageStyle: `
       @page {
         size: 80mm auto;
-        margin: 0.25in 0.25in 0.25in 0.25in;
+        margin: 0;
       }
       @media print {
-        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        body {
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+          margin: 0;
+          padding: 0;
+        }
+        * {
+          -webkit-print-color-adjust: exact !important;
+          color-adjust: exact !important;
+        }
       }
-    `
+    `,
+    onAfterPrint: () => {
+      // Optional: Close the window or redirect after printing
+      // window.close(); // Uncomment this if you want to close the window after printing
+    }
   });
 
   useEffect(() => {
@@ -44,14 +57,22 @@ export default function PrintDistributionReceiptPage() {
       }
 
       try {
-        const response = await fetch(`/api/warehouse/distribution?id=${distributionId}`);
-        const data = await response.json();
+        // Try the grouped API first to get all items in the same distribution batch
+        // If that fails, fall back to the individual API
+        let response = await fetch(`/api/warehouse/distribution/grouped?id=${distributionId}`);
+        let data = await response.json();
 
-        if (response.ok) {
-          setDistributionData(data);
-        } else {
-          setError(data.error || 'Gagal mengambil data distribusi');
+        if (!response.ok) {
+          // If grouped API fails, try the individual API
+          response = await fetch(`/api/warehouse/distribution?id=${distributionId}`);
+          data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || 'Gagal mengambil data distribusi');
+          }
         }
+
+        setDistributionData(data);
       } catch (err) {
         setError('Terjadi kesalahan saat mengambil data distribusi');
         console.error(err);
@@ -63,16 +84,27 @@ export default function PrintDistributionReceiptPage() {
     fetchDistribution();
   }, [distributionId]);
 
-  useEffect(() => {
-    if (distributionData && typeof window !== 'undefined') {
-      // Auto-print when data is loaded
-      const timer = setTimeout(() => {
-        handlePrint();
-      }, 1000); // Wait a bit for component to render
-
-      return () => clearTimeout(timer);
+  // Manual print function to ensure component is ready
+  const handleManualPrint = async () => {
+    // Check if the component is ready before printing
+    if (componentRef.current && distributionData) {
+      // Force a small delay to ensure everything is rendered
+      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log('Printing receipt with data:', distributionData);
+      handlePrint();
+    } else {
+      console.error('Component reference or distribution data not available for printing');
+      // Try again after a short delay
+      setTimeout(() => {
+        if (componentRef.current && distributionData) {
+          console.log('Retrying print with data:', distributionData);
+          handlePrint();
+        } else {
+          console.error('Component or data still not ready for printing after retry');
+        }
+      }, 500);
     }
-  }, [distributionData, handlePrint]);
+  };
 
   if (loading) {
     return (
@@ -107,17 +139,17 @@ export default function PrintDistributionReceiptPage() {
             <p className={`mb-6 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
               Distribusi #{distributionData?.id} - {distributionData?.store?.name}
             </p>
-            
+
             <div className="flex space-x-4">
               <button
-                onClick={handlePrint}
+                onClick={handleManualPrint}
                 className={`px-6 py-3 rounded-lg flex items-center ${
                   darkMode ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-green-600 hover:bg-green-700 text-white'
                 }`}
               >
                 <span>Print Struk</span>
               </button>
-              
+
               <button
                 onClick={() => window.history.back()}
                 className={`px-6 py-3 rounded-lg ${
@@ -130,11 +162,13 @@ export default function PrintDistributionReceiptPage() {
           </div>
 
           {/* Receipt Component */}
-          <div className="mt-6 print:mt-0">
-            <DistributionReceipt 
-              ref={componentRef} 
-              distributionData={distributionData} 
-            />
+          <div className="mt-6 print:mt-0 print:block print:p-0">
+            {distributionData && (
+              <DistributionReceipt
+                ref={componentRef}
+                distributionData={distributionData}
+              />
+            )}
           </div>
         </div>
       </div>

@@ -230,6 +230,7 @@ export default function EditUserPage() {
                   name="phone"
                   value={userData.phone}
                   onChange={handleInputChange}
+                  maxLength={13}
                   className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white"
                 />
               </div>

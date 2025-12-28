@@ -403,6 +403,7 @@ model WarehouseProduct {
 
 model WarehouseDistribution {
   id                String    @id @default(cuid())
+  invoiceNumber     String?
   warehouseId       String
   storeId           String
   productId         String
@@ -424,6 +425,7 @@ model WarehouseDistribution {
   @@index([storeId])
   @@index([distributedBy])
   @@index([distributedAt])
+  @@index([invoiceNumber])
 }
 
 // Model for Notifications

@@ -20,29 +20,24 @@ const DistributionReceiptModal = ({ distributionData, isOpen, onClose }) => {
       return;
     }
 
-    // Temukan elemen yang sesuai untuk dicetak
-    let printElement = null;
-    if (printType === 'receipt') {
-      printElement = receiptRef.current;
-    } else {
-      printElement = invoiceRef.current;
+    // Force reflow untuk memastikan perubahan kelas diterapkan
+    if (typeof window !== 'undefined') {
+      window.getComputedStyle(document.body).height;
     }
 
-    if (!printElement) {
-      console.error('Print element not found');
-      return;
-    }
+    // Tunggu sebentar agar perubahan kelas diterapkan sebelum mencetak
+    setTimeout(() => {
+      // Panggil fungsi cetak browser langsung
+      window.print();
 
-    // Panggil fungsi cetak browser langsung
-    window.print();
+      // Tutup modal setelah selesai mencetak
+      const handleAfterPrint = () => {
+        onClose();
+        window.removeEventListener('afterprint', handleAfterPrint);
+      };
 
-    // Tutup modal setelah selesai mencetak
-    const handleAfterPrint = () => {
-      onClose();
-      window.removeEventListener('afterprint', handleAfterPrint);
-    };
-
-    window.addEventListener('afterprint', handleAfterPrint);
+      window.addEventListener('afterprint', handleAfterPrint);
+    }, 300);
   };
 
   // Handle ESC key press to close modal
@@ -70,35 +65,14 @@ const DistributionReceiptModal = ({ distributionData, isOpen, onClose }) => {
           body * {
             visibility: hidden;
           }
-          .print-section,
-          .print-section *,
-          .receipt-content,
-          .receipt-content * {
+          .print-section, .print-section * {
             visibility: visible;
           }
-          .print-only {
-            display: block !important;
-          }
-          .no-print {
-            display: none !important;
-          }
-          .receipt-content {
+          .print-section {
             position: absolute;
             left: 0;
             top: 0;
-            margin: 0;
-            padding: 20px;
             width: 100%;
-            max-width: 80mm;
-          }
-          .invoice-content {
-            position: absolute;
-            left: 0;
-            top: 0;
-            margin: 0;
-            padding: 20px;
-            width: 100%;
-            max-width: 210mm;
           }
           @page {
             size: ${printType === 'receipt' ? '80mm auto' : 'A4'};
@@ -106,11 +80,11 @@ const DistributionReceiptModal = ({ distributionData, isOpen, onClose }) => {
           }
         }
       `}</style>
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[100] print:flex print:items-center print:justify-center print:inset-0 print:bg-white print:hidden">
-        <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto print:max-w-none print:w-full print:max-h-none print:m-0 print:p-0 print:shadow-none`}>
-          <div className="p-6 print:p-0 print:overflow-visible">
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[100]">
+        <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto`}>
+          <div className="p-6">
             {/* Header */}
-            <div className="flex justify-between items-center mb-4 print:hidden">
+            <div className="flex justify-between items-center mb-4">
               <h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                 Cetak Distribusi Produk
               </h2>
@@ -123,7 +97,7 @@ const DistributionReceiptModal = ({ distributionData, isOpen, onClose }) => {
             </div>
 
             {/* Print Type Selector */}
-            <div className="mb-4 print:hidden">
+            <div className="mb-4">
               <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                 Pilih Jenis Cetakan:
               </label>
@@ -151,20 +125,20 @@ const DistributionReceiptModal = ({ distributionData, isOpen, onClose }) => {
 
             {/* Receipt Preview */}
             <div className="space-y-4">
-              <div className={`${printType === 'receipt' ? 'block' : 'hidden'} receipt-content print-section`} ref={receiptRef}>
+              <div className={`print-section ${printType === 'receipt' ? 'block' : 'hidden'}`} ref={receiptRef}>
                 <DistributionReceipt
                   distributionData={distributionData}
                 />
               </div>
 
-              <div className={`${printType === 'invoice' ? 'block' : 'hidden'} invoice-content print-section`} ref={invoiceRef}>
+              <div className={`print-section ${printType === 'invoice' ? 'block' : 'hidden'}`} ref={invoiceRef}>
                 <DistributionInvoice
                   distributionData={distributionData}
                 />
               </div>
 
               {/* Print Buttons - Hidden during actual print */}
-              <div className="flex space-x-3 mt-6 print:hidden no-print">
+              <div className="flex space-x-3 mt-6 no-print">
                 <button
                   onClick={handlePrint}
                   className={`flex-1 flex items-center justify-center px-4 py-2 rounded-lg font-medium ${

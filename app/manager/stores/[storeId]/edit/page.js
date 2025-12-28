@@ -214,6 +214,7 @@ export default function EditStorePage() {
                   name="phone"
                   value={formData.phone}
                   onChange={handleInputChange}
+                  maxLength={13}
                   className={inputClass}
                   placeholder="Nomor telepon (opsional)"
                 />

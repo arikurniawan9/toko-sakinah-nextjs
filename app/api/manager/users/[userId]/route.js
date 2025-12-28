@@ -60,6 +60,11 @@ export async function PUT(request, { params }) {
     const body = await request.json();
     const { name, username, employeeNumber, phone, address, role, status, password } = body;
 
+    // Validasi panjang nomor telepon
+    if (phone && phone.trim() !== '' && phone.trim().length > 13) {
+      return NextResponse.json({ error: 'Nomor telepon maksimal 13 karakter' }, { status: 400 });
+    }
+
     const userToUpdate = await prisma.user.findUnique({ where: { id: userId } });
     if (!userToUpdate) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });

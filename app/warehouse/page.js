@@ -177,7 +177,7 @@ export default function WarehouseDashboard() {
                 Distribusi Terbaru
               </h2>
               <a
-                href="/warehouse/distribution"
+                href="/warehouse/distribution/history"
                 className={`text-sm ${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'}`}
               >
                 Lihat Semua →

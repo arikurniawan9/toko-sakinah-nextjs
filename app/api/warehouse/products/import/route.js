@@ -56,6 +56,7 @@ export async function POST(request) {
   try {
     const formData = await request.formData();
     const file = formData.get('file');
+    const force = formData.get('force') === 'true'; // Parameter untuk menentukan apakah akan menimpa produk yang sudah ada
 
     if (!file) {
       return NextResponse.json({ error: 'File tidak ditemukan' }, { status: 400 });
@@ -139,11 +140,217 @@ export async function POST(request) {
         };
       }
     }
-    
+
     let importedCount = 0;
     const errors = [];
 
-    // Process each unique product with upsert logic
+    // If force is true, proceed directly with import regardless of existing products
+    if (force) {
+      // Process each unique product with upsert logic
+      for (const [productCode, productData] of Object.entries(groupedRecords)) {
+        try {
+          await globalPrisma.$transaction(async (tx) => {
+            // Find or create category
+            let category = null;
+            if (productData.category) {
+              category = await tx.category.findFirst({
+                where: {
+                  name: productData.category,
+                  storeId: masterStoreId
+                }
+              });
+
+              if (!category) {
+                category = await tx.category.create({
+                  data: {
+                    name: productData.category,
+                    storeId: masterStoreId
+                  }
+                });
+              }
+            }
+
+            // Find or create supplier
+            let supplier = null;
+            if (productData.supplier) {
+              supplier = await tx.supplier.findFirst({
+                where: {
+                  name: productData.supplier,
+                  storeId: masterStoreId
+                }
+              });
+
+              if (!supplier) {
+                let uniqueCode;
+                let counter = 0;
+                const baseCode = productData.supplier.replace(/[^a-zA-Z0-9]/g, '').substring(0, 5).toUpperCase();
+
+                while (true) {
+                  uniqueCode = counter === 0 ? baseCode : `${baseCode}${counter}`;
+                  const existingSupplier = await tx.supplier.findUnique({
+                    where: {
+                      code_storeId: {
+                        code: uniqueCode,
+                        storeId: masterStoreId
+                      }
+                    }
+                  });
+                  if (!existingSupplier) {
+                    break;
+                  }
+                  counter++;
+                }
+
+                supplier = await tx.supplier.create({
+                  data: {
+                    name: productData.supplier,
+                    code: uniqueCode,
+                    storeId: masterStoreId
+                  }
+                });
+              }
+            }
+
+            // Check if product exists (across all stores, not just master store)
+            let product = await tx.product.findFirst({
+              where: {
+                productCode: productCode
+              }
+            });
+
+            // Validasi harga member
+            if (productData.silverPrice > productData.retailPrice) {
+              throw new Error(`Harga Silver (${productData.silverPrice}) lebih tinggi dari Harga Umum (${productData.retailPrice}) untuk produk ${productCode}. Harga member harus lebih rendah.`);
+            }
+            if (productData.goldPrice > productData.silverPrice) {
+              throw new Error(`Harga Gold (${productData.goldPrice}) lebih tinggi dari Harga Silver (${productData.silverPrice}) untuk produk ${productCode}. Harga member harus lebih rendah.`);
+            }
+            if (productData.platinumPrice > productData.goldPrice) {
+              throw new Error(`Harga Platinum (${productData.platinumPrice}) lebih tinggi dari Harga Gold (${productData.goldPrice}) untuk produk ${productCode}. Harga member harus lebih rendah.`);
+            }
+
+            const productUpsertData = {
+              name: productData.name,
+              productCode: productCode,
+              description: productData.description,
+              purchasePrice: productData.purchasePrice,
+              retailPrice: productData.retailPrice || 0,
+              silverPrice: productData.silverPrice || 0,
+              goldPrice: productData.goldPrice || 0,
+              platinumPrice: productData.platinumPrice || 0,
+              updatedAt: new Date(productData.updatedAt)
+            };
+
+            if (category?.id) productUpsertData.categoryId = category.id;
+            if (supplier?.id) productUpsertData.supplierId = supplier.id;
+
+            if (!product) {
+              // Create new product
+              product = await tx.product.create({
+                data: {
+                  ...productUpsertData,
+                  storeId: masterStoreId, // Assign to master store when creating
+                  stock: productData.stock, // Set initial stock
+                  createdAt: new Date(productData.createdAt)
+                }
+              });
+            } else {
+              // Update existing product based on force parameter
+              if (force) {
+                // If force is true, update all product data and increment stock
+                product = await tx.product.update({
+                  where: { id: product.id },
+                  data: {
+                    ...productUpsertData,
+                    stock: { increment: productData.stock || 0 } // Add to existing stock
+                  }
+                });
+              } else {
+                // If force is false, only increment stock without changing other data
+                product = await tx.product.update({
+                  where: { id: product.id },
+                  data: {
+                    stock: { increment: productData.stock || 0 } // Add to existing stock
+                  }
+                });
+              }
+            }
+
+            // Upsert WarehouseProduct for the central warehouse
+            await tx.warehouseProduct.upsert({
+              where: {
+                productId_warehouseId: {
+                  productId: product.id,
+                  warehouseId: centralWarehouse.id
+                }
+              },
+              update: {
+                quantity: { increment: productData.stock || 0 }, // Add to existing quantity
+                updatedAt: new Date()
+              },
+              create: {
+                productId: product.id,
+                warehouseId: centralWarehouse.id,
+                quantity: productData.stock || 0,
+                createdAt: new Date(),
+                updatedAt: new Date()
+              }
+            });
+          }); // End transaction
+
+          importedCount++;
+        } catch (productError) {
+          console.error(`Error importing warehouse product with code ${productCode}:`, productError);
+          errors.push(`Gagal mengimport produk dengan kode ${productCode}: ${productError.message}`);
+        }
+      }
+
+      return NextResponse.json({
+        message: `Berhasil mengimport ${importedCount} produk ke gudang`,
+        importedCount,
+        errors: errors.length > 0 ? errors : undefined
+      });
+    }
+
+    // If force is false, check for existing products to determine if we need confirmation
+    const existingProducts = [];
+    const newProducts = [];
+
+    for (const [productCode, productData] of Object.entries(groupedRecords)) {
+      // Check if product exists (across all stores, not just master store)
+      const existingProduct = await globalPrisma.product.findFirst({
+        where: {
+          productCode: productCode
+        }
+      });
+
+      if (existingProduct) {
+        existingProducts.push({
+          productCode,
+          productName: productData.name,
+          stockToAdd: productData.stock,
+          currentStock: existingProduct.stock,
+          product: existingProduct
+        });
+      } else {
+        newProducts.push({
+          productCode,
+          productData
+        });
+      }
+    }
+
+    // If there are existing products, return them for confirmation
+    if (existingProducts.length > 0) {
+      return NextResponse.json({
+        needConfirmation: true,
+        duplicateProducts: existingProducts,
+        newProductsCount: newProducts.length,
+        message: `Ditemukan ${existingProducts.length} produk yang sudah ada. Harap konfirmasi untuk melanjutkan import.`
+      });
+    }
+
+    // If no existing products, proceed with import
     for (const [productCode, productData] of Object.entries(groupedRecords)) {
       try {
         await globalPrisma.$transaction(async (tx) => {
@@ -197,7 +404,7 @@ export async function POST(request) {
                 }
                 counter++;
               }
-              
+
               supplier = await tx.supplier.create({
                 data: {
                   name: productData.supplier,
@@ -261,7 +468,7 @@ export async function POST(request) {
               }
             });
           }
-          
+
           // Upsert WarehouseProduct for the central warehouse
           await tx.warehouseProduct.upsert({
             where: {

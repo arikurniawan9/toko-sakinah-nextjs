@@ -70,18 +70,29 @@ export default function ManagerAllUsersManagement() {
     const fetchStores = async () => {
       try {
         const response = await fetch('/api/stores');
+        console.log('Fetching stores from /api/stores, response status:', response.status); // Debug log
         if (!response.ok) {
-          throw new Error('Gagal mengambil data toko');
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Gagal mengambil data toko');
         }
         const data = await response.json();
-        setStores(data);
+        console.log('Raw stores data from API:', data); // Debug log
+        const storesData = Array.isArray(data) ? data : (data.stores || []);
+        // Filter to only show stores with ACTIVE status
+        const filteredStores = storesData.filter(store => store.status === 'ACTIVE');
+        console.log('Processed stores data:', storesData); // Debug log
+        console.log('Filtered stores data (only ACTIVE):', filteredStores); // Debug log
+        setStores(filteredStores);
       } catch (error) {
-        console.error(error);
+        console.error('Error fetching stores:', error);
       }
     };
 
     if (canManageUsers) {
+      console.log('canManageUsers is true, fetching stores'); // Debug log
       fetchStores();
+    } else {
+      console.log('canManageUsers is false, not fetching stores'); // Debug log
     }
   }, [canManageUsers]);
 
@@ -359,7 +370,9 @@ export default function ManagerAllUsersManagement() {
             setFormError={setFormError}
             darkMode={darkMode}
             stores={stores}
+            isManagerContext={true}
           />
+          {console.log('Sending stores to UserModal:', stores)} {/* Debug log */}
           <ConfirmationModal
             isOpen={showDeleteModal}
             onClose={() => setShowDeleteModal(false)}

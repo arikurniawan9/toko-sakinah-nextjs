@@ -143,7 +143,7 @@ export async function GET(request) {
 
       // Create a unique identifier using date, store code, and a timestamp for uniqueness
       const timestamp = referenceDistribution.distributedAt.getTime().toString().slice(-4); // Use last 4 digits of timestamp
-      const invoiceNumber = `DIST-${dateStr}-${storeCode}-${timestamp}`;
+      const invoiceNumber = `D-${dateStr}-${storeCode}-${timestamp}`;
 
       // Return the first record as the main reference but with all items and invoice number
       return NextResponse.json({
@@ -250,32 +250,17 @@ export async function GET(request) {
       },
     });
 
-    // Group distributions by distributedAt, storeId, and distributedBy
+    // Group distributions by invoiceNumber
     const groupedDistributions = [];
     const distributionMap = new Map();
 
     allDistributions.forEach(distribution => {
-      const key = `${distribution.distributedAt.getTime()}-${distribution.storeId}-${distribution.distributedBy}`;
+      const key = distribution.invoiceNumber; // Group by the reliable invoice number
 
       if (!distributionMap.has(key)) {
-        // Generate a consistent invoice number for this distribution batch
-        const dateStr = new Date(distribution.distributedAt).toISOString().split('T')[0].replace(/-/g, '');
-        // Use store code for invoice number
-        const storeCode = distribution.store.code.replace(/\s+/g, '').toUpperCase();
-
-        // Create a unique but consistent identifier using a hash-like approach
-        // We'll use the timestamp of the key components to create a unique but consistent ID
-        // The key is already based on `${distribution.distributedAt.getTime()}-${distribution.storeId}-${distribution.distributedBy}`
-        // So we can use a combination of these for the suffix
-        const keyComponents = `${distribution.distributedAt.getTime()}-${distribution.storeId}`;
-        const hash = Array.from(keyComponents).reduce((acc, char) => acc + char.charCodeAt(0), 0);
-        const suffix = String(hash % 10000).padStart(4, '0'); // 4 digit suffix
-
-        const invoiceNumber = `DIST-${dateStr}-${storeCode}-${suffix}`;
-
         distributionMap.set(key, {
           id: distribution.id, // Use the first distribution ID as the group ID
-          invoiceNumber, // Add the invoice number
+          invoiceNumber: distribution.invoiceNumber, // Use the real invoice number
           distributedAt: distribution.distributedAt,
           storeId: distribution.storeId,
           store: distribution.store,
@@ -299,7 +284,7 @@ export async function GET(request) {
 
     // Convert map to array and sort by distributedAt descending
     groupedDistributions.push(...distributionMap.values());
-    groupedDistributions.sort((a, b) => b.distributedAt - a.distributedAt);
+    groupedDistributions.sort((a, b) => new Date(b.distributedAt) - new Date(a.distributedAt));
 
     // Apply pagination
     const startIndex = offset;

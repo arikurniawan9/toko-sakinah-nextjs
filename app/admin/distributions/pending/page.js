@@ -142,10 +142,10 @@ export default function PendingDistributions() {
       render: (_, __, index) => (currentPage - 1) * itemsPerPage + index + 1,
     },
     {
-      key: 'id', // This is the individual distribution ID generated in the API
+      key: 'distributionId', // Use the actual distribution ID from the database
       title: 'ID Distribusi',
-      sortable: false, // Not directly sortable as it's a composite ID
-      render: (value) => value // Display the full distribution ID
+      sortable: true, // Now it's sortable as it's the actual ID
+      render: (value) => value // Display the actual distribution ID
     },
     {
       key: 'distributedByUserName',
@@ -302,7 +302,7 @@ export default function PendingDistributions() {
             <div>
               <p>Apakah Anda yakin ingin menerima distribusi berikut?</p>
               <div className={`mt-4 p-3 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                <p><strong>ID Distribusi:</strong> {selectedBatch.id}</p>
+                <p><strong>ID Distribusi:</strong> {selectedBatch.distributionId}</p>
                 <p><strong>Dikirim oleh:</strong> {selectedBatch.distributedByUserName}</p>
                 <p><strong>Kuantitas:</strong> {selectedBatch.quantity?.toLocaleString('id-ID')}</p>
                 <p><strong>Total Jumlah:</strong> Rp {selectedBatch.totalAmount?.toLocaleString('id-ID')}</p>
@@ -347,7 +347,7 @@ export default function PendingDistributions() {
             <div>
               <p>Apakah Anda yakin ingin menolak distribusi berikut?</p>
               <div className={`mt-4 p-3 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                <p><strong>ID Distribusi:</strong> {selectedBatch.id}</p>
+                <p><strong>ID Distribusi:</strong> {selectedBatch.distributionId}</p>
                 <p><strong>Dikirim oleh:</strong> {selectedBatch.distributedByUserName}</p>
                 <p><strong>Kuantitas:</strong> {selectedBatch.quantity?.toLocaleString('id-ID')}</p>
                 <p><strong>Total Jumlah:</strong> Rp {selectedBatch.totalAmount?.toLocaleString('id-ID')}</p>

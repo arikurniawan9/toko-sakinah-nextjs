@@ -53,102 +53,90 @@ export async function POST(request) {
 
     // Use a transaction to ensure atomicity
     const newDistribution = await prisma.$transaction(async (tx) => {
-      let totalAmount = 0;
+      let calculatedTotalAmount = 0;
 
-      // First, check stock and calculate total amount
-      for (const item of items) {
-        const warehouseProduct = await tx.warehouseProduct.findUnique({
-          where: {
-            productId_warehouseId: {
-              productId: item.productId,
-              warehouseId: centralWarehouse.id,
+      // First, check stock and calculate total amount - do this in parallel
+      const warehouseProducts = await Promise.all(
+        items.map(async (item) => {
+          const warehouseProduct = await tx.warehouseProduct.findUnique({
+            where: {
+              productId_warehouseId: {
+                productId: item.productId,
+                warehouseId: centralWarehouse.id,
+              },
             },
-          },
-          include: {
-            Product: true // Include the actual product to get purchase price
+            include: {
+              Product: true // Include the actual product to get purchase price
+            }
+          });
+
+          if (!warehouseProduct) {
+            throw new Error(`Produk dengan ID ${item.productId} tidak ditemukan di gudang`);
           }
-        });
 
-        if (!warehouseProduct) {
-          throw new Error(`Produk dengan ID ${item.productId} tidak ditemukan di gudang`);
-        }
+          if (warehouseProduct.quantity < item.quantity) {
+            throw new Error(`Stok produk ${warehouseProduct.Product.name} tidak mencukupi di gudang. Tersedia: ${warehouseProduct.quantity}, Diminta: ${item.quantity}`);
+          }
 
-        if (warehouseProduct.quantity < item.quantity) {
-          throw new Error(`Stok produk ${warehouseProduct.Product.name} tidak mencukupi di gudang. Tersedia: ${warehouseProduct.quantity}, Diminta: ${item.quantity}`);
-        }
+          return {
+            ...warehouseProduct,
+            requestedQuantity: item.quantity,
+            requestedPrice: item.purchasePrice
+          };
+        })
+      );
 
-        // Use the product's purchase price for calculation
-        totalAmount += item.quantity * warehouseProduct.Product.purchasePrice;
+      // Calculate total amount
+      for (const wp of warehouseProducts) {
+        calculatedTotalAmount += wp.requestedQuantity * (wp.requestedPrice || wp.Product.purchasePrice);
       }
 
       // Generate invoice number for this distribution batch using store code
       const dateStr = new Date(distributionDate).toISOString().split('T')[0].replace(/-/g, '');
       const storeCode = targetStore.code.replace(/\s+/g, '').toUpperCase();
       const timestamp = new Date(distributionDate).getTime().toString().slice(-4); // Use last 4 digits of timestamp
-      const invoiceNumber = `DIST-${dateStr}-${storeCode}-${timestamp}`;
+      const invoiceNumber = `D-${dateStr}-${storeCode}-${timestamp}`;
 
-      // Create individual warehouse distribution records for each product
-      const distributionRecords = [];
-      for (const item of items) {
-        // Find warehouse product by ID
-        const warehouseProduct = await tx.warehouseProduct.findUnique({
+      // Prepare all warehouse stock updates and distribution records
+      const stockUpdates = warehouseProducts.map(wp =>
+        tx.warehouseProduct.update({
           where: {
             productId_warehouseId: {
-              productId: item.productId,
-              warehouseId: centralWarehouse.id,
-            },
-          },
-          include: {
-            Product: true
-          }
-        });
-
-        if (!warehouseProduct) {
-          throw new Error(`Produk dengan ID ${item.productId} tidak ditemukan di gudang`);
-        }
-
-        if (warehouseProduct.quantity < item.quantity) {
-          throw new Error(`Stok produk ${warehouseProduct.Product.name} tidak mencukupi di gudang. Tersedia: ${warehouseProduct.quantity}, Diminta: ${item.quantity}`);
-        }
-
-        // Decrement warehouse stock
-        await tx.warehouseProduct.update({
-          where: {
-            productId_warehouseId: {
-              productId: item.productId,
+              productId: wp.productId,
               warehouseId: centralWarehouse.id,
             },
           },
           data: {
             quantity: {
-              decrement: item.quantity,
+              decrement: wp.requestedQuantity,
             },
           },
-        });
+        })
+      );
 
-        // Create individual warehouse distribution record for this product
-        const distributionRecord = await tx.warehouseDistribution.create({
+      const distributionRecords = warehouseProducts.map(wp =>
+        tx.warehouseDistribution.create({
           data: {
             warehouseId: centralWarehouse.id, // Central warehouse
             storeId,
-            productId: item.productId,
-            quantity: item.quantity,
-            unitPrice: item.purchasePrice || warehouseProduct.Product.purchasePrice, // Use provided price or product's purchase price
-            totalAmount: item.quantity * (item.purchasePrice || warehouseProduct.Product.purchasePrice),
+            productId: wp.productId,
+            quantity: wp.requestedQuantity,
+            unitPrice: wp.requestedPrice || wp.Product.purchasePrice, // Use provided price or product's purchase price
+            totalAmount: wp.requestedQuantity * (wp.requestedPrice || wp.Product.purchasePrice),
             status: distributionStatus || 'PENDING_ACCEPTANCE',
             notes: body.notes || null,
             distributedAt: new Date(distributionDate),
             distributedBy,
+            invoiceNumber: invoiceNumber, // <-- SAVING TO DATABASE
           },
-        });
+        })
+      );
 
-        // Add the invoice number to each record temporarily
-        distributionRecord.invoiceNumber = invoiceNumber;
-        distributionRecords.push(distributionRecord);
-      }
+      // Execute all operations in parallel
+      await Promise.all([...stockUpdates, ...distributionRecords]);
 
-      // Return the first distribution record as reference with invoice number
-      const distribution = distributionRecords[0];
+      // Get the created distribution records
+      const createdDistributions = await Promise.all(distributionRecords);
 
       // Log aktivitas distribusi gudang
       // Ambil IP address dan user agent dari request
@@ -157,7 +145,7 @@ export async function POST(request) {
       const userAgent = requestHeaders.get('user-agent') || '';
 
       // Log untuk setiap item distribusi
-      for (const item of distributionRecords) {
+      for (const item of createdDistributions) {
         await logWarehouseDistribution(
           session.user.id,
           item,
@@ -186,7 +174,12 @@ export async function POST(request) {
         }
       }
 
-      return distribution;
+      // Return the first distribution record with invoice number
+      return {
+        ...createdDistributions[0],
+        totalAmount: calculatedTotalAmount, // Include the calculated total amount in the response
+        invoiceNumber: invoiceNumber // Ensure invoice number is included in the returned object
+      };
     });
 
     return NextResponse.json({
@@ -339,7 +332,7 @@ export async function GET(request) {
 
       // Create a unique identifier using date, store code, and a timestamp for uniqueness
       const timestamp = referenceDistribution.distributedAt.getTime().toString().slice(-4); // Use last 4 digits of timestamp
-      const invoiceNumber = `DIST-${dateStr}-${storeCode}-${timestamp}`;
+      const invoiceNumber = `D-${dateStr}-${storeCode}-${timestamp}`;
 
       // Return the first record as the main reference but with all items and invoice number
       return NextResponse.json({

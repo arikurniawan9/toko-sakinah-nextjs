@@ -219,6 +219,7 @@ export default function ManagerProfile() {
                   name="phone"
                   value={userData.phone}
                   onChange={handleChange}
+                  maxLength={13}
                   className="w-full p-2 border rounded dark:bg-gray-600 dark:text-white"
                 />
               </dd>

@@ -97,6 +97,11 @@ export async function PUT(request) {
     const data = await request.json();
     const { name, username, email, employeeNumber, phone, address, password, newPassword } = data;
 
+    // Validasi panjang nomor telepon
+    if (phone && phone.trim() !== '' && phone.trim().length > 13) {
+      return NextResponse.json({ error: 'Nomor telepon maksimal 13 karakter' }, { status: 400 });
+    }
+
     // Fetch the user to verify current password
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },

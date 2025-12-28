@@ -16,6 +16,7 @@ const CreateStoreModal = ({ isOpen, onClose, onStoreCreated }) => {
   const [adminData, setAdminData] = useState({
     name: '',
     username: '',
+    employeeNumber: '',
     password: '',
     confirmPassword: ''
   });
@@ -64,6 +65,7 @@ const CreateStoreModal = ({ isOpen, onClose, onStoreCreated }) => {
         setAdminData({
           name: '',
           username: '',
+          employeeNumber: '',
           password: '',
           confirmPassword: ''
         });
@@ -271,6 +273,21 @@ const CreateStoreModal = ({ isOpen, onClose, onStoreCreated }) => {
                       onChange={handleAdminChange}
                       required
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="employeeNumber" className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
+                      Kode Pegawai
+                    </label>
+                    <input
+                      type="text"
+                      id="employeeNumber"
+                      name="employeeNumber"
+                      value={adminData.employeeNumber}
+                      onChange={handleAdminChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:text-white"
+                      placeholder="Opsional"
                     />
                   </div>
 
