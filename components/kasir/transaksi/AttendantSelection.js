@@ -70,64 +70,36 @@ const AttendantSelection = ({ selectedAttendant, onSelectAttendant, onRemoveAtte
 
   return (
     <>
-      <div className={`rounded-lg shadow p-6 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-          Pelayan
-</h2>
-          {selectedAttendant && selectedAttendant.name && (
-            <div className="text-right">
-              <span className={`text-sm font-medium px-2 py-1 rounded-full ${darkMode ? 'bg-blue-900 text-blue-300' : 'bg-blue-100 text-blue-800'}`}>
-                {selectedAttendant.name}
-              </span>
-              {(selectedAttendant.code || selectedAttendant.employeeNumber) && (
-                <div className={`text-xs mt-1 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
-                  {selectedAttendant.code ? `Kode: ${selectedAttendant.code}` : `Kode: ${selectedAttendant.employeeNumber}`}
+            <div className="flex items-center space-x-2"> {/* New flex container for inline display */}
+              <h2 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+              Pelayan
+              </h2>
+              {selectedAttendant && selectedAttendant.name ? (
+                <div className="flex items-center space-x-2">
+                  <span className={`text-sm font-medium px-2 py-1 rounded-full ${darkMode ? 'bg-blue-900 text-blue-300' : 'bg-blue-100 text-blue-800'}`}>
+                    {selectedAttendant.name}
+                  </span>
+                  <button
+                    onClick={onRemoveAttendant}
+                    className={`text-sm font-medium p-1 rounded-full ${darkMode ? 'text-red-400 hover:bg-gray-700' : 'text-red-600 hover:bg-red-100'}`}
+                  >
+                    <X size={16} />
+                  </button>
                 </div>
+              ) : (
+                <button
+                  onClick={() => onToggle(true)}
+                  className={`py-1 px-3 border rounded-md shadow-sm text-sm font-medium flex items-center justify-center ${
+                    darkMode
+                      ? 'border-gray-600 text-gray-200 bg-gray-700 hover:bg-gray-600'
+                      : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
+                  }`}
+                >
+                  <UserCheck className="h-4 w-4 inline mr-2" />
+                  Pilih Pelayan
+                </button>
               )}
             </div>
-          )}
-        </div>
-
-        {selectedAttendant && selectedAttendant.name ? (
-          <div className="flex items-center justify-between">
-            <div>
-              <span className={`text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
-                {selectedAttendant.name}
-              </span>
-              {selectedAttendant.code && (
-                <div className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                  Kode: {selectedAttendant.code}
-                </div>
-              )}
-              {selectedAttendant.employeeNumber && !selectedAttendant.code && (
-                <div className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                  Kode: {selectedAttendant.employeeNumber}
-                </div>
-              )}
-            </div>
-            <button
-              onClick={onRemoveAttendant}
-              className={`text-sm font-medium p-1 rounded-full ${darkMode ? 'text-red-400 hover:bg-gray-700' : 'text-red-600 hover:bg-red-100'}`}
-            >
-              <X size={16} />
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={() => onToggle(true)}
-            className={`w-full py-2 px-4 border rounded-md shadow-sm text-sm font-medium flex items-center justify-center ${
-              darkMode
-                ? 'border-gray-600 text-gray-200 bg-gray-700 hover:bg-gray-600'
-                : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
-            }`}
-          >
-            <UserCheck className="h-4 w-4 inline mr-2" />
-            Pilih Pelayan
-          </button>
-        )}
-      </div>
-
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
           <div className={`relative w-full max-w-md max-h-[70vh] rounded-2xl shadow-2xl flex flex-col ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
