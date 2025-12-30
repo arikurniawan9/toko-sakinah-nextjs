@@ -1036,7 +1036,7 @@ export default function AdminTransactionPage() {
                   onToggle={setShowAttendantsModal}
                 />
 
-                {/* Total Bayar - berada di bawah pilih pelayan */}
+                {/* Total Bayar - dipindahkan ke bawah pilih pelayan */}
                 <div className={`rounded-xl shadow-lg p-6 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
                   <h3 className={`text-lg font-semibold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                     Total Bayar
@@ -1049,67 +1049,69 @@ export default function AdminTransactionPage() {
                   </p>
                 </div>
 
-                {/* Ringkasan Pembayaran Card - berada di bawah total bayar */}
-                <div className={`rounded-xl shadow-lg p-6 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                  <h3 className={`text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                    Ringkasan Pembayaran
-                  </h3>
+                {/* Ringkasan Pembayaran Card - disembunyikan dari tampilan utama */}
+                {false && ( // Conditional render to hide it
+                  <div className={`rounded-xl shadow-lg p-6 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                    <h3 className={`text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                      Ringkasan Pembayaran
+                    </h3>
 
-                  {calculation ? (
-                    <div className="space-y-3">
-                      <div className="flex justify-between">
-                        <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Subtotal</span>
-                        <span className={darkMode ? 'text-gray-300' : 'text-gray-900'}>{formatCurrency(calculation.subTotal)}</span>
+                    {calculation ? (
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Subtotal</span>
+                          <span className={darkMode ? 'text-gray-300' : 'text-gray-900'}>{formatCurrency(calculation.subTotal)}</span>
+                        </div>
+
+                        {calculation.itemDiscount > 0 && (
+                          <div className="flex justify-between">
+                            <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Diskon Item</span>
+                            <span className="text-green-600">-{formatCurrency(calculation.itemDiscount)}</span>
+                          </div>
+                        )}
+
+                        {selectedMember && calculation.memberDiscount > 0 && (
+                          <div className="flex justify-between">
+                            <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Diskon Member ({selectedMember.name})</span>
+                            <span className="text-green-600">-{formatCurrency(calculation.memberDiscount)}</span>
+                          </div>
+                        )}
+
+                        {additionalDiscount > 0 && (
+                          <div className="flex justify-between">
+                            <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Diskon Tambahan</span>
+                            <span className="text-green-600">-{formatCurrency(additionalDiscount)}</span>
+                          </div>
+                        )}
+
+                        <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                          <PaymentSummary
+                            calculation={calculation}
+                            payment={payment}
+                            setPayment={setPayment}
+                            initiatePaidPayment={initiatePaidPayment}
+                            initiateUnpaidPayment={initiateUnpaidPayment}
+                            referenceNumber={referenceNumber}
+                            setReferenceNumber={setReferenceNumber}
+                            loading={loading}
+                            darkMode={darkMode}
+                            additionalDiscount={additionalDiscount}
+                            setAdditionalDiscount={setAdditionalDiscount}
+                            sessionStatus={session?.status ?? "loading"}
+                            paymentMethod={paymentMethod}
+                            setPaymentMethod={setPaymentMethod}
+                            selectedMember={selectedMember}
+                            selectedAttendant={selectedAttendant}
+                          />
+                        </div>
                       </div>
-
-                      {calculation.itemDiscount > 0 && (
-                        <div className="flex justify-between">
-                          <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Diskon Item</span>
-                          <span className="text-green-600">-{formatCurrency(calculation.itemDiscount)}</span>
-                        </div>
-                      )}
-
-                      {selectedMember && calculation.memberDiscount > 0 && (
-                        <div className="flex justify-between">
-                          <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Diskon Member ({selectedMember.name})</span>
-                          <span className="text-green-600">-{formatCurrency(calculation.memberDiscount)}</span>
-                        </div>
-                      )}
-
-                      {additionalDiscount > 0 && (
-                        <div className="flex justify-between">
-                          <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Diskon Tambahan</span>
-                          <span className="text-green-600">-{formatCurrency(additionalDiscount)}</span>
-                        </div>
-                      )}
-
-                      <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                        <PaymentSummary
-                          calculation={calculation}
-                          payment={payment}
-                          setPayment={setPayment}
-                          initiatePaidPayment={initiatePaidPayment}
-                          initiateUnpaidPayment={initiateUnpaidPayment}
-                          referenceNumber={referenceNumber}
-                          setReferenceNumber={setReferenceNumber}
-                          loading={loading}
-                          darkMode={darkMode}
-                          additionalDiscount={additionalDiscount}
-                          setAdditionalDiscount={setAdditionalDiscount}
-                          sessionStatus={session?.status ?? "loading"}
-                          paymentMethod={paymentMethod}
-                          setPaymentMethod={setPaymentMethod}
-                          selectedMember={selectedMember}
-                          selectedAttendant={selectedAttendant}
-                        />
+                    ) : (
+                      <div className={`text-center py-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                        Tambahkan produk ke keranjang untuk melihat ringkasan
                       </div>
-                    </div>
-                  ) : (
-                    <div className={`text-center py-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                      Tambahkan produk ke keranjang untuk melihat ringkasan
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
