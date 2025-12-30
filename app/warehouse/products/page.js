@@ -198,14 +198,6 @@ export default function WarehouseProductsPage() {
         handleSave();
       }
     }, // Simpan jika modal terbuka
-    'escape': () => {
-      if (showModal) closeModal();
-      if (showDetailModal) setShowDetailModal(false);
-      if (showAddStockModal) setShowAddStockModal(false);
-      if (showDeleteModal) setShowDeleteModal(false);
-      if (showExportFormatModal) setShowExportFormatModal(false);
-      if (showImportConfirmModal) setShowImportConfirmModal(false);
-    } // Tutup modal dengan ESC
   });
 
   const { selectedRows, handleSelectAll, handleSelectRow, clearSelection, setSelectedRows } = useTableSelection(products);

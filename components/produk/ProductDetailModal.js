@@ -17,10 +17,10 @@ export default function ProductDetailModal({
   const [quantity, setQuantity] = useState(1);
   const [showBarcodePreview, setShowBarcodePreview] = useState(false);
 
-  if (!isOpen || !product) return null;
-
-  // Gunakan hook untuk menangani tombol ESC
+  // Gunakan hook untuk menangani tombol ESC - HARUS DIPANGGIL SEBELUM KONDISI RETURN
   useEscapeKey(onClose, isOpen);
+
+  if (!isOpen || !product) return null;
 
   const handlePrintBarcode = () => {
     if (!product) return;
