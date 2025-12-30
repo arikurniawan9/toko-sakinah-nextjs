@@ -591,10 +591,10 @@ export default function AdminTransactionPage() {
           fetch("/api/member?simple=true"),  // Gunakan parameter simple untuk array, hanya member dari toko ini
           fetch("/api/store-users?role=ATTENDANT"),  // Gunakan endpoint store-users dengan filter role ATTENDANT
         ]);
-        const membersData = await membersRes.json();  // Ini sekarang langsung array
-        const attendantsData = await attendantsRes.json();  // Ini sekarang berisi data dari response lengkap dengan pagination
+        const membersData = await membersRes.json();
+        const attendantsData = await attendantsRes.json();
 
-        const allMembers = membersData || [];
+        const allMembers = Array.isArray(membersData) ? membersData : [];
         setMembers(allMembers);
 
         const generalCustomer = allMembers.find(
@@ -602,9 +602,8 @@ export default function AdminTransactionPage() {
         );
         setDefaultMember(generalCustomer);
 
-        // Proses data pelayan dari response store-users (sudah dalam format yang benar)
-        const allAttendants = attendantsData.users || [];
-        setAttendants(allAttendants || []);
+        const allAttendants = Array.isArray(attendantsData.users) ? attendantsData.users : [];
+        setAttendants(allAttendants);
       } catch (error) {
         console.error("Error fetching initial data:", error);
       }
@@ -770,6 +769,24 @@ export default function AdminTransactionPage() {
     }
   };
 
+  // Function to request fullscreen
+  const requestFullscreen = () => {
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen();
+    } else if (document.documentElement.mozRequestFullScreen) { /* Firefox */
+      document.documentElement.mozRequestFullScreen();
+    } else if (document.documentElement.webkitRequestFullscreen) { /* Chrome, Safari & Opera */
+      document.documentElement.webkitRequestFullscreen();
+    } else if (document.documentElement.msRequestFullscreen) { /* IE/Edge */
+      document.documentElement.msRequestFullscreen();
+    }
+  };
+
+  // Request fullscreen on component mount
+  useEffect(() => {
+    requestFullscreen();
+  }, []);
+
   return (
     <ProtectedRoute requiredRole="ADMIN">
       <div className={`min-h-screen ${darkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50"}`}>
@@ -873,7 +890,9 @@ export default function AdminTransactionPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Layout baru: Product Search di atas, Keranjang di bawah */}
+          <div className="space-y-6">
+            {/* Product Search */}
             <ProductSearch
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}
@@ -886,52 +905,197 @@ export default function AdminTransactionPage() {
               total={calculation?.grandTotal || 0} // Pass total to ProductSearch
             />
 
-            <div className="space-y-6">
-              <MemberSelection
-                selectedMember={selectedMember}
-                defaultMember={defaultMember}
-                onSelectMember={setSelectedMember}
-                onRemoveMember={() => setSelectedMember(null)}
-                members={members}
-                darkMode={darkMode}
-                isOpen={showMembersModal}
-                onToggle={setShowMembersModal}
-                onAddNewMember={() => setShowAddMemberModal(true)}
-              />
+            {/* Grid untuk Keranjang dan Pemilihan Member/Pelayan */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Kolom kiri: Keranjang */}
+              <div className="lg:col-span-2">
+                {/* Keranjang dalam bentuk tabel yang menarik */}
+                <div className={`rounded-xl shadow-lg overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                  <div className={`px-6 py-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                    <h3 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                      Keranjang Belanja
+                    </h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    {cart.length > 0 ? (
+                      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                          <tr>
+                            <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                              Produk
+                            </th>
+                            <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                              Jumlah
+                            </th>
+                            <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                              Harga
+                            </th>
+                            <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                              Subtotal
+                            </th>
+                            <th scope="col" className={`px-6 py-3 text-right text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                              Aksi
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
+                          {calculation?.items.map((item, index) => (
+                            <tr key={item.productId} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                              <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                                <div className="font-medium">{item.name}</div>
+                                <div className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Kode: {item.productCode}</div>
+                              </td>
+                              <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                                <div className="flex items-center">
+                                  <button
+                                    onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                                    className={`p-1 rounded-md ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'}`}
+                                  >
+                                    -
+                                  </button>
+                                  <span className="mx-2">{item.quantity}</span>
+                                  <button
+                                    onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                                    className={`p-1 rounded-md ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'}`}
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                              </td>
+                              <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                                {formatCurrency(item.priceAfterItemDiscount)}
+                              </td>
+                              <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                                {formatCurrency(item.subtotal)}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <button
+                                  onClick={() => removeFromCart(item.productId)}
+                                  className={`p-1 rounded-md ${darkMode ? 'text-red-400 hover:bg-gray-700' : 'text-red-600 hover:bg-gray-200'}`}
+                                  title="Hapus"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                                  </svg>
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <div className="p-8 text-center">
+                        <div className={`text-lg ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          Keranjang masih kosong
+                        </div>
+                        <p className={`mt-2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                          Tambahkan produk dari pencarian di atas
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
 
-              <AttendantSelection
-                selectedAttendant={selectedAttendant}
-                onSelectAttendant={setSelectedAttendant}
-                onRemoveAttendant={() => setSelectedAttendant(null)}
-                attendants={attendants}
-                darkMode={darkMode}
-                isOpen={showAttendantsModal}
-                onToggle={setShowAttendantsModal}
-              />
-              <TransactionCart
-                cart={calculation?.items || []}
-                updateQuantity={updateQuantity}
-                removeFromCart={removeFromCart}
-                darkMode={darkMode}
-              />
-              <PaymentSummary
-                calculation={calculation}
-                payment={payment}
-                setPayment={setPayment}
-                initiatePaidPayment={initiatePaidPayment}
-                initiateUnpaidPayment={initiateUnpaidPayment}
-                referenceNumber={referenceNumber}
-                setReferenceNumber={setReferenceNumber}
-                loading={loading}
-                darkMode={darkMode}
-                additionalDiscount={additionalDiscount}
-                setAdditionalDiscount={setAdditionalDiscount}
-                sessionStatus={session?.status ?? "loading"}
-                paymentMethod={paymentMethod}
-                setPaymentMethod={setPaymentMethod}
-                selectedMember={selectedMember}
-                selectedAttendant={selectedAttendant}
-              />
+              {/* Kolom kanan: Pemilihan Member, Pelayan dan Total Bayar */}
+              <div className="space-y-6">
+                <MemberSelection
+                  selectedMember={selectedMember}
+                  defaultMember={defaultMember}
+                  onSelectMember={setSelectedMember}
+                  onRemoveMember={() => setSelectedMember(null)}
+                  members={members}
+                  darkMode={darkMode}
+                  isOpen={showMembersModal}
+                  onToggle={setShowMembersModal}
+                  onAddNewMember={() => setShowAddMemberModal(true)}
+                />
+
+                <AttendantSelection
+                  selectedAttendant={selectedAttendant}
+                  onSelectAttendant={setSelectedAttendant}
+                  onRemoveAttendant={() => setSelectedAttendant(null)}
+                  attendants={attendants}
+                  darkMode={darkMode}
+                  isOpen={showAttendantsModal}
+                  onToggle={setShowAttendantsModal}
+                />
+
+                {/* Total Bayar - berada di bawah pilih pelayan */}
+                <div className={`rounded-xl shadow-lg p-6 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                  <h3 className={`text-lg font-semibold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                    Total Bayar
+                  </h3>
+                  <div className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                    {calculation ? formatCurrency(calculation.grandTotal) : 'Rp 0'}
+                  </div>
+                  <p className={`text-sm mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    {calculation ? 'Terakhir diperbarui' : 'Nol Rupiah'}
+                  </p>
+                </div>
+
+                {/* Ringkasan Pembayaran Card - berada di bawah total bayar */}
+                <div className={`rounded-xl shadow-lg p-6 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                  <h3 className={`text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                    Ringkasan Pembayaran
+                  </h3>
+
+                  {calculation ? (
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Subtotal</span>
+                        <span className={darkMode ? 'text-gray-300' : 'text-gray-900'}>{formatCurrency(calculation.subTotal)}</span>
+                      </div>
+
+                      {calculation.itemDiscount > 0 && (
+                        <div className="flex justify-between">
+                          <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Diskon Item</span>
+                          <span className="text-green-600">-{formatCurrency(calculation.itemDiscount)}</span>
+                        </div>
+                      )}
+
+                      {selectedMember && calculation.memberDiscount > 0 && (
+                        <div className="flex justify-between">
+                          <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Diskon Member ({selectedMember.name})</span>
+                          <span className="text-green-600">-{formatCurrency(calculation.memberDiscount)}</span>
+                        </div>
+                      )}
+
+                      {additionalDiscount > 0 && (
+                        <div className="flex justify-between">
+                          <span className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Diskon Tambahan</span>
+                          <span className="text-green-600">-{formatCurrency(additionalDiscount)}</span>
+                        </div>
+                      )}
+
+                      <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <PaymentSummary
+                          calculation={calculation}
+                          payment={payment}
+                          setPayment={setPayment}
+                          initiatePaidPayment={initiatePaidPayment}
+                          initiateUnpaidPayment={initiateUnpaidPayment}
+                          referenceNumber={referenceNumber}
+                          setReferenceNumber={setReferenceNumber}
+                          loading={loading}
+                          darkMode={darkMode}
+                          additionalDiscount={additionalDiscount}
+                          setAdditionalDiscount={setAdditionalDiscount}
+                          sessionStatus={session?.status ?? "loading"}
+                          paymentMethod={paymentMethod}
+                          setPaymentMethod={setPaymentMethod}
+                          selectedMember={selectedMember}
+                          selectedAttendant={selectedAttendant}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className={`text-center py-4 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                      Tambahkan produk ke keranjang untuk melihat ringkasan
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
