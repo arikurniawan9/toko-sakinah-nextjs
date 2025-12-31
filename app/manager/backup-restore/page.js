@@ -145,13 +145,6 @@ export default function BackupRestorePage() {
   };
 
   const handleRestore = async () => {
-    if (!selectedStore) {
-      setRestoreMessage('Silakan pilih toko terlebih dahulu');
-      setRestoreStatus('error');
-      toast.error('Silakan pilih toko terlebih dahulu');
-      return;
-    }
-
     if (!restoreFileName) {
       setRestoreMessage('Silakan pilih file backup untuk restore');
       setRestoreStatus('error');
@@ -178,9 +171,10 @@ export default function BackupRestorePage() {
 
       const file = fileInput.files[0];
 
-      // Validasi file
-      if (!file.name.toLowerCase().endsWith('.sql')) {
-        throw new Error('Hanya file .sql yang diperbolehkan');
+      // Validasi file - sekarang hanya menerima .json
+      const fileName = file.name.toLowerCase();
+      if (!fileName.endsWith('.json')) {
+        throw new Error('Hanya file .json yang diperbolehkan');
       }
 
       if (file.size > 100 * 1024 * 1024) {
@@ -192,7 +186,8 @@ export default function BackupRestorePage() {
       // Upload file ke server
       const uploadFormData = new FormData();
       uploadFormData.append('file', file);
-      uploadFormData.append('storeId', selectedStore);
+      // Kita tidak bisa mengirim storeId sekarang karena kita belum tahu storeId-nya
+      // Kita akan mengirimkan file dulu, lalu baca metadata dari file untuk menentukan storeId
       uploadFormData.append('filename', file.name);
 
       const uploadResponse = await fetch('/api/backup-restore/upload', {
@@ -203,6 +198,21 @@ export default function BackupRestorePage() {
       if (!uploadResponse.ok) {
         const uploadResult = await uploadResponse.json();
         throw new Error(uploadResult.error || 'Gagal mengupload file');
+      }
+
+      // Ekstrak storeId dari nama file
+      // Format: selective-backup-STOREID-timestamp.json
+      let storeId;
+      const backupFileName = file.name;
+
+      // Coba cocokkan format selective-backup-STOREID-timestamp.json
+      const jsonMatch = backupFileName.match(/selective-backup-([a-zA-Z0-9]+)-/);
+      if (jsonMatch) {
+        storeId = jsonMatch[1];
+      }
+
+      if (!storeId) {
+        throw new Error('Nama file backup tidak mengandung informasi toko yang valid. Format yang didukung: selective-backup-STOREID-timestamp.json');
       }
 
       // Proses restore setelah upload berhasil
@@ -216,13 +226,15 @@ export default function BackupRestorePage() {
       }
 
       // Buat request ke API untuk restore database
-      const formData = new FormData();
-      formData.append('storeId', selectedStore);
-      formData.append('backupFile', file.name);
-
       const response = await fetch('/api/backup-restore/restore', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          storeId: storeId,
+          fileName: file.name,
+        }),
       });
 
       const result = await response.json();
@@ -251,9 +263,10 @@ export default function BackupRestorePage() {
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Validasi file
-      if (!file.name.toLowerCase().endsWith('.sql')) {
-        setRestoreMessage('Hanya file .sql yang diperbolehkan');
+      // Validasi file - sekarang hanya menerima .json
+      const fileName = file.name.toLowerCase();
+      if (!fileName.endsWith('.json')) {
+        setRestoreMessage('Hanya file .json yang diperbolehkan');
         setRestoreStatus('error');
         return;
       }
@@ -518,7 +531,7 @@ export default function BackupRestorePage() {
           <p className={`mb-4 ${
             darkMode ? 'text-gray-300' : 'text-gray-700'
           }`}>
-            Kembalikan data dari file backup (.sql) untuk toko yang dipilih. Data sebelumnya akan digantikan.
+            Kembalikan data dari file backup (.json). Toko akan otomatis terdeteksi dari file backup.
           </p>
           
           <div className="mb-4">
@@ -543,13 +556,13 @@ export default function BackupRestorePage() {
                   <p className={`text-xs ${
                     darkMode ? 'text-gray-400' : 'text-gray-500'
                   }`}>
-                    SQL File (MAX. 100MB)
+                    JSON File (selective-backup-STOREID-timestamp.json) (MAX. 100MB)
                   </p>
                 </div>
                 <input 
                   type="file" 
                   className="hidden" 
-                  accept=".sql"
+                  accept=".json"
                   onChange={handleFileUpload}
                 />
               </label>
@@ -636,9 +649,9 @@ export default function BackupRestorePage() {
             }`}>
               <li>• Fitur backup dan restore hanya tersedia untuk role MANAGER</li>
               <li>• Proses backup hanya akan mencadangkan data untuk toko yang dipilih</li>
-              <li>• Proses restore akan menggantikan seluruh data toko yang dipilih</li>
+              <li>• Proses restore akan menggantikan seluruh data toko yang terdapat dalam file backup</li>
               <li>• Pastikan untuk mencadangkan data sebelum melakukan restore</li>
-              <li>• File backup disimpan dalam format SQL standar</li>
+              <li>• File backup disimpan dalam format SQL atau JSON</li>
             </ul>
           </div>
         </div>

@@ -51,7 +51,7 @@ export async function POST(request) {
       });
     }
 
-    // Use a transaction to ensure atomicity
+    // Use a transaction to ensure atomicity with the maximum allowed timeout for Accelerate
     const newDistribution = await prisma.$transaction(async (tx) => {
       let calculatedTotalAmount = 0;
 
@@ -138,53 +138,89 @@ export async function POST(request) {
       // Get the created distribution records
       const createdDistributions = await Promise.all(distributionRecords);
 
-      // Log aktivitas distribusi gudang
-      // Ambil IP address dan user agent dari request
-      const requestHeaders = new Headers(request.headers);
-      const ipAddress = requestHeaders.get('x-forwarded-for') || requestHeaders.get('x-real-ip') || '127.0.0.1';
-      const userAgent = requestHeaders.get('user-agent') || '';
-
-      // Log untuk setiap item distribusi
-      for (const item of createdDistributions) {
-        await logWarehouseDistribution(
-          session.user.id,
-          item,
-          ipAddress,
-          userAgent,
-          storeId // log ke store tujuan
-        );
-
-        // Jika status distribusi adalah PENDING_ACCEPTANCE, buat notifikasi
-        if (item.status === 'PENDING_ACCEPTANCE') {
-          await notificationManager.createNotification({
-            type: NOTIFICATION_TYPES.WAREHOUSE_DISTRIBUTION_PENDING,
-            title: `Distribusi Gudang Tertunda ke ${targetStore.name}`,
-            message: `Produk '${item.product?.name || 'N/A'}' sejumlah ${item.quantity} unit siap didistribusikan ke toko '${targetStore.name}'. Menunggu konfirmasi.`,
-            storeId: storeId, // Notifikasi untuk toko tujuan
-            userId: null, // Notifikasi bersifat umum untuk admin toko
-            severity: SEVERITY_LEVELS.MEDIUM,
-            data: {
-              distributionId: item.id,
-              productId: item.productId,
-              productName: item.product?.name || 'N/A',
-              storeName: targetStore.name,
-              quantity: item.quantity,
-            },
-          });
-        }
-      }
-
       // Return the first distribution record with invoice number
       return {
         ...createdDistributions[0],
         totalAmount: calculatedTotalAmount, // Include the calculated total amount in the response
         invoiceNumber: invoiceNumber // Ensure invoice number is included in the returned object
       };
+    }, {
+      timeout: 15000, // 15 seconds timeout - maximum for Accelerate
     });
+
+    // Ambil data distribusi lengkap setelah transaksi selesai untuk memastikan informasi produk tersedia
+    const completeDistribution = await prisma.warehouseDistribution.findFirst({
+      where: {
+        invoiceNumber: newDistribution.invoiceNumber,
+        storeId: storeId,
+      },
+      include: {
+        product: {
+          select: {
+            id: true,
+            name: true,
+            productCode: true,
+          }
+        },
+        store: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          }
+        },
+        distributedByUser: {
+          select: {
+            id: true,
+            name: true,
+            username: true,
+          }
+        },
+        warehouse: {
+          select: {
+            id: true,
+            name: true,
+          }
+        }
+      }
+    });
+
+    // Ambil IP address dan user agent dari request
+    const requestHeaders = new Headers(request.headers);
+    const ipAddress = requestHeaders.get('x-forwarded-for') || requestHeaders.get('x-real-ip') || '127.0.0.1';
+    const userAgent = requestHeaders.get('user-agent') || '';
+
+    // Log aktivitas distribusi gudang setelah transaksi selesai
+    await logWarehouseDistribution(
+      session.user.id,
+      completeDistribution,
+      ipAddress,
+      userAgent,
+      storeId // log ke store tujuan
+    );
+
+    // Jika status distribusi adalah PENDING_ACCEPTANCE, buat notifikasi
+    if (completeDistribution.status === 'PENDING_ACCEPTANCE') {
+      await notificationManager.createNotification({
+        type: NOTIFICATION_TYPES.WAREHOUSE_DISTRIBUTION_PENDING,
+        title: `Distribusi Gudang Tertunda ke ${targetStore.name}`,
+        message: `Produk '${completeDistribution.product?.name || 'N/A'}' sejumlah ${completeDistribution.quantity} unit siap didistribusikan ke toko '${targetStore.name}'. Menunggu konfirmasi.`,
+        storeId: storeId, // Notifikasi untuk toko tujuan
+        userId: null, // Notifikasi bersifat umum untuk admin toko
+        severity: SEVERITY_LEVELS.MEDIUM,
+        data: {
+          distributionId: completeDistribution.id,
+          productId: completeDistribution.productId,
+          productName: completeDistribution.product?.name || 'N/A',
+          storeName: targetStore.name,
+          quantity: completeDistribution.quantity,
+        },
+      });
+    }
 
     return NextResponse.json({
       success: true,
-      distribution: newDistribution,
+      distribution: completeDistribution,
       message: 'Distribusi produk berhasil disimpan dan stok diperbarui',
     });
   } catch (error) {

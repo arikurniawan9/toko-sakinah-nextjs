@@ -21,24 +21,18 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const storeId = searchParams.get('storeId');
 
-    // Validasi bahwa storeId diberikan
-    if (!storeId) {
-      return new Response(JSON.stringify({ error: 'Store ID is required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
+    // Jika storeId diberikan, validasi bahwa toko ada
+    if (storeId) {
+      const store = await prisma.store.findUnique({
+        where: { id: storeId },
       });
-    }
 
-    // Cek apakah toko ada
-    const store = await prisma.store.findUnique({
-      where: { id: storeId },
-    });
-
-    if (!store) {
-      return new Response(JSON.stringify({ error: 'Store not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      if (!store) {
+        return new Response(JSON.stringify({ error: 'Store not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     // Cek apakah direktori backups ada
@@ -53,14 +47,30 @@ export async function GET(request) {
     // Baca file dalam direktori backups
     const files = fs.readdirSync(backupDir);
 
-    // Filter file backup berdasarkan storeId
-    const backupFiles = files.filter(file => 
-      file.startsWith(`backup_${storeId}_`) && file.endsWith('.sql')
-    ).map(file => ({
-      name: file,
-      size: fs.statSync(path.join(backupDir, file)).size,
-      createdAt: fs.statSync(path.join(backupDir, file)).mtime,
-    })).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Urutkan dari terbaru
+    // Filter file backup berdasarkan storeId jika diberikan
+    let backupFiles;
+    if (storeId) {
+      // Filter file backup berdasarkan storeId - mendukung format selective-backup-STOREID-timestamp.json
+      backupFiles = files.filter(file =>
+        file.startsWith(`selective-backup-${storeId}-`) && (file.endsWith('.sql') || file.endsWith('.json'))
+      ).map(file => ({
+        name: file,
+        size: fs.statSync(path.join(backupDir, file)).size,
+        createdAt: fs.statSync(path.join(backupDir, file)).mtime,
+      }));
+    } else {
+      // Jika tidak ada storeId, tampilkan semua file backup selective
+      backupFiles = files.filter(file =>
+        file.startsWith('selective-backup-') && (file.endsWith('.sql') || file.endsWith('.json'))
+      ).map(file => ({
+        name: file,
+        size: fs.statSync(path.join(backupDir, file)).size,
+        createdAt: fs.statSync(path.join(backupDir, file)).mtime,
+      }));
+    }
+
+    // Urutkan dari terbaru
+    backupFiles.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     return new Response(JSON.stringify({ files: backupFiles }), {
       status: 200,

@@ -48,15 +48,25 @@ export async function POST(request) {
       });
     }
 
-    const { type } = await request.json();
-    
+    const { type, storeId } = await request.json();
+
+    // Validasi storeId
+    if (!storeId) {
+      return new Response(JSON.stringify({
+        error: 'Store ID is required for backup'
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     let result;
     if (type === 'full') {
       // Untuk full backup, kita perlu pg_dump yang mungkin tidak tersedia di semua lingkungan
       // Jadi kita gunakan selective backup sebagai gantinya
-      result = await createSelectiveBackup();
+      result = await createSelectiveBackup(storeId);
     } else {
-      result = await createSelectiveBackup();
+      result = await createSelectiveBackup(storeId);
     }
 
     return new Response(JSON.stringify({ 

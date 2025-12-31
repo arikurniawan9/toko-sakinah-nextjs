@@ -30,13 +30,6 @@ export async function POST(request) {
       });
     }
 
-    if (!storeId) {
-      return new Response(JSON.stringify({ error: 'Store ID is required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-
     if (!filename) {
       return new Response(JSON.stringify({ error: 'Filename is required' }), {
         status: 400,
@@ -44,21 +37,26 @@ export async function POST(request) {
       });
     }
 
-    // Cek apakah toko ada
-    const store = await prisma.store.findUnique({
-      where: { id: storeId },
-    });
-
-    if (!store) {
-      return new Response(JSON.stringify({ error: 'Store not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' },
+    // Jika storeId tidak diberikan, kita tetap lanjutkan upload
+    // Validasi store akan dilakukan di route restore nanti
+    if (storeId) {
+      // Jika storeId diberikan, lakukan validasi seperti biasa
+      const store = await prisma.store.findUnique({
+        where: { id: storeId },
       });
+
+      if (!store) {
+        return new Response(JSON.stringify({ error: 'Store not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
     }
 
-    // Validasi ekstensi file
-    if (!filename.toLowerCase().endsWith('.sql')) {
-      return new Response(JSON.stringify({ error: 'Hanya file .sql yang diperbolehkan' }), {
+    // Validasi ekstensi file - sekarang hanya menerima .json
+    const lowerCaseFilename = filename.toLowerCase();
+    if (!lowerCaseFilename.endsWith('.json')) {
+      return new Response(JSON.stringify({ error: 'Hanya file .json yang diperbolehkan' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });

@@ -89,14 +89,13 @@ export async function PUT(request) {
       groupedDistributions[productCode].individualDistributions.push(distribution);
     }
 
-    // Use transaction to ensure atomicity for all distributions in the batch
+    // Update distribution status in a separate transaction (this is the critical part that must be atomic)
     const updatedDistributions = await prisma.$transaction(async (tx) => {
       const results = [];
 
       // Process each unique product in the batch
       for (const productCode in groupedDistributions) {
         const groupedDist = groupedDistributions[productCode];
-        const distribution = groupedDist.individualDistributions[0]; // Use the first distribution as reference
 
         // Update distribution status for all individual distributions of this product
         for (const individualDist of groupedDist.individualDistributions) {
@@ -110,129 +109,140 @@ export async function PUT(request) {
           });
           results.push(updatedDist);
         }
-
-        // First, ensure the supplier exists in the target store (create if doesn't exist)
-        const supplierInStore = await tx.supplier.findFirst({
-          where: {
-            code: distribution.product.supplier.code, // Use supplier code to identify
-            storeId: session.user.storeId
-          }
-        });
-
-        let targetSupplierId = supplierInStore?.id;
-        if (!supplierInStore) {
-          // Create the supplier in the target store
-          const newSupplier = await tx.supplier.create({
-            data: {
-              storeId: session.user.storeId,
-              code: distribution.product.supplier.code,
-              name: distribution.product.supplier.name,
-              contactPerson: distribution.product.supplier.contactPerson,
-              address: distribution.product.supplier.address,
-              phone: distribution.product.supplier.phone,
-              email: distribution.product.supplier.email,
-            }
-          });
-          targetSupplierId = newSupplier.id;
-        } else {
-          targetSupplierId = supplierInStore.id;
-        }
-
-        // Create a purchase record for the store to represent this accepted product in the batch
-        await tx.purchase.create({
-          data: {
-            storeId: session.user.storeId,
-            supplierId: targetSupplierId,
-            userId: session.user.id,
-            purchaseDate: new Date(distribution.distributedAt),
-            totalAmount: groupedDist.totalAmount, // Use total amount for all items of this product
-            status: 'COMPLETED',
-            items: {
-              create: {
-                storeId: session.user.storeId,
-                productId: distribution.productId,
-                quantity: groupedDist.totalQuantity, // Use total quantity for all items of this product
-                purchasePrice: distribution.unitPrice,
-                subtotal: groupedDist.totalAmount,
-              }
-            }
-          },
-        });
-
-        // First, ensure the category exists in the target store (create if doesn't exist)
-        const categoryInStore = await tx.category.findFirst({
-          where: {
-            name: distribution.product.category.name, // Use category name to identify
-            storeId: session.user.storeId
-          }
-        });
-
-        let targetCategoryId = categoryInStore?.id;
-        if (!categoryInStore) {
-          // Create the category in the target store
-          const newCategory = await tx.category.create({
-            data: {
-              storeId: session.user.storeId,
-              name: distribution.product.category.name,
-              description: distribution.product.category.description,
-            }
-          });
-          targetCategoryId = newCategory.id;
-        } else {
-          targetCategoryId = categoryInStore.id;
-        }
-
-        // Update product stock in the store using upsert to handle cases where product doesn't exist yet
-        // Use the total quantity for all items of this product in the batch
-        await tx.product.upsert({
-          where: {
-            productCode_storeId: {
-              productCode: distribution.product.productCode,
-              storeId: session.user.storeId
-            }
-          },
-          update: {
-            stock: {
-              increment: groupedDist.totalQuantity // Use total quantity for all items of this product
-            },
-            // Update other product fields if needed
-            name: distribution.product.name,
-            description: distribution.product.description,
-            purchasePrice: distribution.product.purchasePrice,
-            retailPrice: distribution.product.retailPrice,
-            silverPrice: distribution.product.silverPrice,
-            goldPrice: distribution.product.goldPrice,
-            platinumPrice: distribution.product.platinumPrice,
-            categoryId: targetCategoryId,
-            supplierId: targetSupplierId,
-          },
-          create: {
-            // Create new product record for this store
-            // Use the productCode and storeId as the unique identifier instead of sharing IDs
-            storeId: session.user.storeId,
-            categoryId: targetCategoryId,
-            name: distribution.product.name,
-            productCode: distribution.product.productCode,
-            stock: groupedDist.totalQuantity, // Set initial stock to the total distributed quantity for this product
-            purchasePrice: distribution.product.purchasePrice,
-            retailPrice: distribution.product.retailPrice,
-            silverPrice: distribution.product.silverPrice,
-            goldPrice: distribution.product.goldPrice,
-            platinumPrice: distribution.product.platinumPrice,
-            supplierId: targetSupplierId,
-            description: distribution.product.description,
-            image: distribution.product.image,
-          }
-        });
       }
       return results;
+    }, {
+      timeout: 10000, // 10 seconds for the critical status update
     });
 
-    // Log audit for the accepted batch
+    // Process the remaining operations outside the main transaction
+    // These operations are important but not as critical for atomicity as status updates
+    for (const productCode in groupedDistributions) {
+      const groupedDist = groupedDistributions[productCode];
+      const distribution = groupedDist.individualDistributions[0]; // Use the first distribution as reference
+
+      // First, ensure the supplier exists in the target store (create if doesn't exist)
+      const supplierInStore = await prisma.supplier.findFirst({
+        where: {
+          code: distribution.product.supplier.code, // Use supplier code to identify
+          storeId: session.user.storeId
+        }
+      });
+
+      let targetSupplierId = supplierInStore?.id;
+      if (!supplierInStore) {
+        // Create the supplier in the target store
+        const newSupplier = await prisma.supplier.create({
+          data: {
+            storeId: session.user.storeId,
+            code: distribution.product.supplier.code,
+            name: distribution.product.supplier.name,
+            contactPerson: distribution.product.supplier.contactPerson,
+            address: distribution.product.supplier.address,
+            phone: distribution.product.supplier.phone,
+            email: distribution.product.supplier.email,
+          }
+        });
+        targetSupplierId = newSupplier.id;
+      } else {
+        targetSupplierId = supplierInStore.id;
+      }
+
+      // Create a purchase record for the store to represent this accepted product in the batch
+      await prisma.purchase.create({
+        data: {
+          storeId: session.user.storeId,
+          supplierId: targetSupplierId,
+          userId: session.user.id,
+          purchaseDate: new Date(distribution.distributedAt),
+          totalAmount: groupedDist.totalAmount, // Use total amount for all items of this product
+          status: 'COMPLETED',
+          items: {
+            create: {
+              storeId: session.user.storeId,
+              productId: distribution.productId,
+              quantity: groupedDist.totalQuantity, // Use total quantity for all items of this product
+              purchasePrice: distribution.unitPrice,
+              subtotal: groupedDist.totalAmount,
+            }
+          }
+        },
+      });
+
+      // First, ensure the category exists in the target store (create if doesn't exist)
+      const categoryInStore = await prisma.category.findFirst({
+        where: {
+          name: distribution.product.category.name, // Use category name to identify
+          storeId: session.user.storeId
+        }
+      });
+
+      let targetCategoryId = categoryInStore?.id;
+      if (!categoryInStore) {
+        // Create the category in the target store
+        const newCategory = await prisma.category.create({
+          data: {
+            storeId: session.user.storeId,
+            name: distribution.product.category.name,
+            description: distribution.product.category.description,
+            icon: distribution.product.category.icon, // Also copy the icon
+          }
+        });
+        targetCategoryId = newCategory.id;
+      } else {
+        targetCategoryId = categoryInStore.id;
+      }
+
+      // Update product stock in the store using upsert to handle cases where product doesn't exist yet
+      // Use the total quantity for all items of this product in the batch
+      await prisma.product.upsert({
+        where: {
+          productCode_storeId: {
+            productCode: distribution.product.productCode,
+            storeId: session.user.storeId
+          }
+        },
+        update: {
+          stock: {
+            increment: groupedDist.totalQuantity // Use total quantity for all items of this product
+          },
+          // Update other product fields if needed
+          name: distribution.product.name,
+          description: distribution.product.description,
+          purchasePrice: distribution.product.purchasePrice,
+          retailPrice: distribution.product.retailPrice,
+          silverPrice: distribution.product.silverPrice,
+          goldPrice: distribution.product.goldPrice,
+          platinumPrice: distribution.product.platinumPrice,
+          categoryId: targetCategoryId,
+          supplierId: targetSupplierId,
+        },
+        create: {
+          // Create new product record for this store
+          // Use the productCode and storeId as the unique identifier instead of sharing IDs
+          storeId: session.user.storeId,
+          categoryId: targetCategoryId,
+          name: distribution.product.name,
+          productCode: distribution.product.productCode,
+          stock: groupedDist.totalQuantity, // Set initial stock to the total distributed quantity for this product
+          purchasePrice: distribution.product.purchasePrice,
+          retailPrice: distribution.product.retailPrice,
+          silverPrice: distribution.product.silverPrice,
+          goldPrice: distribution.product.goldPrice,
+          platinumPrice: distribution.product.platinumPrice,
+          supplierId: targetSupplierId,
+          description: distribution.product.description,
+          image: distribution.product.image,
+        }
+      });
+    }
+
+    // Ambil IP address dan user agent dari request
     const requestHeaders = new Headers(request.headers);
     const ipAddress = requestHeaders.get('x-forwarded-for') || requestHeaders.get('x-real-ip') || '127.0.0.1';
     const userAgent = requestHeaders.get('user-agent') || '';
 
+    // Log audit for the accepted batch setelah transaksi selesai
     await logAudit({
       userId: session.user.id,
       action: AUDIT_ACTIONS.WAREHOUSE_DISTRIBUTION_UPDATE,

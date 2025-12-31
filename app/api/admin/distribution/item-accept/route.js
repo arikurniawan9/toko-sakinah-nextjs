@@ -128,6 +128,7 @@ export async function PUT(request) {
             storeId: session.user.storeId,
             name: distributionItem.product.category.name,
             description: distributionItem.product.category.description,
+            icon: distributionItem.product.category.icon, // Also copy the icon
           }
         });
         targetCategoryId = newCategory.id;
