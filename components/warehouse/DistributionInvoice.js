@@ -3,7 +3,7 @@
 import React, { forwardRef } from 'react';
 import { useUserTheme } from '../UserThemeContext';
 
-const ITEMS_PER_PAGE = 25; // Jumlah item maksimum per halaman
+const ITEMS_PER_PAGE = 15; // Jumlah item maksimum per halaman
 
 const DistributionInvoice = forwardRef(({ distributionData }, ref) => {
   const { userTheme } = useUserTheme();
@@ -339,23 +339,19 @@ const DistributionInvoice = forwardRef(({ distributionData }, ref) => {
                     <span>Rp {pageTotalAmount.toLocaleString('id-ID')}</span>
                   </div>
 
-                  {/* Total keseluruhan hanya ditampilkan di halaman terakhir */}
-                  {page === totalPages - 1 && (
-                    <>
-                      <div className="flex justify-between border-t border-gray-300 dark:border-gray-600 print:border-t print:border-black pt-1 mt-1 text-base">
-                        <span><strong>Total Barang (Keseluruhan):</strong></span>
-                        <span><strong>{totalItems.toLocaleString('id-ID')}</strong></span>
-                      </div>
-                      <div className="flex justify-between border-b border-gray-300 dark:border-gray-600 print:border-b print:border-black pb-1 text-base">
-                        <span><strong>Jumlah Item (Keseluruhan):</strong></span>
-                        <span><strong>{allItems.length}</strong></span>
-                      </div>
-                      <div className="flex justify-between font-bold pt-1 text-lg">
-                        <span><strong>Total Harga (Keseluruhan):</strong></span>
-                        <span><strong>Rp {totalAmount.toLocaleString('id-ID')}</strong></span>
-                      </div>
-                    </>
-                  )}
+                  {/* Total keseluruhan ditampilkan di setiap halaman */}
+                  <div className="flex justify-between border-t border-gray-300 dark:border-gray-600 print:border-t print:border-black pt-1 mt-1 text-base">
+                    <span><strong>Total Barang (Keseluruhan):</strong></span>
+                    <span><strong>{totalItems.toLocaleString('id-ID')}</strong></span>
+                  </div>
+                  <div className="flex justify-between border-b border-gray-300 dark:border-gray-600 print:border-b print:border-black pb-1 text-base">
+                    <span><strong>Jumlah Item (Keseluruhan):</strong></span>
+                    <span><strong>{allItems.length}</strong></span>
+                  </div>
+                  <div className="flex justify-between font-bold pt-1 text-lg">
+                    <span><strong>Total Harga (Keseluruhan):</strong></span>
+                    <span><strong>Rp {totalAmount.toLocaleString('id-ID')}</strong></span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -363,42 +359,36 @@ const DistributionInvoice = forwardRef(({ distributionData }, ref) => {
 
           {/* Footer for each page */}
           <div className="mt-auto">
-            {/* Signatures only on the last page */}
-            {page === totalPages - 1 && (
-              <div className="mt-8 print:mt-8">
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="text-center text-base">
-                    <p className="mb-8">Pelayan</p>
-                    <div className="border-t border-gray-800 dark:border-gray-300 print:border-t print:border-black pt-1">
-                      {distributionData?.distributedByUser?.name || distributionData?.distributedByName || 'N/A'}
-                    </div>
+            {/* Signatures on every page */}
+            <div className="mt-8 print:mt-8">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center text-base">
+                  <p className="mb-8">Pelayan</p>
+                  <div className="border-t border-gray-800 dark:border-gray-300 print:border-t print:border-black pt-1">
+                    {distributionData?.distributedByUser?.name || distributionData?.distributedByName || 'N/A'}
                   </div>
-                  <div className="text-center text-base">
-                    <p className="mb-8">Penerima</p>
-                    <div className="border-t border-gray-800 dark:border-gray-300 print:border-t print:border-black pt-1">
-                      _________________
-                    </div>
+                </div>
+                <div className="text-center text-base">
+                  <p className="mb-8">Penerima</p>
+                  <div className="border-t border-gray-800 dark:border-gray-300 print:border-t print:border-black pt-1">
+                    _________________
                   </div>
-                  <div className="text-center text-base">
-                    <p className="mb-8">Mengetahui</p>
-                    <div className="border-t border-gray-800 dark:border-gray-300 print:border-t print:border-black pt-1">
-                      _________________
-                    </div>
+                </div>
+                <div className="text-center text-base">
+                  <p className="mb-8">Mengetahui</p>
+                  <div className="border-t border-gray-800 dark:border-gray-300 print:border-t print:border-black pt-1">
+                    _________________
                   </div>
                 </div>
               </div>
-            )}
+            </div>
 
             {/* Page number for all pages */}
             <div className="mt-4 text-center text-base print:mt-4 print:text-base">
               <p>Halaman {page + 1} dari {totalPages}</p>
-              {page === totalPages - 1 && (
-                <>
-                  <p className="mt-2">Terima kasih atas kerjasama yang baik</p>
-                  <p className="mt-1">Dicetak: {formatDate(new Date().toISOString())}</p>
-                  <p className="mt-2 text-sm print:text-sm">Faktur ini merupakan bukti pengiriman barang yang sah</p>
-                </>
-              )}
+              <p className="mt-2">Terima kasih atas kerjasama yang baik</p>
+              <p className="mt-1">Dicetak: {formatDate(new Date().toISOString())}</p>
+              <p className="mt-2 text-sm print:text-sm">Faktur ini merupakan bukti pengiriman barang yang sah</p>
             </div>
           </div>
         </div>
