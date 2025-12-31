@@ -240,17 +240,17 @@ const DistributionInvoice = forwardRef(({ distributionData }, ref) => {
           {/* Header only on first page */}
           {page === 0 && (
             <div className="text-center mb-4 print:mb-4">
-              <h1 className="text-xl font-bold print:text-xl mb-1">FAKTUR DISTRIBUSI PRODUK</h1>
-              <div className="border-b-2 border-gray-800 dark:border-gray-300 print:border-b-2 print:border-black mb-2"></div>
-              <div className="grid grid-cols-2 gap-4 text-base">
+              <h1 className="text-2xl font-bold print:text-2xl mb-2">FAKTUR DISTRIBUSI PRODUK</h1>
+              <div className="border-b-2 border-gray-800 dark:border-gray-300 print:border-b-2 print:border-black mb-4"></div>
+              <div className="grid grid-cols-2 gap-8 text-sm">
                 <div className="text-left">
-                  <h2 className="text-base font-semibold print:text-base mb-1">PENGIRIM</h2>
+                  <h2 className="text-lg font-semibold print:text-lg mb-2">PENGIRIM</h2>
                   <p className="font-bold">TOKO SAKINAH - GUDANG PUSAT</p>
                   <p>Jl. Raya No. 123, Kota Anda</p>
                   <p>Telp: 0812-3456-7890</p>
                 </div>
                 <div className="text-left">
-                  <h2 className="text-base font-semibold print:text-base mb-1">PENERIMA</h2>
+                  <h2 className="text-lg font-semibold print:text-lg mb-2">PENERIMA</h2>
                   <p className="font-bold">{distributionData?.store?.name || distributionData?.storeName || 'N/A'}</p>
                   <p>Kode Toko: {distributionData?.store?.code || 'N/A'}</p>
                   <p>{distributionData?.store?.address || 'Alamat tidak tersedia'}</p>
@@ -263,7 +263,7 @@ const DistributionInvoice = forwardRef(({ distributionData }, ref) => {
           {/* Invoice Info - show full info on first page, only page info on other pages */}
           {page === 0 ? (
             <div className="mb-4 print:mb-4">
-              <div className="flex flex-wrap justify-between items-start gap-x-4 gap-y-1 text-base">
+              <div className="flex flex-wrap justify-between items-start gap-x-4 gap-y-1 text-sm">
                 <div className="flex-grow min-w-[20%]">
                   <p><strong>No. Faktur:</strong> {distributionData?.invoiceNumber || 'N/A'}</p>
                 </div>
@@ -281,7 +281,7 @@ const DistributionInvoice = forwardRef(({ distributionData }, ref) => {
           ) : (
             // For other pages, only show page info
             <div className="mb-4 print:mb-4">
-              <div className="flex justify-end text-base">
+              <div className="flex justify-end text-sm">
                 <p><strong>Halaman:</strong> {page + 1} dari {totalPages}</p>
               </div>
             </div>
@@ -294,12 +294,12 @@ const DistributionInvoice = forwardRef(({ distributionData }, ref) => {
               <table className="w-full border-collapse border border-gray-400 dark:border-gray-600 print:border-collapse print:border border-black">
                 <thead>
                   <tr className="bg-gray-100 dark:bg-gray-700 print:bg-gray-200">
-                    <th className="border border-gray-300 dark:border-gray-600 print:border print:border-black px-2 py-2 text-left text-base">No</th>
-                    <th className="border border-gray-300 dark:border-gray-600 print:border print:border-black px-2 py-2 text-left text-base">Kode Produk</th>
-                    <th className="border border-gray-300 dark:border-gray-600 print:border print:border-black px-2 py-2 text-left text-base">Nama Produk</th>
-                    <th className="border border-gray-300 dark:border-gray-600 print:border print:border-black px-2 py-2 text-right text-base">Jumlah</th>
-                    <th className="border border-gray-300 dark:border-gray-600 print:border print:border-black px-2 py-2 text-right text-base">Harga Satuan</th>
-                    <th className="border border-gray-300 dark:border-gray-600 print:border print:border-black px-2 py-2 text-right text-base">Total</th>
+                    <th className="border border-gray-300 dark:border-gray-600 print:border print:border-black px-2 py-2 text-left text-sm">No</th>
+                    <th className="border border-gray-300 dark:border-gray-600 print:border print:border-black px-2 py-2 text-left text-sm">Kode Produk</th>
+                    <th className="border border-gray-300 dark:border-gray-600 print:border print:border-black px-2 py-2 text-left text-sm">Nama Produk</th>
+                    <th className="border border-gray-300 dark:border-gray-600 print:border print:border-black px-2 py-2 text-right text-sm">Jumlah</th>
+                    <th className="border border-gray-300 dark:border-gray-600 print:border print:border-black px-2 py-2 text-right text-sm">Harga Satuan</th>
+                    <th className="border border-gray-300 dark:border-gray-600 print:border print:border-black px-2 py-2 text-right text-sm">Total</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -308,17 +308,17 @@ const DistributionInvoice = forwardRef(({ distributionData }, ref) => {
                     const globalIndex = page * ITEMS_PER_PAGE + index;
                     return (
                       <tr key={globalIndex}>
-                        <td className="border border-gray-300 dark:border-gray-600 print:border print:border-black px-2 py-1 text-base">{globalIndex + 1}</td>
-                        <td className="border border-gray-300 dark:border-gray-600 print:border print:border-black px-2 py-1 text-base">{item?.product?.productCode || item?.productCode || 'N/A'}</td>
-                        <td className="border border-gray-300 dark:border-gray-600 print:border print:border-black px-2 py-1 text-base">{item?.product?.name || item?.productName || item?.name || 'Produk Tidak Dikenal'}</td>
-                        <td className="border border-gray-300 dark:border-gray-600 print:border print:border-black px-2 py-1 text-base text-right">{(item?.quantity || 0).toLocaleString('id-ID')}</td>
-                        <td className="border border-gray-300 dark:border-gray-600 print:border print:border-black px-2 py-1 text-base text-right">Rp {(item?.unitPrice || 0).toLocaleString('id-ID')}</td>
-                        <td className="border border-gray-300 dark:border-gray-600 print:border print:border-black px-2 py-1 text-base text-right">Rp {itemTotal.toLocaleString('id-ID')}</td>
+                        <td className="border border-gray-300 dark:border-gray-600 print:border print:border-black px-2 py-1 text-sm">{globalIndex + 1}</td>
+                        <td className="border border-gray-300 dark:border-gray-600 print:border print:border-black px-2 py-1 text-sm">{item?.product?.productCode || item?.productCode || 'N/A'}</td>
+                        <td className="border border-gray-300 dark:border-gray-600 print:border print:border-black px-2 py-1 text-sm">{item?.product?.name || item?.productName || item?.name || 'Produk Tidak Dikenal'}</td>
+                        <td className="border border-gray-300 dark:border-gray-600 print:border print:border-black px-2 py-1 text-sm text-right">{(item?.quantity || 0).toLocaleString('id-ID')}</td>
+                        <td className="border border-gray-300 dark:border-gray-600 print:border print:border-black px-2 py-1 text-sm text-right">Rp {(item?.unitPrice || 0).toLocaleString('id-ID')}</td>
+                        <td className="border border-gray-300 dark:border-gray-600 print:border print:border-black px-2 py-1 text-sm text-right">Rp {itemTotal.toLocaleString('id-ID')}</td>
                       </tr>
                     );
                   }) : (
                     <tr>
-                      <td colSpan="6" className="border border-gray-300 dark:border-gray-600 print:border print:border-black px-2 py-1 text-center text-base">Tidak ada item dalam distribusi ini</td>
+                      <td colSpan="6" className="border border-gray-300 dark:border-gray-600 print:border print:border-black px-2 py-1 text-center text-sm">Tidak ada item dalam distribusi ini</td>
                     </tr>
                   )}
                 </tbody>
@@ -330,22 +330,22 @@ const DistributionInvoice = forwardRef(({ distributionData }, ref) => {
           <div className="mb-6 print:mb-6">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <h3 className="font-semibold text-base mb-1">Catatan:</h3>
-                <div className="border border-gray-300 dark:border-gray-600 print:border print:border-black p-2 min-h-[60px] text-base">
+                <h3 className="font-semibold text-sm mb-1">Catatan:</h3>
+                <div className="border border-gray-300 dark:border-gray-600 print:border print:border-black p-2 min-h-[60px] text-sm">
                   {page === 0 ? (distributionData?.notes || '-') : '-'}
                 </div>
               </div>
               <div>
                 <div className="space-y-1">
-                  <div className="flex justify-between border-b border-gray-300 dark:border-gray-600 print:border-b print:border-black pb-1 text-base">
+                  <div className="flex justify-between border-b border-gray-300 dark:border-gray-600 print:border-b print:border-black pb-1 text-sm">
                     <span>Total Barang (Hal. {page + 1}):</span>
                     <span>{pageTotalItems.toLocaleString('id-ID')}</span>
                   </div>
-                  <div className="flex justify-between border-b border-gray-300 dark:border-gray-600 print:border-b print:border-black pb-1 text-base">
+                  <div className="flex justify-between border-b border-gray-300 dark:border-gray-600 print:border-b print:border-black pb-1 text-sm">
                     <span>Jumlah Item (Hal. {page + 1}):</span>
                     <span>{pageItems.length}</span>
                   </div>
-                  <div className="flex justify-between font-bold pt-1 text-base">
+                  <div className="flex justify-between font-bold pt-1 text-sm">
                     <span>Total Harga (Hal. {page + 1}):</span>
                     <span>Rp {pageTotalAmount.toLocaleString('id-ID')}</span>
                   </div>
@@ -353,15 +353,15 @@ const DistributionInvoice = forwardRef(({ distributionData }, ref) => {
                   {/* Total keseluruhan hanya ditampilkan di halaman terakhir */}
                   {page === totalPages - 1 && (
                     <>
-                      <div className="flex justify-between border-t border-gray-300 dark:border-gray-600 print:border-t print:border-black pt-1 mt-1 text-base">
+                      <div className="flex justify-between border-t border-gray-300 dark:border-gray-600 print:border-t print:border-black pt-1 mt-1 text-sm">
                         <span><strong>Total Barang (Keseluruhan):</strong></span>
                         <span><strong>{totalItems.toLocaleString('id-ID')}</strong></span>
                       </div>
-                      <div className="flex justify-between border-b border-gray-300 dark:border-gray-600 print:border-b print:border-black pb-1 text-base">
+                      <div className="flex justify-between border-b border-gray-300 dark:border-gray-600 print:border-b print:border-black pb-1 text-sm">
                         <span><strong>Jumlah Item (Keseluruhan):</strong></span>
                         <span><strong>{allItems.length}</strong></span>
                       </div>
-                      <div className="flex justify-between font-bold pt-1 text-lg">
+                      <div className="flex justify-between font-bold pt-1 text-base">
                         <span><strong>Total Harga (Keseluruhan):</strong></span>
                         <span><strong>Rp {totalAmount.toLocaleString('id-ID')}</strong></span>
                       </div>
@@ -377,20 +377,20 @@ const DistributionInvoice = forwardRef(({ distributionData }, ref) => {
             {/* Signatures only on the last page */}
             {page === totalPages - 1 && (
               <div className="mt-8 print:mt-8">
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="text-center text-base">
+                <div className="grid grid-cols-3 gap-8">
+                  <div className="text-center text-sm">
                     <p className="mb-8">Pelayan</p>
                     <div className="border-t border-gray-800 dark:border-gray-300 print:border-t print:border-black pt-1">
                       {distributionData?.distributedByUser?.name || distributionData?.distributedByName || 'N/A'}
                     </div>
                   </div>
-                  <div className="text-center text-base">
+                  <div className="text-center text-sm">
                     <p className="mb-8">Penerima</p>
                     <div className="border-t border-gray-800 dark:border-gray-300 print:border-t print:border-black pt-1">
                       _________________
                     </div>
                   </div>
-                  <div className="text-center text-base">
+                  <div className="text-center text-sm">
                     <p className="mb-8">Mengetahui</p>
                     <div className="border-t border-gray-800 dark:border-gray-300 print:border-t print:border-black pt-1">
                       _________________
@@ -401,13 +401,13 @@ const DistributionInvoice = forwardRef(({ distributionData }, ref) => {
             )}
 
             {/* Page number for all pages */}
-            <div className="mt-4 text-center text-base print:mt-4 print:text-base">
+            <div className="mt-4 text-center text-sm print:mt-4 print:text-sm">
               <p>Halaman {page + 1} dari {totalPages}</p>
               {page === totalPages - 1 && (
                 <>
                   <p className="mt-2">Terima kasih atas kerjasama yang baik</p>
                   <p className="mt-1">Dicetak: {formatDate(new Date().toISOString())}</p>
-                  <p className="mt-2 text-sm print:text-sm">Faktur ini merupakan bukti pengiriman barang yang sah</p>
+                  <p className="mt-2 text-xs print:text-xs">Faktur ini merupakan bukti pengiriman barang yang sah</p>
                 </>
               )}
             </div>
