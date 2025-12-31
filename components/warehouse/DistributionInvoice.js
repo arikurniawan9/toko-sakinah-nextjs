@@ -5,7 +5,7 @@ import { useUserTheme } from '../UserThemeContext';
 
 const ITEMS_PER_PAGE = 15; // Jumlah item maksimum per halaman
 
-const DistributionInvoice = forwardRef(({ distributionData }, ref) => {
+const DistributionInvoice = forwardRef(({ distributionData, isModalPreview = false }, ref) => {
   const { userTheme } = useUserTheme();
   const darkMode = userTheme.darkMode;
 
@@ -17,7 +17,7 @@ const DistributionInvoice = forwardRef(({ distributionData }, ref) => {
         style={{
           fontFamily: 'Arial, sans-serif',
           maxWidth: '210mm', // A4 width
-          minHeight: '297mm', // A4 height
+          // minHeight: '297mm', // Removed for scrollable preview
           margin: '0 auto',
           printColorAdjust: 'exact',
           WebkitPrintColorAdjust: 'exact'
@@ -58,8 +58,8 @@ const DistributionInvoice = forwardRef(({ distributionData }, ref) => {
   // Calculate number of pages needed
   const totalPages = Math.ceil(allItems.length / ITEMS_PER_PAGE);
 
-  // If only one page is needed, render single page version
-  if (totalPages === 1) {
+  // If it's a modal preview or only one page is needed, render as a single page
+  if (isModalPreview || totalPages === 1) {
     const pageItems = allItems;
     const totalItems = pageItems.reduce((sum, item) => sum + (item?.quantity || 0), 0);
     const totalAmount = pageItems.reduce((sum, item) => sum + ((item?.quantity || 0) * (item?.unitPrice || 0)), 0);
