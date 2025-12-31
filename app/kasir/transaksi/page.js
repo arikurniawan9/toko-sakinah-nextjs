@@ -368,8 +368,11 @@ export default function KasirTransaksiPage() {
       const result = await response.json();
 
       if (response.ok) {
-        console.log("Full API response:", result); // Debug log lengkap
-        console.log("API invoiceNumber:", result.invoiceNumber); // Debug log khusus invoice number
+        console.log("Full API response:", result);
+        console.log("API invoiceNumber:", result.invoiceNumber);
+
+        // Debug log: Inspect calculation and receiptPayload before setting receiptData
+        console.log("Debug: Calculation object before receiptPayload:", calculation);
 
         // Ambil informasi toko untuk dimasukkan ke dalam receipt
         let storeInfo = {
@@ -463,9 +466,10 @@ export default function KasirTransaksiPage() {
         setSelectedMember(null);
         setSelectedAttendant(null);
         setPayment(0);
-        setCalculation(null);
+        // setCalculation(null); // This is redundant and handled by resetCart
         setSearchTerm("");
         setAdditionalDiscount(0); // Reset additional discount after successful transaction
+        resetCart(); // Use the resetCart function from the hook
       } else {
         showNotification(`Gagal: ${result.error}`, 'error');
       }

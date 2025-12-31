@@ -215,12 +215,14 @@ const DistributionInvoice = forwardRef(({ distributionData }, ref) => {
     // Multi-page version
     const pages = [];
     
+    // Hitung total keseluruhan hanya sekali
+    const totalItems = allItems.reduce((sum, item) => sum + (item?.quantity || 0), 0);
+    const totalAmount = allItems.reduce((sum, item) => sum + ((item?.quantity || 0) * (item?.unitPrice || 0)), 0);
+
     for (let page = 0; page < totalPages; page++) {
       const pageItems = allItems.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE);
       const pageTotalItems = pageItems.reduce((sum, item) => sum + (item?.quantity || 0), 0);
       const pageTotalAmount = pageItems.reduce((sum, item) => sum + ((item?.quantity || 0) * (item?.unitPrice || 0)), 0);
-      const totalItems = allItems.reduce((sum, item) => sum + (item?.quantity || 0), 0);
-      const totalAmount = allItems.reduce((sum, item) => sum + ((item?.quantity || 0) * (item?.unitPrice || 0)), 0);
 
       pages.push(
         <div
