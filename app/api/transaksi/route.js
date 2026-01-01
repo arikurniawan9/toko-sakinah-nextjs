@@ -226,8 +226,8 @@ export async function POST(request) {
         }
       }
 
-      // 2. Create the Sale record - use total after discount as the final amount since there's no discount field in schema
-      const totalAfterDiscount = total - (discount + additionalDiscount); // Calculate total after applying all discounts
+      // 2. Create the Sale record - 'total' from frontend is already member-priced
+      const totalAfterDiscount = total - additionalDiscount; // Only subtract overall discount
 
       const newSale = await tx.sale.create({
         data: {
@@ -237,7 +237,7 @@ export async function POST(request) {
           attendantId: attendantId,
           memberId: finalMemberId,
           paymentMethod: paymentMethod || 'CASH', // Include payment method, default to CASH
-          total: totalAfterDiscount, // Total after discount (since there's no separate discount field in Sale schema)
+          total: totalAfterDiscount,
           tax: tax,
           payment: payment,
           change: change,
@@ -282,9 +282,8 @@ export async function POST(request) {
 
       // 4. Jika status UNPAID, PARTIALLY_PAID, CREDIT, atau CREDIT_PAID, buat juga entri di Receivable
       if ((status === 'UNPAID' || status === 'PARTIALLY_PAID' || status === 'CREDIT' || status === 'CREDIT_PAID') && finalMemberId) {
-        // Sisa hutang adalah total setelah semua diskon dikurangi - jumlah yang dibayar
-        const totalDiscount = discount + additionalDiscount; // Calculate total discount
-        const finalTotal = total - totalDiscount;
+        // Sisa hutang adalah total setelah diskon keseluruhan dikurangi - jumlah yang dibayar
+        const finalTotal = total - additionalDiscount;
         const remainingAmount = finalTotal - (payment || 0);
         if (remainingAmount > 0) {
           await tx.receivable.create({

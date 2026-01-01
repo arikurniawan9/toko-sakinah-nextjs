@@ -2,9 +2,9 @@
 'use client';
 
 import { Search, Loader, Package, Scan } from 'lucide-react';
-import { memo, useCallback } from 'react';
+import { memo, useCallback, forwardRef } from 'react';
 
-const ProductSearch = memo(({
+const ProductSearch = memo(forwardRef(({
   searchTerm,
   setSearchTerm,
   handleScan,
@@ -14,7 +14,7 @@ const ProductSearch = memo(({
   darkMode,
   getTierPrice,
   showNotification,
-}) => {
+}, ref) => {
   // Fungsi untuk memformat angka dengan pemisah ribuan
   const formatNumber = useCallback((num) => {
     return new Intl.NumberFormat('id-ID').format(num);
@@ -25,6 +25,7 @@ const ProductSearch = memo(({
       <div className={`rounded-lg shadow p-6 mb-6 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
         <div className="relative">
           <input
+            ref={ref}
             type="text"
             placeholder="Cari produk berdasarkan nama atau kode..."
             className={`w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
@@ -128,6 +129,8 @@ const ProductSearch = memo(({
       </div>
     </div>
   );
-});
+}));
+
+ProductSearch.displayName = 'ProductSearch';
 
 export default ProductSearch;

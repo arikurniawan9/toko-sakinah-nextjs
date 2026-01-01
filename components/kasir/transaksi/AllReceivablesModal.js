@@ -151,52 +151,59 @@ const AllReceivablesModal = ({ isOpen, onClose, darkMode }) => {
                 return (
                   <div 
                     key={receivable.id} 
-                    className={`p-4 rounded-lg border ${darkMode ? 'border-gray-700 bg-gray-700/20' : 'border-gray-200 bg-gray-50'}`}
+                    className={`p-4 rounded-lg border ${darkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}
                   >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center">
-                          <User size={16} className="mr-2" />
-                          <span className="font-semibold">{memberName}</span>
+                    <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-center">
+                      {/* Member Info */}
+                      <div className="md:col-span-2">
+                        <div className="flex items-center font-bold">
+                          <User size={16} className="mr-2 flex-shrink-0" />
+                          <span className="truncate">{memberName}</span>
                         </div>
-                        <p className="text-sm mt-1">Invoice: {receivable.sale?.invoiceNumber || receivable.id} | Tanggal: {formatDateTime(receivable.sale?.date || receivable.createdAt)}</p>
-                        <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-                          <div>
-                            <span className={`inline-block w-24 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total Hutang:</span>
-                            <span className="ml-2 font-medium">{formatCurrency(receivable.amountDue)}</span>
-                          </div>
-                          <div>
-                            <span className={`inline-block w-24 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Sudah Dibayar:</span>
-                            <span className="ml-2 font-medium">{formatCurrency(receivable.amountPaid)}</span>
-                          </div>
-                          <div>
-                            <span className={`inline-block w-24 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Sisa Hutang:</span>
-                            <span className="ml-2 font-medium text-red-500">{formatCurrency(remainingAmount)}</span>
-                          </div>
-                          <div>
-                            <span className={`inline-block w-24 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Status:</span>
-                            <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
-                              receivable.status === 'PAID' ? 'bg-green-100 text-green-800' : 
-                              receivable.status === 'PARTIALLY_PAID' ? 'bg-yellow-100 text-yellow-800' : 
-                              'bg-red-100 text-red-800'
-                            }`}>
-                              {receivable.status === 'PAID' ? 'Lunas' : 
-                               receivable.status === 'PARTIALLY_PAID' ? 'Sebagian' : 'Belum Lunas'}
-                            </span>
-                          </div>
+                        <p className={`text-xs mt-1 truncate ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} title={receivable.sale?.invoiceNumber}>
+                          Inv: {receivable.sale?.invoiceNumber || receivable.id}
+                        </p>
+                        {receivable.sale?.attendant?.name && (
+                          <p className={`text-xs mt-1 truncate ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            Pelayan: {receivable.sale.attendant.name}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Financial Details */}
+                      <div className="md:col-span-3">
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                          <div className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Total Hutang</div>
+                          <div className="font-medium text-right">{formatCurrency(receivable.amountDue)}</div>
+                          
+                          <div className={darkMode ? 'text-gray-400' : 'text-gray-600'}>Sudah Dibayar</div>
+                          <div className={`font-medium text-right ${darkMode ? 'text-green-400' : 'text-green-600'}`}>{formatCurrency(receivable.amountPaid)}</div>
+
+                          <div className={`font-bold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Sisa Hutang</div>
+                          <div className="font-bold text-red-500 dark:text-red-400 text-right">{formatCurrency(remainingAmount)}</div>
                         </div>
                       </div>
-                      <div className="flex flex-col space-y-2 ml-4">
+                      
+                      {/* Status & Action */}
+                      <div className="flex flex-col items-start md:items-end justify-center space-y-2">
+                        <span className={`px-2 py-0.5 text-xs rounded-full ${
+                          receivable.status === 'PAID' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 
+                          receivable.status === 'PARTIALLY_PAID' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : 
+                          'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                        }`}>
+                          {receivable.status === 'PAID' ? 'Lunas' : 
+                           receivable.status === 'PARTIALLY_PAID' ? 'Sebagian' : 'Belum Lunas'}
+                        </span>
                         {!isFullyPaid && (
                           <button
                             onClick={() => {
                               setSelectedReceivable(receivable);
                               setPaymentAmount(remainingAmount);
-                              setPaymentMethod('CASH'); // Reset to default payment method
-                              setReferenceNumber(''); // Reset reference number when opening modal
+                              setPaymentMethod('CASH');
+                              setReferenceNumber('');
                               setShowPaymentModal(true);
                             }}
-                            className={`px-3 py-1.5 text-sm rounded-md flex items-center ${
+                            className={`px-3 py-1.5 text-sm rounded-md flex items-center w-full justify-center md:w-auto ${
                               darkMode
                                 ? 'bg-green-600 hover:bg-green-700 text-white'
                                 : 'bg-green-600 hover:bg-green-700 text-white'

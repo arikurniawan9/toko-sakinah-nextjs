@@ -10,12 +10,13 @@ const MemberSelection = ({ selectedMember, defaultMember, onSelectMember, onRemo
   const [memberSearchResults, setMemberSearchResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [scanTimeout, setScanTimeout] = useState(null);
+  const [isGlobalSearch, setIsGlobalSearch] = useState(false);
 
   // Ref for input field
   const inputRef = useRef(null);
 
   // Fungsi untuk mencari member secara dinamis
-  const searchMembers = async (searchTerm) => {
+  const searchMembers = async (searchTerm, isGlobal) => {
     if (!searchTerm.trim()) {
       setMemberSearchResults([]);
       return;
@@ -23,7 +24,11 @@ const MemberSelection = ({ selectedMember, defaultMember, onSelectMember, onRemo
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/member?search=${encodeURIComponent(searchTerm)}&simple=true`);
+      let url = `/api/member?search=${encodeURIComponent(searchTerm)}&simple=true`;
+      if (isGlobal) {
+        url += '&global=true';
+      }
+      const response = await fetch(url);
       if (response.ok) {
         const membersData = await response.json();
         setMemberSearchResults(membersData || []);
@@ -38,6 +43,13 @@ const MemberSelection = ({ selectedMember, defaultMember, onSelectMember, onRemo
     }
   };
 
+  // Re-trigger search when global toggle changes
+  useEffect(() => {
+    if (memberSearchTerm) {
+      searchMembers(memberSearchTerm, isGlobalSearch);
+    }
+  }, [isGlobalSearch]);
+
   // Handle input change dengan debounce
   const handleInputChange = (e) => {
     const newValue = e.target.value;
@@ -51,7 +63,7 @@ const MemberSelection = ({ selectedMember, defaultMember, onSelectMember, onRemo
     // Jika nilai input tidak kosong, lakukan pencarian setelah delay
     if (newValue) {
       const newTimeout = setTimeout(() => {
-        searchMembers(newValue);
+        searchMembers(newValue, isGlobalSearch);
       }, 300); // Delay 300ms untuk pencarian
       setScanTimeout(newTimeout);
     } else {
@@ -150,11 +162,12 @@ const MemberSelection = ({ selectedMember, defaultMember, onSelectMember, onRemo
         </div>
         <div className="text-xs mt-1">
           <span className={`px-2 py-0.5 rounded-full ${
-            selectedMember.discount >= 5 ? 'bg-purple-100 text-purple-800' :
-            selectedMember.discount >= 4 ? 'bg-blue-100 text-blue-800' :
-            'bg-yellow-100 text-yellow-800'
-          } ${darkMode ? 'text-xs' : ''}`}>
-            {selectedMember.discount}% Discount
+            selectedMember.membershipType === 'PLATINUM' ? 'bg-purple-100 text-purple-800' :
+            selectedMember.membershipType === 'GOLD' ? 'bg-blue-100 text-blue-800' :
+            selectedMember.membershipType === 'SILVER' ? 'bg-yellow-100 text-yellow-800' :
+            'bg-gray-100 text-gray-800' // Default if type is not recognized
+          } ${darkMode ? 'dark:bg-gray-700 dark:text-gray-300' : ''}`}>
+            {selectedMember.membershipType}
           </span>
         </div>
       </div>
@@ -210,11 +223,12 @@ const MemberSelection = ({ selectedMember, defaultMember, onSelectMember, onRemo
             </p>
           </div>
           <span className={`text-xs px-2 py-0.5 rounded-full ${
-            member.discount >= 5 ? 'bg-purple-100 text-purple-800' :
-            member.discount >= 4 ? 'bg-blue-100 text-blue-800' :
-            'bg-yellow-100 text-yellow-800'
-          } ${darkMode ? 'text-xs' : ''}`}>
-            {member.discount}% Discount
+            member.membershipType === 'PLATINUM' ? 'bg-purple-100 text-purple-800' :
+            member.membershipType === 'GOLD' ? 'bg-blue-100 text-blue-800' :
+            member.membershipType === 'SILVER' ? 'bg-yellow-100 text-yellow-800' :
+            'bg-gray-100 text-gray-800' // Default if type is not recognized
+          } ${darkMode ? 'dark:bg-gray-700 dark:text-gray-300' : ''}`}>
+            {member.membershipType}
           </span>
         </div>
       </div>
@@ -265,8 +279,22 @@ const MemberSelection = ({ selectedMember, defaultMember, onSelectMember, onRemo
                   <Scan size={16} className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
                 </div>
               </div>
-              <div className={`text-xs mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                Scan kode member atau ketik untuk mencari
+              <div className="flex items-center justify-between mt-2">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="global-search-checkbox"
+                    checked={isGlobalSearch}
+                    onChange={(e) => setIsGlobalSearch(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                  />
+                  <label htmlFor="global-search-checkbox" className={`ml-2 block text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Cari di semua toko
+                  </label>
+                </div>
+                <div className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  Scan kode member atau ketik untuk mencari
+                </div>
               </div>
             </div>
             <div className="flex-1 p-4 overflow-y-auto">

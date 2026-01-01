@@ -419,7 +419,10 @@ const PaymentModal = ({
             {/* Tombol Clear Form di bawah tombol pembayaran */}
             <div className="mt-3">
               <button
-                onClick={clearForm}
+                onClick={() => {
+                  clearForm();
+                  onClose();
+                }}
                 disabled={loading}
                 className={`w-full py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white flex items-center justify-center ${
                   darkMode

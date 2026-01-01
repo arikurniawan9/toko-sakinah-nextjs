@@ -272,19 +272,20 @@ model Setting {
 }
 
 model AuditLog {
-  id        String   @id @default(cuid())
-  storeId   String
-  userId    String?
-  action    String
-  entity    String
-  entityId  String?
-  oldValue  String?
-  newValue  String?
-  ipAddress String?
-  userAgent String?
-  createdAt DateTime @default(now())
-  store     Store    @relation(fields: [storeId], references: [id])
-  user      User?    @relation(fields: [userId], references: [id])
+  id             String    @id @default(cuid())
+  storeId        String
+  userId         String?
+  action         String
+  entity         String
+  entityId       String?
+  oldValue       String?
+  newValue       String?
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime  @default(now())
+  additionalData Json?
+  store          Store     @relation(fields: [storeId], references: [id])
+  user           User?     @relation(fields: [userId], references: [id])
 
   @@index([storeId])
   @@index([userId])

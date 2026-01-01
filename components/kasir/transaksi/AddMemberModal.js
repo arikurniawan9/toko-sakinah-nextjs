@@ -7,9 +7,8 @@ const AddMemberModal = ({ isOpen, onClose, onSave, darkMode }) => {
     phone: '',
     address: '',
     membershipType: 'SILVER', // Default membership type
-    discount: 3 // Default discount for SILVER (3%)
   });
-  const [discountManuallyChanged, setDiscountManuallyChanged] = useState(false);
+
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
@@ -42,8 +41,7 @@ const AddMemberModal = ({ isOpen, onClose, onSave, darkMode }) => {
     try {
       await onSave(formData);
       onClose();
-      setFormData({ name: '', phone: '', address: '', membershipType: 'SILVER', discount: 3 });
-      setDiscountManuallyChanged(false); // Reset manual discount flag
+      setFormData({ name: '', phone: '', address: '', membershipType: 'SILVER' });
     } catch (error) {
       console.error('Error adding member:', error);
     } finally {
@@ -55,33 +53,10 @@ const AddMemberModal = ({ isOpen, onClose, onSave, darkMode }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    setFormData(prev => {
-      const updatedData = {
-        ...prev,
-        [name]: name === 'discount' ? parseInt(value) || 0 : value
-      };
-
-      // Jika tipe keanggotaan diubah dan pengguna belum mengganti diskon secara manual, perbarui diskon otomatis
-      if (name === 'membershipType' && !discountManuallyChanged) {
-        switch(value.toUpperCase()) {
-          case 'GOLD':
-            updatedData.discount = 4;
-            break;
-          case 'PLATINUM':
-            updatedData.discount = 5;
-            break;
-          case 'SILVER':
-          default:
-            updatedData.discount = 3; // Default untuk silver (3%)
-            break;
-        }
-      } else if (name === 'discount') {
-        // Tandai bahwa pengguna telah mengubah diskon secara manual
-        setDiscountManuallyChanged(true);
-      }
-
-      return updatedData;
-    });
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
 
     // Clear error when user starts typing
     if (errors[name]) {
@@ -158,52 +133,28 @@ const AddMemberModal = ({ isOpen, onClose, onSave, darkMode }) => {
         ></textarea>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="membershipType" className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-            Tipe Keanggotaan
-          </label>
-          <select
-            id="membershipType"
-            name="membershipType"
-            value={formData.membershipType}
-            onChange={handleChange}
-            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-              darkMode
-                ? 'border-gray-600 bg-gray-700 text-white'
-                : 'border-gray-300 bg-white text-gray-900'
-            }`}
-          >
-            <option value="SILVER">Silver (3% diskon)</option>
-            <option value="GOLD">Gold (4% diskon)</option>
-            <option value="PLATINUM">Platinum (5% diskon)</option>
-          </select>
-        </div>
-        <div>
-          <label htmlFor="discount" className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-            Diskon (%)
-          </label>
-          <input
-            type="number"
-            id="discount"
-            name="discount"
-            value={formData.discount}
-            onChange={handleChange}
-            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-              darkMode
-                ? 'border-gray-600 bg-gray-700 text-white'
-                : 'border-gray-300 bg-white text-gray-900'
-            }`}
-            placeholder="Persentase diskon"
-            min="0"
-            max="100"
-          />
-        </div>
+      <div>
+        <label htmlFor="membershipType" className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+          Tipe Keanggotaan
+        </label>
+        <select
+          id="membershipType"
+          name="membershipType"
+          value={formData.membershipType}
+          onChange={handleChange}
+          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+            darkMode
+              ? 'border-gray-600 bg-gray-700 text-white'
+              : 'border-gray-300 bg-white text-gray-900'
+          }`}
+        >
+          <option value="SILVER">Silver</option>
+          <option value="GOLD">Gold</option>
+          <option value="PLATINUM">Platinum</option>
+        </select>
       </div>
     </div>
   );
-
-  if (!isOpen) return null;
 
   useEffect(() => {
     const handleEscKey = (e) => {
@@ -218,6 +169,8 @@ const AddMemberModal = ({ isOpen, onClose, onSave, darkMode }) => {
       document.removeEventListener('keydown', handleEscKey);
     };
   }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">

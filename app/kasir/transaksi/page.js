@@ -100,6 +100,25 @@ export default function KasirTransaksiPage() {
   const [unlockPassword, setUnlockPassword] = useState('');
 
   const receiptRef = useRef();
+  const productSearchInputRef = useRef(null);
+
+  const focusAndSelectProductSearch = () => {
+    setTimeout(() => {
+      if (productSearchInputRef.current) {
+        productSearchInputRef.current.focus();
+        if (productSearchInputRef.current.value) {
+          productSearchInputRef.current.select();
+        }
+      }
+    }, 100);
+  };
+
+  // Effect to focus on product search after payment modal closes
+  useEffect(() => {
+    if (!showPaymentModal) {
+      focusAndSelectProductSearch();
+    }
+  }, [showPaymentModal]);
 
   // --- HELPER & LOGIC FUNCTIONS (Defined before useEffects that use them) ---
 
@@ -212,8 +231,8 @@ export default function KasirTransaksiPage() {
       const result = await response.json();
 
       if (response.ok) {
-        // Hitung sisa yang harus dibayar berdasarkan total setelah semua diskon
-        const finalTotal = calculation.subTotal - ((calculation.itemDiscount || 0) + (additionalDiscount || 0));
+        // Correctly calculate finalTotal. calculation.subTotal already has member prices applied.
+        const finalTotal = calculation.subTotal - (additionalDiscount || 0);
         const remainingAmount = finalTotal - payment;
         // Tampilkan modal sukses untuk transaksi hutang
         setSuccessMessage('Transaksi Hutang Berhasil Disimpan');
@@ -253,6 +272,12 @@ export default function KasirTransaksiPage() {
 
     if (cart.length === 0) {
       showNotification("Keranjang belanja kosong!", 'error');
+      return;
+    }
+
+    // Jika pembayaran sudah mencukupi, arahkan ke pembayaran lunas
+    if (payment >= calculation.grandTotal) {
+      showNotification("Jumlah bayar mencukupi. Gunakan tombol 'Bayar Lunas'.", 'info');
       return;
     }
     
@@ -750,6 +775,7 @@ export default function KasirTransaksiPage() {
 
   // Fungsi untuk menambah member baru
   const handleAddMember = async (memberData) => {
+    console.log('Data to be sent to API:', memberData); // Logging for debugging
     try {
       const response = await fetch('/api/member', {
         method: 'POST',
@@ -766,8 +792,6 @@ export default function KasirTransaksiPage() {
         setSuccessMessage('Member Baru Berhasil Ditambahkan');
         setSuccessDetails(null);
         setShowSuccessModal(true);
-        // Tambahkan member baru ke daftar member
-        setMembers(prev => [...prev, result]);
         // Pilih member yang baru ditambahkan
         setSelectedMember(result);
         return result;
@@ -970,6 +994,7 @@ export default function KasirTransaksiPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
               <ProductSearch
+                ref={productSearchInputRef}
                 searchTerm={searchTerm}
                 setSearchTerm={setSearchTerm}
                 handleScan={handleScan}
@@ -1161,6 +1186,7 @@ export default function KasirTransaksiPage() {
           <div>
             <p className="mb-2">Anda akan menyimpan transaksi ini sebagai hutang untuk:</p>
             <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-md text-left">
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Toko: {storeInfo.name}</p>
               <p className="font-semibold">{selectedMember?.name}</p>
               <p className="text-sm">Total: {formatCurrency(calculation?.grandTotal || 0)}</p>
               <p className="text-sm">Jumlah DP: {formatCurrency(payment || 0)}</p>
