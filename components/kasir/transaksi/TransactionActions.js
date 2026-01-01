@@ -1,7 +1,7 @@
 // components/kasir/transaksi/TransactionActions.js
 "use client";
 
-import { Archive, ListTodo } from "lucide-react";
+import { Pause, List } from "lucide-react";
 import Tooltip from "../../Tooltip";
 
 const TransactionActions = ({
@@ -17,26 +17,30 @@ const TransactionActions = ({
         <button
           onClick={onSuspend}
           disabled={isCartEmpty || isLoading}
-          className={`p-2 rounded-full transition-colors ${
-            darkMode
-              ? "text-gray-300 hover:bg-gray-700 disabled:text-gray-500 disabled:hover:bg-transparent"
-              : "text-gray-600 hover:bg-gray-200 disabled:text-gray-400 disabled:hover:bg-transparent"
-          } disabled:cursor-not-allowed`}
+          className={`p-2 rounded-lg text-white transition-colors ${
+            isCartEmpty || isLoading
+              ? "bg-gray-400 cursor-not-allowed"
+              : darkMode
+              ? "bg-orange-600 hover:bg-orange-700"
+              : "bg-orange-500 hover:bg-orange-600"
+          }`}
         >
-          <Archive size={22} />
+          <Pause size={20} />
         </button>
       </Tooltip>
       <Tooltip content="Daftar Ditangguhkan" darkMode={darkMode}>
         <button
           onClick={onShowList}
           disabled={isLoading}
-          className={`p-2 rounded-full transition-colors ${
-            darkMode
-              ? "text-gray-300 hover:bg-gray-700 disabled:text-gray-500 disabled:hover:bg-transparent"
-              : "text-gray-600 hover:bg-gray-200 disabled:text-gray-400 disabled:hover:bg-transparent"
-          } disabled:cursor-not-allowed`}
+          className={`p-2 rounded-lg text-white transition-colors ${
+            isLoading
+              ? "bg-gray-400 cursor-not-allowed"
+              : darkMode
+              ? "bg-sky-600 hover:bg-sky-700"
+              : "bg-sky-500 hover:bg-sky-600"
+          }`}
         >
-          <ListTodo size={22} />
+          <List size={20} />
         </button>
       </Tooltip>
     </div>

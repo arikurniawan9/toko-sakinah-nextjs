@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const AddMemberModal = ({ isOpen, onClose, onSave, darkMode }) => {
   // State management
@@ -204,6 +204,20 @@ const AddMemberModal = ({ isOpen, onClose, onSave, darkMode }) => {
   );
 
   if (!isOpen) return null;
+
+  useEffect(() => {
+    const handleEscKey = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [isOpen, onClose]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">

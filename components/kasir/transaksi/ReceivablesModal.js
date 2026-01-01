@@ -20,6 +20,39 @@ const ReceivablesModal = ({ isOpen, onClose, memberId, darkMode }) => {
     }
   }, [isOpen, memberId]);
 
+  // Handle ESC key press for main modal
+  useEffect(() => {
+    const handleEscKey = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+    
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [isOpen, onClose]);
+
+  // Handle ESC key press for payment modal
+  useEffect(() => {
+    if (!showPaymentModal) return;
+
+    const handleEscKey = (e) => {
+      if (e.key === 'Escape' && showPaymentModal) {
+        setShowPaymentModal(false);
+        setReferenceNumber(''); // Reset reference number when modal is closed
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+    
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [showPaymentModal]);
+
   const fetchReceivables = async () => {
     try {
       setLoading(true);
@@ -45,7 +78,7 @@ const ReceivablesModal = ({ isOpen, onClose, memberId, darkMode }) => {
     }
 
     const remainingAmount = selectedReceivable.amountDue - selectedReceivable.amountPaid;
-    
+
     if (paymentAmount > remainingAmount) {
       toast.error(`Jumlah pembayaran melebihi sisa hutang. Maksimal: ${remainingAmount}`);
       return;
@@ -122,7 +155,7 @@ const ReceivablesModal = ({ isOpen, onClose, memberId, darkMode }) => {
             <X size={20} />
           </button>
         </div>
-        
+
         <div className="p-6">
           {loading ? (
             <div className="flex justify-center items-center h-32">
@@ -133,10 +166,10 @@ const ReceivablesModal = ({ isOpen, onClose, memberId, darkMode }) => {
               {receivables.map((receivable) => {
                 const remainingAmount = receivable.amountDue - receivable.amountPaid;
                 const isFullyPaid = receivable.status === 'PAID';
-                
+
                 return (
-                  <div 
-                    key={receivable.id} 
+                  <div
+                    key={receivable.id}
                     className={`p-4 rounded-lg border ${darkMode ? 'border-gray-700 bg-gray-700/20' : 'border-gray-200 bg-gray-50'}`}
                   >
                     <div className="flex justify-between items-start">
@@ -162,11 +195,11 @@ const ReceivablesModal = ({ isOpen, onClose, memberId, darkMode }) => {
                           <div>
                             <span className={`inline-block w-24 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Status:</span>
                             <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
-                              receivable.status === 'PAID' ? 'bg-green-100 text-green-800' : 
-                              receivable.status === 'PARTIALLY_PAID' ? 'bg-yellow-100 text-yellow-800' : 
+                              receivable.status === 'PAID' ? 'bg-green-100 text-green-800' :
+                              receivable.status === 'PARTIALLY_PAID' ? 'bg-yellow-100 text-yellow-800' :
                               'bg-red-100 text-red-800'
                             }`}>
-                              {receivable.status === 'PAID' ? 'Lunas' : 
+                              {receivable.status === 'PAID' ? 'Lunas' :
                                receivable.status === 'PARTIALLY_PAID' ? 'Sebagian' : 'Belum Lunas'}
                             </span>
                           </div>
@@ -219,30 +252,30 @@ const ReceivablesModal = ({ isOpen, onClose, memberId, darkMode }) => {
           >
             <div className="p-6">
               <h3 className="text-lg font-semibold mb-4">Pembayaran Hutang</h3>
-              
+
               <div className="space-y-3 mb-4">
                 <div>
                   <span className={`block text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Invoice</span>
                   <p className="font-medium">{selectedReceivable.sale?.invoiceNumber}</p>
                 </div>
-                
+
                 <div>
                   <span className={`block text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total Hutang</span>
                   <p className="font-medium">{formatCurrency(selectedReceivable.amountDue)}</p>
                 </div>
-                
+
                 <div>
                   <span className={`block text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Sudah Dibayar</span>
                   <p className="font-medium">{formatCurrency(selectedReceivable.amountPaid)}</p>
                 </div>
-                
+
                 <div>
                   <span className={`block text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Sisa Hutang</span>
                   <p className="font-semibold text-red-600 dark:text-red-400">
                     {formatCurrency(selectedReceivable.amountDue - selectedReceivable.amountPaid)}
                   </p>
                 </div>
-                
+
                 <div>
                   <label htmlFor="paymentAmount" className={`block text-sm mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                     Jumlah Pembayaran
@@ -260,7 +293,7 @@ const ReceivablesModal = ({ isOpen, onClose, memberId, darkMode }) => {
                   />
                   <p className="text-xs mt-1 text-gray-500">Maksimal: {formatCurrency(selectedReceivable.amountDue - selectedReceivable.amountPaid)}</p>
                 </div>
-                
+
                 <div>
                   <label htmlFor="paymentMethod" className={`block text-sm mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                     Metode Pembayaran
@@ -304,16 +337,16 @@ const ReceivablesModal = ({ isOpen, onClose, memberId, darkMode }) => {
                 )}
               </div>
             </div>
-            
+
             <div className="px-6 py-4 flex flex-row-reverse gap-3 bg-gray-50 dark:bg-gray-800/50 rounded-b-xl">
               <button
                 onClick={handlePayment}
                 disabled={paymentAmount <= 0}
                 className={`px-4 py-2 rounded-md text-white font-medium ${
-                  paymentAmount <= 0 
-                    ? 'bg-gray-400 cursor-not-allowed' 
-                    : darkMode 
-                      ? 'bg-purple-600 hover:bg-purple-700' 
+                  paymentAmount <= 0
+                    ? 'bg-gray-400 cursor-not-allowed'
+                    : darkMode
+                      ? 'bg-purple-600 hover:bg-purple-700'
                       : 'bg-purple-600 hover:bg-purple-700'
                 }`}
               >

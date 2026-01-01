@@ -1,10 +1,25 @@
 // components/kasir/transaksi/LowStockModal.js
 import { AlertTriangle, X } from 'lucide-react';
+import { useEffect } from 'react';
 
 const LowStockModal = ({ items, isOpen, onClose, darkMode }) => {
   if (!isOpen || !items || items.length === 0) {
     return null;
   }
+
+  useEffect(() => {
+    const handleEscKey = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [isOpen, onClose]);
 
   // Filter produk dengan stok rendah (kurang dari 5)
   const lowStockItems = items.filter(item => item.stock < 5);

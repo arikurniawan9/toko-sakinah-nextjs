@@ -143,7 +143,6 @@ const DistributionReceiptModal = ({ distributionData, isOpen, onClose }) => {
               <div className={`print-section ${printType === 'invoice' ? 'block' : 'hidden'}`} ref={invoiceRef}>
                 <DistributionInvoice
                   distributionData={distributionData}
-                  isModalPreview={true}
                 />
               </div>
 

@@ -1,5 +1,5 @@
 // components/kasir/transaksi/ReferenceModal.js
-import { memo } from 'react';
+import { memo, useEffect } from 'react';
 import { X } from 'lucide-react';
 
 const ReferenceModal = memo(({ 
@@ -13,6 +13,20 @@ const ReferenceModal = memo(({
   loading = false
 }) => {
   if (!isOpen) return null;
+
+  useEffect(() => {
+    const handleEscKey = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [isOpen, onClose]);
 
   const handleSubmit = (e) => {
     e.preventDefault();

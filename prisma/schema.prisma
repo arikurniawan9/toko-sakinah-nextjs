@@ -177,6 +177,7 @@ model SaleDetail {
   productId String
   quantity  Int
   price     Int     // Harga satuan yang digunakan saat transaksi
+  discount  Int     @default(0)
   subtotal  Int     // Jumlah subtotal (harga * jumlah - diskon)
   product   Product @relation(fields: [productId], references: [id])
   sale      Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)

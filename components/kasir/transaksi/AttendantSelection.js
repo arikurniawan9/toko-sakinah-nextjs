@@ -9,11 +9,17 @@ const AttendantSelection = ({ selectedAttendant, onSelectAttendant, onRemoveAtte
   const [scanTimeout, setScanTimeout] = useState(null);
   const inputRef = useRef(null);
 
-  // Event listener untuk handling tombol Enter
+  // Event listener untuk handling tombol Enter dan ESC
   useEffect(() => {
     if (!isOpen) return;
 
     const handleKeyDown = (event) => {
+      // Tangani ESC untuk menutup modal
+      if (event.key === 'Escape' && isOpen) {
+        onToggle(false);
+        return;
+      }
+
       // Hanya tangani Enter saat input field fokus
       if (document.activeElement === inputRef.current && event.key === 'Enter') {
         event.preventDefault(); // Mencegah perilaku default dari tombol Enter

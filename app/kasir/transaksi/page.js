@@ -4,15 +4,16 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Home, Printer, Plus, AlertTriangle, CheckCircle } from "lucide-react";
+import { Home, Printer, Plus, AlertTriangle, CheckCircle, UserCheck, X, CreditCard, Lock, Users } from "lucide-react";
 
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useUserTheme } from '../../../components/UserThemeContext';
 import ProductSearch from "@/components/kasir/transaksi/ProductSearch";
 import TransactionCart from "@/components/kasir/transaksi/TransactionCart";
 import MemberSelection from "@/components/kasir/transaksi/MemberSelection";
-import PaymentSummary from "@/components/kasir/transaksi/PaymentSummary";
+import PaymentModal from "@/components/kasir/transaksi/PaymentModal";
 import AttendantSelection from "@/components/kasir/transaksi/AttendantSelection";
+import TotalDisplay from "@/components/kasir/transaksi/TotalDisplay";
 import Receipt from "@/components/kasir/transaksi/Receipt";
 import ThermalReceipt from "@/components/kasir/transaksi/ThermalReceipt";
 import ConfirmationModal from "@/components/ConfirmationModal";
@@ -30,6 +31,7 @@ import { printThermalReceipt } from "@/utils/thermalPrint";
 import { useProductSearch } from "@/lib/hooks/kasir/useProductSearch";
 import { useNotification } from "@/components/notifications/NotificationProvider";
 import { useTransactionCart } from "@/lib/hooks/kasir/useTransactionCart";
+import Tooltip from "@/components/Tooltip";
 
 export default function KasirTransaksiPage() {
   const { data: session } = useSession();
@@ -49,6 +51,7 @@ export default function KasirTransaksiPage() {
   const [loading, setLoading] = useState(false);
   const [showMembersModal, setShowMembersModal] = useState(false);
   const [showAttendantsModal, setShowAttendantsModal] = useState(false);
+  const [attendantSearchTerm, setAttendantSearchTerm] = useState('');
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [isSuspendModalOpen, setIsSuspendModalOpen] = useState(false);
   const [isSuspendedListModalOpen, setIsSuspendedListModalOpen] =
@@ -62,6 +65,7 @@ export default function KasirTransaksiPage() {
   const [showAllReceivablesModal, setShowAllReceivablesModal] = useState(false);
   const [showLowStockModal, setShowLowStockModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [successDetails, setSuccessDetails] = useState(null);
   const [storeInfo, setStoreInfo] = useState({ name: '', id: '' });
@@ -443,6 +447,9 @@ export default function KasirTransaksiPage() {
         // Cek apakah pembayaran lunas (tidak ada hutang)
         const isFullyPaid = calculation && payment >= calculation.grandTotal;
 
+        // Close the payment modal as the transaction is complete
+        setShowPaymentModal(false);
+
         if (isFullyPaid) {
           // Langsung cetak tanpa tampilkan modal untuk pembayaran lunas
           printThermalReceipt(receiptPayload)
@@ -629,15 +636,31 @@ export default function KasirTransaksiPage() {
     fetchInitialData();
   }, []);
 
+  // Filter attendants based on search term
+  const filteredAttendants = attendants.filter(attendant =>
+    attendant &&
+    attendant.name &&
+    typeof attendant.name === 'string' &&
+    (attendant.status === 'AKTIF' || attendant.status === 'ACTIVE') && // Hanya tampilkan pelayan yang aktif
+    (attendant.name.toLowerCase().includes(attendantSearchTerm.toLowerCase()) ||
+    attendant.code?.toLowerCase().includes(attendantSearchTerm.toLowerCase()) ||
+    attendant.employeeNumber?.toLowerCase().includes(attendantSearchTerm.toLowerCase()) ||
+    attendant.username?.toLowerCase().includes(attendantSearchTerm.toLowerCase()))
+  );
+
   useEffect(() => {
     const handleKeyDown = (event) => {
-      if (event.altKey && event.key.toLowerCase() === "m") {
+      // --- General & Modal Shortcuts ---
+      if (event.key === "Escape") {
         event.preventDefault();
-        setShowMembersModal((prev) => !prev);
-      }
-      if (event.altKey && event.key.toLowerCase() === "p") {
-        event.preventDefault();
-        setShowAttendantsModal((prev) => !prev);
+        if (isConfirmModalOpen) setIsConfirmModalOpen(false);
+        else if (isUnpaidConfirmModalOpen) setIsUnpaidConfirmModalOpen(false);
+        else if (showMembersModal) setShowMembersModal(false);
+        else if (showAttendantsModal) setShowAttendantsModal(false);
+        else if (isSuspendModalOpen) setIsSuspendModalOpen(false);
+        else if (isSuspendedListModalOpen) setIsSuspendedListModalOpen(false);
+        else if (showPaymentModal) setShowPaymentModal(false);
+        else if (showAddMemberModal) setShowAddMemberModal(false);
       }
       if (event.altKey && event.key.toLowerCase() === "h") {
         event.preventDefault();
@@ -645,34 +668,63 @@ export default function KasirTransaksiPage() {
       }
       if (event.altKey && event.key.toLowerCase() === "a") {
         event.preventDefault();
-        lockScreen(); // Hanya mengunci dengan Alt+A, tidak bisa membuka
+        lockScreen();
       }
-      if (event.key === "Escape") {
+      
+      // --- Modal Triggers ---
+      if (event.altKey && event.key.toLowerCase() === "m") {
         event.preventDefault();
-        if (isConfirmModalOpen) setIsConfirmModalOpen(false);
-        else if (showMembersModal) setShowMembersModal(false);
-        else if (showAttendantsModal) setShowAttendantsModal(false);
+        setShowMembersModal((prev) => !prev);
+      }
+      if (event.altKey && event.key.toLowerCase() === "p") {
+        event.preventDefault();
+        setShowAttendantsModal(true);
       }
       if (event.altKey && event.key === "Enter") {
         event.preventDefault();
-        // Check if payment is possible before opening modal
-        if (calculation && payment >= calculation.grandTotal && !loading) {
-          initiatePaidPayment();
+        setShowPaymentModal(true);
+      }
+
+      // --- Transaction Actions ---
+      if (event.shiftKey && event.key.toLowerCase() === 'r') {
+        event.preventDefault();
+        clearForm();
+      }
+      if (event.shiftKey && event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        if (cart.length > 0) {
+          setIsSuspendModalOpen(true);
+        }
+      }
+      if (event.altKey && event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        if (!isUnpaidConfirmModalOpen && calculation && selectedMember && selectedMember.name !== 'Pelanggan Umum' && selectedAttendant) {
+          initiateUnpaidPayment();
         }
       }
     };
+    
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
+    isConfirmModalOpen,
+    isUnpaidConfirmModalOpen,
     showMembersModal,
     showAttendantsModal,
+    isSuspendModalOpen,
+    isSuspendedListModalOpen,
+    showPaymentModal,
+    showAddMemberModal,
     router,
-    handlePaidPayment,
+    lockScreen,
+    clearForm,
+    cart.length,
     calculation,
+    selectedMember,
+    selectedAttendant,
+    initiateUnpaidPayment,
     payment,
     loading,
-    isConfirmModalOpen,
-    lockScreen,
   ]);
 
   // Handle receipt modal display when data is ready
@@ -681,40 +733,6 @@ export default function KasirTransaksiPage() {
       console.log("Receipt data set, showing modal");
     }
   }, [receiptData]);
-
-  // Handle keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (event) => {
-      // Clear form with Shift+R
-      if (event.shiftKey && event.key.toLowerCase() === 'r') {
-        event.preventDefault();
-        clearForm();
-      }
-      // Other existing keyboard shortcuts...
-      if (event.altKey && event.key.toLowerCase() === "s") {
-        event.preventDefault();
-        // Ini sesuai dengan tombol Simpan sebagai Hutang
-        if (!isUnpaidConfirmModalOpen && calculation && selectedMember && selectedMember.name !== 'Pelanggan Umum' && selectedAttendant) {
-          initiateUnpaidPayment();
-        }
-      }
-      // Tambahkan shortcut untuk menangguhkan transaksi dengan SHIFT+S
-      if (event.shiftKey && event.key.toLowerCase() === 's') {
-        event.preventDefault();
-        if (cart.length > 0) {
-          setIsSuspendModalOpen(true);
-        }
-      }
-      if (event.altKey && event.key === "Enter") {
-        event.preventDefault();
-        if (calculation && payment >= calculation.grandTotal && !loading && selectedAttendant) {
-          initiatePaidPayment();
-        }
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [clearForm, calculation, payment, loading, selectedMember, selectedAttendant, initiateUnpaidPayment, initiatePaidPayment, isUnpaidConfirmModalOpen, cart.length, setIsSuspendModalOpen]);
 
   const handleReceiptReadyToPrint = () => {
     if (receiptData && receiptRef.current) {
@@ -768,66 +786,43 @@ export default function KasirTransaksiPage() {
     <ProtectedRoute requiredRole="CASHIER">
       <div className={`min-h-screen ${darkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50"}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex justify-between items-center mb-2">
+          <div className="flex justify-between items-center mb-6">
             <h1 className={`text-2xl font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>
               Transaksi Kasir
             </h1>
-            <div className="flex space-x-2">
-              <div className="group relative">
+            <div className={`flex items-center space-x-2 p-2 rounded-lg ${darkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
+              <Tooltip content="Dashboard (Alt+H)" darkMode={darkMode}>
                 <button
                   onClick={() => router.push("/kasir")}
-                  className={`p-2 rounded-md ${
-                    darkMode
-                      ? "bg-purple-600 hover:bg-purple-700 text-white"
-                      : "bg-purple-600 hover:bg-purple-700 text-white"
-                  } transition-colors`}
-                  title="Dashboard"
+                  className={`p-2 rounded-lg text-white transition-colors ${darkMode ? 'bg-purple-600 hover:bg-purple-700' : 'bg-purple-500 hover:bg-purple-600'}`}
                 >
                   <Home size={20} />
                 </button>
-                <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 hidden group-hover:block bg-gray-800 text-white text-xs py-1 px-2 rounded">
-                  Dashboard
-                </span>
-              </div>
-              <div className="group relative">
+              </Tooltip>
+              <Tooltip content="Kunci Layar (Alt+A)" darkMode={darkMode}>
                 <button
                   onClick={lockScreen}
-                  className={`p-2 rounded-md ${
-                    darkMode
-                      ? "bg-gray-600 hover:bg-gray-700 text-white"
-                      : "bg-gray-300 hover:bg-gray-400 text-gray-800"
-                  } transition-colors`}
-                  title="Kunci Layar"
+                  className={`p-2 rounded-lg text-white transition-colors ${darkMode ? 'bg-gray-600 hover:bg-gray-700' : 'bg-gray-500 hover:bg-gray-600'}`}
                 >
-                  🔒
+                  <Lock size={20} />
                 </button>
-                <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 hidden group-hover:block bg-gray-800 text-white text-xs py-1 px-2 rounded">
-                  Kunci Layar (Alt+A)
-                </span>
-              </div>
-              <div className="flex items-center space-x-2">
+              </Tooltip>
+              <Tooltip content="Daftar Member Berhutang" darkMode={darkMode}>
                 <button
                   onClick={() => setShowAllReceivablesModal(true)}
-                  className={`p-2 rounded-md relative ${
-                    darkMode
-                      ? "bg-yellow-600 hover:bg-yellow-700 text-white"
-                      : "bg-yellow-600 hover:bg-yellow-700 text-white"
-                  } transition-colors`}
-                  title="Daftar Member dengan Hutang"
+                  className={`p-2 rounded-lg text-white transition-colors ${darkMode ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-yellow-500 hover:bg-yellow-600'}`}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z" />
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.346 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.346-1.253V5z" clipRule="evenodd" />
-                  </svg>
+                  <Users size={20} />
                 </button>
-                <TransactionActions
-                  onSuspend={() => setIsSuspendModalOpen(true)}
-                  onShowList={() => setIsSuspendedListModalOpen(true)}
-                  isCartEmpty={cart.length === 0}
-                  isLoading={loading}
-                  darkMode={darkMode}
-                />
-              </div>
+              </Tooltip>
+              <div className="h-8 border-l border-gray-300 dark:border-gray-600 mx-2"></div>
+              <TransactionActions
+                onSuspend={() => setIsSuspendModalOpen(true)}
+                onShowList={() => setIsSuspendedListModalOpen(true)}
+                isCartEmpty={cart.length === 0}
+                isLoading={loading}
+                darkMode={darkMode}
+              />
             </div>
           </div>
 
@@ -837,69 +832,153 @@ export default function KasirTransaksiPage() {
                 darkMode ? "bg-gray-800" : "bg-gray-100"
               }`}
             >
-              <div className="flex items-center space-x-6">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Nama Toko</p>
-                  <p className="text-lg font-semibold">{storeInfo.name || 'Memuat...'}</p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-6">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Nama Toko</p>
+                    <p className="text-lg font-semibold">{storeInfo.name || 'Memuat...'}</p>
+                  </div>
+                  <div className="border-l border-gray-300 dark:border-gray-600 h-10"></div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Kode Toko</p>
+                    <p className="text-lg font-semibold">{storeInfo.id || 'Memuat...'}</p>
+                  </div>
+                  <div className="border-l border-gray-300 dark:border-gray-600 h-10"></div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">
+                      Nama Kasir
+                    </p>
+                    <p className="text-lg font-semibold">{session.user.name}</p>
+                  </div>
+                  <div className="border-l border-gray-300 dark:border-gray-600 h-10"></div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">
+                      Kode Kasir
+                    </p>
+                    <p className="text-lg font-semibold">
+                      {session.user.employeeNumber}
+                    </p>
+                  </div>
                 </div>
-                <div className="border-l border-gray-300 dark:border-gray-600 h-10"></div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Kode Toko</p>
-                  <p className="text-lg font-semibold">{storeInfo.id || 'Memuat...'}</p>
+                <div className="flex items-center space-x-2">
+                  <h2 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                    Pelayan
+                  </h2>
+                  {selectedAttendant && selectedAttendant.name ? (
+                    <div className="flex items-center space-x-2">
+                      <span className={`text-sm font-medium px-2 py-1 rounded-full ${darkMode ? 'bg-blue-900 text-blue-300' : 'bg-blue-100 text-blue-800'}`}>
+                        {selectedAttendant.name}
+                      </span>
+                      <button
+                        onClick={() => setSelectedAttendant(null)}
+                        className={`text-sm font-medium p-1 rounded-full ${darkMode ? 'text-red-400 hover:bg-gray-700' : 'text-red-600 hover:bg-red-100'}`}
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setShowAttendantsModal(true)}
+                      className={`py-1 px-3 border rounded-md shadow-sm text-sm font-medium flex items-center justify-center ${
+                        darkMode
+                          ? 'border-gray-600 text-gray-200 bg-gray-700 hover:bg-gray-600'
+                          : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
+                      }`}
+                    >
+                      <UserCheck className="h-4 w-4 inline mr-2" />
+                      Pilih Pelayan
+                      <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${
+                        darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600'
+                      }`}>
+                        Alt+P
+                      </span>
+                    </button>
+                  )}
                 </div>
-                <div className="border-l border-gray-300 dark:border-gray-600 h-10"></div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">
-                    Nama Kasir
-                  </p>
-                  <p className="text-lg font-semibold">{session.user.name}</p>
-                </div>
-                <div className="border-l border-gray-300 dark:border-gray-600 h-10"></div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">
-                    Kode Kasir
-                  </p>
-                  <p className="text-lg font-semibold">
-                    {session.user.employeeNumber}
-                  </p>
-                </div>
+
+                {/* Modal untuk pemilihan pelayan */}
+                {showAttendantsModal && (
+                  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
+                    <div className={`relative w-full max-w-md max-h-[70vh] rounded-2xl shadow-2xl flex flex-col ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                      <div className={`p-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                        <h3 className="text-lg font-semibold">Pilih Pelayan</h3>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            placeholder="Cari nama/kode pelayan..."
+                            value={attendantSearchTerm}
+                            onChange={(e) => setAttendantSearchTerm(e.target.value)}
+                            className={`w-full mt-2 px-3 py-2 pr-10 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                              darkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-300 bg-white text-gray-900'
+                            }`}
+                            autoFocus
+                          />
+                        </div>
+                      </div>
+                      <div className="flex-1 p-4 overflow-y-auto styled-scrollbar">
+                        {filteredAttendants.length === 0 ? (
+                          <div className={`p-4 text-center ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            <p>Tidak ada pelayan yang cocok.</p>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            {filteredAttendants
+                              .filter(attendant => attendant && attendant.id) // Hanya proses attendant yang valid
+                              .map(attendant => (
+                              <button
+                                key={attendant.id}
+                                onClick={() => {
+                                  setSelectedAttendant(attendant);
+                                  setShowAttendantsModal(false);
+                                  setAttendantSearchTerm('');
+                                }}
+                                className={`p-3 rounded-lg text-center transition-all duration-150 transform focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                                  darkMode
+                                    ? 'bg-gray-700 text-white hover:bg-gray-600 focus:ring-offset-gray-800 focus:ring-purple-500'
+                                    : 'bg-gray-100 text-gray-800 hover:bg-gray-200 focus:ring-offset-white focus:ring-purple-500'
+                                }`}
+                              >
+                                <p className="font-semibold truncate">{attendant.name || 'Nama tidak tersedia'}</p>
+                                <p className={`text-xs truncate ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                  {attendant.code || attendant.employeeNumber || attendant.username || '...'}
+                                </p>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className={`p-4 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                        <button
+                          onClick={() => {
+                            setShowAttendantsModal(false);
+                            setAttendantSearchTerm('');
+                          }}
+                          className={`w-full py-2 px-4 rounded-md text-sm font-medium ${
+                            darkMode ? 'bg-gray-600 hover:bg-gray-500' : 'bg-gray-200 hover:bg-gray-300'
+                          }`}
+                        >
+                          Batal
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <ProductSearch
-              searchTerm={searchTerm}
-              setSearchTerm={setSearchTerm}
-              handleScan={handleScan}
-              products={products}
-              addToCart={addToCart}
-              isProductListLoading={isProductListLoading}
-              darkMode={darkMode}
-              getTierPrice={getTierPrice}
-              total={calculation?.grandTotal || 0} // Pass total to ProductSearch
-            />
-
-            <div className="space-y-6">
-              <MemberSelection
-                selectedMember={selectedMember}
-                defaultMember={defaultMember}
-                onSelectMember={setSelectedMember}
-                onRemoveMember={() => setSelectedMember(null)}
+            <div className="lg:col-span-2 space-y-6">
+              <ProductSearch
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+                handleScan={handleScan}
+                products={products}
+                addToCart={addToCart}
+                isProductListLoading={isProductListLoading}
                 darkMode={darkMode}
-                isOpen={showMembersModal}
-                onToggle={setShowMembersModal}
-                onAddNewMember={() => setShowAddMemberModal(true)}
-              />
-
-              <AttendantSelection
-                selectedAttendant={selectedAttendant}
-                onSelectAttendant={setSelectedAttendant}
-                onRemoveAttendant={() => setSelectedAttendant(null)}
-                attendants={attendants}
-                darkMode={darkMode}
-                isOpen={showAttendantsModal}
-                onToggle={setShowAttendantsModal}
+                getTierPrice={getTierPrice}
+                showNotification={showNotification}
               />
               <TransactionCart
                 cart={calculation?.items || []}
@@ -918,25 +997,36 @@ export default function KasirTransaksiPage() {
                 removeFromCart={removeFromCart}
                 darkMode={darkMode}
               />
-              <PaymentSummary
-                calculation={calculation}
-                payment={payment}
-                setPayment={setPayment}
-                additionalDiscount={additionalDiscount}
-                setAdditionalDiscount={setAdditionalDiscount}
-                initiatePaidPayment={initiatePaidPayment}
-                initiateUnpaidPayment={initiateUnpaidPayment}
-                referenceNumber={referenceNumber}
-                setReferenceNumber={setReferenceNumber}
-                loading={loading}
-                darkMode={darkMode}
-                sessionStatus={session?.status ?? "loading"}
-                paymentMethod={paymentMethod}
-                setPaymentMethod={setPaymentMethod}
+            </div>
+
+            <div className="space-y-6">
+              <MemberSelection
                 selectedMember={selectedMember}
-                selectedAttendant={selectedAttendant}
-                clearForm={clearForm}
+                defaultMember={defaultMember}
+                onSelectMember={setSelectedMember}
+                onRemoveMember={() => setSelectedMember(null)}
+                darkMode={darkMode}
+                isOpen={showMembersModal}
+                onToggle={setShowMembersModal}
+                onAddNewMember={() => setShowAddMemberModal(true)}
               />
+
+              <TotalDisplay total={calculation?.grandTotal || 0} darkMode={darkMode} />
+
+              <button
+                onClick={() => setShowPaymentModal(true)}
+                className={`w-full py-3 px-4 rounded-lg shadow-md text-base flex items-center justify-center ${
+                  darkMode
+                    ? 'bg-gradient-to-r from-purple-700 to-indigo-800 hover:from-purple-600 hover:to-indigo-700 text-white'
+                    : 'bg-gradient-to-r from-purple-600 to-indigo-700 hover:from-purple-500 hover:to-indigo-600 text-white'
+                } transition-all duration-200 transform hover:scale-[1.02]`}
+              >
+                <CreditCard className="h-5 w-5 mr-2" />
+                <div className="flex flex-col items-center leading-none">
+                  <span className="font-semibold">Bayar</span>
+                  <span className={`text-xs font-normal ${darkMode ? 'text-gray-300' : 'text-gray-200'}`}>(Alt+Enter)</span>
+                </div>
+              </button>
             </div>
           </div>
 
@@ -954,11 +1044,30 @@ export default function KasirTransaksiPage() {
         onClose={() => setIsConfirmModalOpen(false)}
         onConfirm={handlePaidPayment}
         title="Konfirmasi Transaksi"
-        message="Apakah Anda yakin ingin menyimpan dan menyelesaikan transaksi ini?"
-        confirmText="Simpan"
+        message={
+          <div>
+            <p className="mb-4 text-center">Yakin ingin menyelesaikan transaksi?</p>
+            <div className="p-4 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600 dark:text-gray-300">Total Belanja:</span>
+                <span className="font-medium text-gray-800 dark:text-gray-100">{formatCurrency(calculation?.grandTotal || 0)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600 dark:text-gray-300">Jumlah Bayar:</span>
+                <span className="font-medium text-blue-600 dark:text-blue-400">{formatCurrency(payment)}</span>
+              </div>
+              <div className="flex justify-between font-bold text-base mt-2 pt-2 border-t border-gray-300 dark:border-gray-500">
+                <span className="text-gray-700 dark:text-gray-200">Kembalian:</span>
+                <span className="text-green-500 dark:text-green-400">{formatCurrency(Math.max(0, payment - (calculation?.grandTotal || 0)))}</span>
+              </div>
+            </div>
+          </div>
+        }
+        confirmText="Simpan & Cetak"
         cancelText="Batal"
         darkMode={darkMode}
         isLoading={loading}
+        variant="info"
       />
       <SuspendSaleModal
         isOpen={isSuspendModalOpen}
@@ -1082,6 +1191,7 @@ export default function KasirTransaksiPage() {
         darkMode={darkMode}
       />
 
+
       {/* Lock Overlay - Muncul ketika mode lock aktif */}
       {isLocked && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60]">
@@ -1157,6 +1267,29 @@ export default function KasirTransaksiPage() {
         message={successMessage}
         details={successDetails}
         darkMode={darkMode}
+      />
+
+      {/* Payment Modal */}
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        calculation={calculation}
+        payment={payment}
+        setPayment={setPayment}
+        additionalDiscount={additionalDiscount}
+        setAdditionalDiscount={setAdditionalDiscount}
+        paymentMethod={paymentMethod}
+        setPaymentMethod={setPaymentMethod}
+        initiatePaidPayment={initiatePaidPayment}
+        initiateUnpaidPayment={initiateUnpaidPayment}
+        referenceNumber={referenceNumber}
+        setReferenceNumber={setReferenceNumber}
+        loading={loading}
+        darkMode={darkMode}
+        sessionStatus={session?.status ?? "loading"}
+        selectedMember={selectedMember}
+        selectedAttendant={selectedAttendant}
+        clearForm={clearForm}
       />
     </ProtectedRoute>
   );

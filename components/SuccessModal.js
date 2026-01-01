@@ -1,8 +1,22 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { CheckCircle } from 'lucide-react';
 
 const SuccessModal = ({ isOpen, onClose, message, details = null, darkMode = false }) => {
   if (!isOpen) return null;
+
+  useEffect(() => {
+    const handleEscKey = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [isOpen, onClose]);
 
   return (
     <div className="fixed z-50 inset-0 overflow-y-auto">

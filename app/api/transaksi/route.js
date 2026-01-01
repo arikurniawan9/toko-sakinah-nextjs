@@ -170,6 +170,8 @@ export async function POST(request) {
     additionalDiscount = 0 // Overall discount (optional, default 0)
   } = body;
 
+  const finalMemberId = memberId === 'general-customer' ? null : memberId;
+
   if (!items || items.length === 0) {
     return NextResponse.json({ error: 'Cart is empty' }, { status: 400 });
   }
@@ -178,8 +180,8 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Attendant must be selected' }, { status: 400 });
   }
 
-  // Untuk transaksi hutang, memberId wajib
-  if (!memberId && (status === 'UNPAID' || status === 'CREDIT' || status === 'CREDIT_PAID')) {
+  // Untuk transaksi hutang, memberId wajib (dan tidak boleh general-customer)
+  if (!finalMemberId && (status === 'UNPAID' || status === 'CREDIT' || status === 'CREDIT_PAID')) {
     return NextResponse.json({ error: 'Member must be selected for credit transactions' }, { status: 400 });
   }
 
@@ -224,9 +226,8 @@ export async function POST(request) {
         }
       }
 
-      // 2. Create the Sale record - use total as the final amount since there's no grandTotal field in schema
-      // The additional discount should be added to the existing discount field
-      const totalDiscount = discount + additionalDiscount; // Combine item discount and overall discount
+      // 2. Create the Sale record - use total after discount as the final amount since there's no discount field in schema
+      const totalAfterDiscount = total - (discount + additionalDiscount); // Calculate total after applying all discounts
 
       const newSale = await tx.sale.create({
         data: {
@@ -234,13 +235,12 @@ export async function POST(request) {
           storeId: session.user.storeId, // Tambahkan storeId dari session user
           cashierId: session.user.id,
           attendantId: attendantId,
-          memberId: memberId,
+          memberId: finalMemberId,
           paymentMethod: paymentMethod || 'CASH', // Include payment method, default to CASH
-          total: total, // Original total before discount
+          total: totalAfterDiscount, // Total after discount (since there's no separate discount field in Sale schema)
           tax: tax,
           payment: payment,
           change: change,
-          discount: totalDiscount, // Combined discount (item discount + overall discount)
           status: status || 'PAID', // Gunakan status yang dikirim, default ke 'PAID'
           referenceNumber: referenceNumber || null, // Simpan reference number jika ada
           saleDetails: {
@@ -281,8 +281,9 @@ export async function POST(request) {
       }
 
       // 4. Jika status UNPAID, PARTIALLY_PAID, CREDIT, atau CREDIT_PAID, buat juga entri di Receivable
-      if ((status === 'UNPAID' || status === 'PARTIALLY_PAID' || status === 'CREDIT' || status === 'CREDIT_PAID') && memberId) {
+      if ((status === 'UNPAID' || status === 'PARTIALLY_PAID' || status === 'CREDIT' || status === 'CREDIT_PAID') && finalMemberId) {
         // Sisa hutang adalah total setelah semua diskon dikurangi - jumlah yang dibayar
+        const totalDiscount = discount + additionalDiscount; // Calculate total discount
         const finalTotal = total - totalDiscount;
         const remainingAmount = finalTotal - (payment || 0);
         if (remainingAmount > 0) {
@@ -290,7 +291,7 @@ export async function POST(request) {
             data: {
               storeId: session.user.storeId, // Tambahkan storeId dari session user
               saleId: newSale.id,
-              memberId: memberId,
+              memberId: finalMemberId,
               amountDue: finalTotal, // Jumlah setelah semua diskon diterapkan
               amountPaid: payment || 0, // Jumlah yang sudah dibayar sebagai DP
               status: payment > 0 ? 'PARTIALLY_PAID' : 'UNPAID', // Status tergantung pembayaran

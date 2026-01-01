@@ -126,6 +126,21 @@ const MemberSelection = ({ selectedMember, defaultMember, onSelectMember, onRemo
     </div>
   );
 
+  // Handle ESC key press
+  useEffect(() => {
+    const handleEscKey = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        onToggle(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [isOpen, onToggle]);
+
   // Fungsi untuk render tampilan member saat dipilih
   const renderSelectedView = () => (
     <div className="flex items-center justify-between">

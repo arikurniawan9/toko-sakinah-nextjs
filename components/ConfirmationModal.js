@@ -64,7 +64,7 @@ export default function ConfirmationModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 z-[100] flex justify-center items-center p-4"
+      className="fixed inset-0 bg-black bg-opacity-50 z-[110] flex justify-center items-center p-4"
       onClick={onClose}
     >
       <div
@@ -81,9 +81,9 @@ export default function ConfirmationModal({
                 {title || 'Konfirmasi'}
               </h3>
               <div className="mt-2">
-                <p className="text-sm text-gray-600 dark:text-gray-300">
+                <div className="text-sm text-gray-600 dark:text-gray-300">
                   {message}
-                </p>
+                </div>
               </div>
             </div>
           </div>

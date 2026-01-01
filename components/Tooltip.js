@@ -3,7 +3,7 @@
 
 import React, { useState, useRef } from 'react';
 
-const Tooltip = ({ children, content, position = 'top', darkMode = false }) => {
+const Tooltip = ({ children, content, position = 'top', darkMode = false, className = '' }) => {
   const [isVisible, setIsVisible] = useState(false);
   const timeoutRef = useRef(null);
 
@@ -22,7 +22,7 @@ const Tooltip = ({ children, content, position = 'top', darkMode = false }) => {
 
   return (
     <div
-      className="relative inline-block"
+      className={`relative inline-block ${className}`}
       onMouseEnter={showTooltip}
       onMouseLeave={hideTooltip}
       onFocus={showTooltip}
