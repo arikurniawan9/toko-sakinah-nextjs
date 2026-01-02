@@ -2,56 +2,70 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { signOut } from 'next-auth/react';
+import { usePathname } from 'next/navigation'; // Import usePathname
+
+const AUTO_LOGOUT_DURATION = 600000; // 10 minutes in milliseconds
 
 const AutoLogoutProvider = ({ children }) => {
   const { data: session } = useSession();
   const [isClient, setIsClient] = useState(false);
+  const pathname = usePathname(); // Get current pathname
+  const timeoutRef = useRef(null); // Use useRef to persist timeoutId across renders
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
   useEffect(() => {
-    // Hanya aktifkan auto logout jika pengguna sudah login dan di client side
-    if (isClient && session) {
-      let timeoutId;
-
+    // Only activate auto logout if user is logged in and on client side
+    if (session && isClient) {
       const resetTimeout = () => {
-        if (timeoutId) {
-          clearTimeout(timeoutId);
+        // Clear any existing timeout
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
         }
 
-        timeoutId = setTimeout(() => {
-          // Logout pengguna dan clear semua cache
-          signOut({ callbackUrl: '/login' });
-        }, 180000); // 3 menit
+        // Set new timeout only if NOT on the kasir/transaksi page
+        if (pathname !== '/kasir/transaksi') {
+          timeoutRef.current = setTimeout(() => {
+            signOut({ callbackUrl: '/login' });
+          }, AUTO_LOGOUT_DURATION);
+        }
       };
 
-      // Reset timeout saat ada aktivitas
       const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click', 'keydown'];
 
-      // Inisialisasi timeout
+      // Initial reset of timeout based on current conditions
       resetTimeout();
 
-      // Tambahkan event listener untuk mereset timeout
+      // Add/remove event listeners based on pathname
+      // Event listeners are always added, but resetTimeout itself checks pathname before setting timer.
       events.forEach(event => {
         window.addEventListener(event, resetTimeout, true);
       });
 
-      // Cleanup saat komponen unmount
+      // Cleanup function to clear timeout and remove event listeners
       return () => {
-        if (timeoutId) {
-          clearTimeout(timeoutId);
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
         }
-
         events.forEach(event => {
           window.removeEventListener(event, resetTimeout, true);
         });
       };
     }
-  }, [session, isClient]); // Tambahkan session dan isClient ke dependency array
+
+    // If no session or not client, ensure any active timeout is cleared.
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      // No need to remove event listeners here if they were never added in this effect run.
+      // The main cleanup above handles cases where listeners were added.
+    };
+  }, [session, isClient, pathname]); // Re-run effect if session, client status, or pathname changes
 
   return <>{children}</>;
 };
