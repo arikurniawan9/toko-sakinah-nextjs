@@ -263,7 +263,7 @@ export default function KasirTransaksiPage() {
         setSelectedMember(null);
         setSelectedAttendant(null);
         setPayment(0);
-        setCalculation(null);
+        resetCart(); // Use resetCart to clear both cart and calculation
         setSearchTerm("");
         setAdditionalDiscount(0);
         setReferenceNumber(""); // Reset reference number after successful transaction
@@ -560,7 +560,7 @@ export default function KasirTransaksiPage() {
         setSelectedMember(null);
         setSelectedAttendant(null);
         setPayment(0);
-        setCalculation(null);
+        resetCart(); // Use resetCart to clear both cart and calculation
         setSearchTerm("");
         setAdditionalDiscount(0);
         setIsSuspendModalOpen(false);
@@ -577,6 +577,8 @@ export default function KasirTransaksiPage() {
   };
 
   const handleResumeSale = async (suspendedSale) => {
+    setLoading(true); // Start loading
+
     // Ambil detail member dari API jika ada memberId
     let memberToSelect = null;
     if (suspendedSale.memberId) {
@@ -588,6 +590,7 @@ export default function KasirTransaksiPage() {
         }
       } catch (error) {
         console.error('Error fetching member for suspended sale:', error);
+        showNotification('Gagal memuat detail member untuk penjualan yang ditangguhkan.', 'error');
         memberToSelect = null;
       }
     }
@@ -595,11 +598,52 @@ export default function KasirTransaksiPage() {
     // Cari pelayan yang dipilih sebelumnya
     let attendantToSelect = null;
     if (suspendedSale.selectedAttendantId) {
+      // Assuming 'attendants' state is populated with full attendant objects
       attendantToSelect = attendants.find(att => att.id === suspendedSale.selectedAttendantId) || null;
     }
 
+    // Fetch full product details for each item in the suspended cart
+    const detailedCartItems = await Promise.all(
+      suspendedSale.cartItems.map(async (item) => {
+        try {
+          const productRes = await fetch(`/api/produk/${item.productId}`);
+          if (!productRes.ok) {
+            throw new Error(`Failed to fetch product details for ID: ${item.productId}`);
+          }
+          const productData = await productRes.json();
+          const fullProduct = productData.product; // Assuming API returns { product: {...} }
+
+          return {
+            ...item, // Keep existing suspended item details like quantity, note
+            name: fullProduct.name, // Ensure name is up-to-date
+            productCode: fullProduct.productCode, // Ensure productCode is up-to-date
+            stock: fullProduct.stock, // Ensure stock is up-to-date
+            retailPrice: fullProduct.retailPrice,
+            silverPrice: fullProduct.silverPrice,
+            goldPrice: fullProduct.goldPrice,
+            platinumPrice: fullProduct.platinumPrice,
+            category: fullProduct.category?.name || item.category || '', // Use fullProduct.category.name
+            // Keep original price from attendant if needed for display, but calculations use tier prices
+            attendantSellingPrice: item.price,
+          };
+        } catch (error) {
+          console.error(`Error fetching product ${item.productId} for suspended sale:`, error);
+          showNotification(`Gagal memuat detail produk untuk ${item.name || item.productId}. Harga mungkin tidak akurat.`, 'error');
+          // Fallback to original item if fetching fails, might result in incorrect pricing
+          return {
+            ...item,
+            retailPrice: item.price, // Use the price from the suspended item as retail price
+            silverPrice: item.price,
+            goldPrice: item.price,
+            platinumPrice: item.price,
+            attendantSellingPrice: item.price,
+          };
+        }
+      })
+    );
+    
     // Set the state
-    setCart(suspendedSale.cartItems);
+    setCart(detailedCartItems);
     setSelectedMember(memberToSelect);
     setSelectedAttendant(attendantToSelect);
 
@@ -623,6 +667,8 @@ export default function KasirTransaksiPage() {
     } catch (error) {
       console.error("Error deleting suspended sale:", error);
       showNotification(error.message, 'error');
+    } finally {
+      setLoading(false); // End loading
     }
   };
 

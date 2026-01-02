@@ -3,7 +3,6 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSession, signOut } from 'next-auth/react';
-import ProtectedRoute from '../../components/ProtectedRoute';
 import { Search, ShoppingCart, Users, Send, Camera, Sun, Moon, LogOut, AlertCircle, Trash2, X, History, Bell, Package, TrendingUp, ShoppingCartIcon, User, Star, Edit3, BarChart3, Scan, CameraOff, Camera as CameraIcon } from 'lucide-react';
 import BarcodeScanner from '../../components/BarcodeScanner';
 import { useNotification } from '../../components/notifications/NotificationProvider';
@@ -361,56 +360,9 @@ function AttendantDashboard() {
   }
 
   return (
-    <ProtectedRoute requiredRole="ATTENDANT">
-      <div className={`min-h-screen ${darkMode ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-gray-100' : 'bg-gradient-to-br from-gray-50 via-white to-gray-100 text-gray-900'}`}>
+    <main className={`flex-1 p-4 min-h-screen ${darkMode ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-gray-100' : 'bg-gradient-to-br from-gray-50 via-white to-gray-100 text-gray-900'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          {/* Header Section */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">Dashboard Pelayan</h1>
-              <p className="text-lg text-gray-600 dark:text-gray-400 mt-2">Layani pelanggan dengan cepat dan efisien</p>
-            </div>
-            <div className="mt-4 md:mt-0 flex items-center space-x-4">
-              <PelayanNotifications darkMode={darkMode} attendantId={session?.user?.id} />
-              <button
-                onClick={() => window.location.href = '/pelayan/statistik'}
-                className="p-3 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors shadow-md"
-                title="Lihat Statistik Saya"
-              >
-                <BarChart3 className="h-5 w-5 text-purple-600" />
-              </button>
-              <button
-                onClick={() => window.location.href = '/pelayan/statistik/history'}
-                className="p-3 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors shadow-md"
-                title="Lihat Histori Transaksi"
-              >
-                <History className="h-5 w-5 text-blue-600" />
-              </button>
-              <button
-                onClick={() => {
-                  // Toggle dark mode melalui context
-                  const newDarkMode = !darkMode;
-                  localStorage.setItem('darkMode', JSON.stringify(newDarkMode));
-                  window.dispatchEvent(new Event('storage'));
-                }}
-                className="p-3 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors shadow-md"
-              >
-                {darkMode ? <Sun className="h-5 w-5 text-yellow-500" /> : <Moon className="h-5 w-5 text-gray-700" />}
-              </button>
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-900 dark:text-white">Halo, {session?.user?.name}</p>
-                {session?.user?.storeAccess?.name && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {session.user.storeAccess.name} ({session.user.storeAccess.code})
-                  </p>
-                )}
-                <p className="text-xs text-gray-500 dark:text-gray-400">Pelayan</p>
-              </div>
-              <button onClick={() => signOut({ callbackUrl: '/login' })} className="p-3 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors shadow-md">
-                <LogOut className="h-5 w-5 text-gray-700 dark:text-gray-300" />
-              </button>
-            </div>
-          </div>
+
 
           {error && (
             <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-xl flex items-center shadow-md">
@@ -770,8 +722,7 @@ function AttendantDashboard() {
           item={currentCartItem}
           darkMode={darkMode}
         />
-      </div>
-    </ProtectedRoute>
+    </main>
   );
 }
 

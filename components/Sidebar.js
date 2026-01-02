@@ -157,7 +157,8 @@ const Sidebar = ({ children }) => {
     // ATTENDANT menus
     { title: "Pelayan", type: 'heading', roles: ['ATTENDANT'] },
     { title: "Dashboard", href: "/pelayan", icon: Home, type: 'item', roles: ['ATTENDANT'] },
-    { title: "Produk Cepat", href: "/pelayan/produk-cepat", icon: Package, type: 'item', roles: ['ATTENDANT'] },
+    { title: "Statistik", href: "/pelayan/statistik", icon: BarChart3, type: 'item', roles: ['ATTENDANT'] },
+    { title: "Riwayat Transaksi", href: "/pelayan/statistik/history", icon: History, type: 'item', roles: ['ATTENDANT'] },
     { title: "Profil Saya", href: "/pelayan/profil", icon: UserCog, type: 'item', roles: ['ATTENDANT'] },
 
     // WAREHOUSE menus

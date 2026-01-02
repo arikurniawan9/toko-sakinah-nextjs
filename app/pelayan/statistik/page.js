@@ -3,19 +3,20 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import ProtectedRoute from '../../../components/ProtectedRoute';
 import { Package, TrendingUp, ShoppingCart, User, BarChart3, RotateCcw, ShoppingBag, Calendar } from 'lucide-react';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import { useNotification } from '../../../components/notifications/NotificationProvider';
+import { useUserTheme } from '../../../components/UserThemeContext';
 
 export default function AttendantStatsPage() {
   const { data: session } = useSession();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
   const { showNotification } = useNotification();
   const [dailySummary, setDailySummary] = useState(null);
-  const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -37,18 +38,10 @@ export default function AttendantStatsPage() {
     // Fetch daily summary as well
     const fetchDailySummary = async () => {
       try {
-        // In a real implementation:
-        // const response = await fetch(`/api/pelayan/daily-summary?attendantId=${session?.user?.id}`);
-        // const data = await response.json();
-        // setDailySummary(data.dailySummary);
-        
-        // For demo, we use dummy data
-        setDailySummary({
-          todaySales: 8,
-          todayItems: 25,
-          todayRevenue: 1500000,
-          todayConversion: 78
-        });
+        const response = await fetch(`/api/pelayan/daily-summary?attendantId=${session?.user?.id}`);
+        if (!response.ok) throw new Error('Gagal mengambil ringkasan harian');
+        const data = await response.json();
+        setDailySummary(data.dailySummary);
       } catch (err) {
         showNotification(`Gagal mengambil ringkasan harian: ${err.message}`, 'error');
       }
@@ -60,28 +53,7 @@ export default function AttendantStatsPage() {
     }
   }, [session, showNotification]);
 
-  // Initialize dark mode
-  useEffect(() => {
-    const storedPreference = localStorage.getItem('darkMode');
-    if (storedPreference !== null) {
-      setDarkMode(JSON.parse(storedPreference));
-    } else {
-      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      setDarkMode(prefersDark);
-    }
-  }, []);
 
-  // Apply dark mode
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      if (darkMode) {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-      localStorage.setItem('darkMode', JSON.stringify(darkMode));
-    }
-  }, [darkMode]);
 
   const refreshStats = async () => {
     try {
@@ -102,18 +74,10 @@ export default function AttendantStatsPage() {
 
   const refreshDailySummary = async () => {
     try {
-      // In a real implementation:
-      // const response = await fetch(`/api/pelayan/daily-summary?attendantId=${session?.user?.id}`);
-      // const data = await response.json();
-      // setDailySummary(data.dailySummary);
-      
-      // For demo:
-      setDailySummary({
-        todaySales: Math.floor(Math.random() * 15),
-        todayItems: Math.floor(Math.random() * 50),
-        todayRevenue: Math.floor(Math.random() * 1000000) + 500000,
-        todayConversion: Math.floor(Math.random() * 40) + 60
-      });
+      const response = await fetch(`/api/pelayan/daily-summary?attendantId=${session?.user?.id}`);
+      if (!response.ok) throw new Error('Gagal memperbarui ringkasan harian');
+      const data = await response.json();
+      setDailySummary(data.dailySummary);
       showNotification('Ringkasan harian diperbarui', 'success');
     } catch (err) {
       showNotification(`Gagal memperbarui ringkasan harian: ${err.message}`, 'error');
@@ -122,17 +86,14 @@ export default function AttendantStatsPage() {
 
   if (loading && !stats) {
     return (
-      <ProtectedRoute requiredRole="ATTENDANT">
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
           <LoadingSpinner />
         </div>
-      </ProtectedRoute>
     );
   }
 
   if (error && !stats) {
     return (
-      <ProtectedRoute requiredRole="ATTENDANT">
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
           <div className={`p-6 rounded-lg shadow-lg ${
             darkMode ? 'bg-red-900/20 text-red-300' : 'bg-red-100 text-red-700'
@@ -140,7 +101,6 @@ export default function AttendantStatsPage() {
             <p>Error: {error}</p>
           </div>
         </div>
-      </ProtectedRoute>
     );
   }
 
@@ -244,11 +204,8 @@ export default function AttendantStatsPage() {
     }
   };
 
-  return (
-    <ProtectedRoute requiredRole="ATTENDANT">
-      <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${darkMode ? 'dark' : ''}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex justify-between items-center mb-6">
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">          <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Statistik Pelayan</h1>
             <div className="flex items-center space-x-4">
               <button 
@@ -400,8 +357,6 @@ export default function AttendantStatsPage() {
               </li>
             </ul>
           </div>
-        </div>
       </div>
-    </ProtectedRoute>
   );
 }

@@ -37,6 +37,74 @@ export const PelayanStateProvider = ({ children }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
+  // Fungsi untuk menyimpan dan memuat state dari localStorage
+  const saveStateToStorage = useCallback((key, data) => {
+    if (typeof window !== 'undefined' && session?.user?.id) {
+      try {
+        const storageKey = `${key}_${session.user.id}`;
+        localStorage.setItem(storageKey, JSON.stringify(data));
+      } catch (error) {
+        console.error('Error saving to localStorage:', error);
+      }
+    }
+  }, [session]);
+
+  const loadStateFromStorage = useCallback((key) => {
+    if (typeof window !== 'undefined' && session?.user?.id) {
+      try {
+        const storageKey = `${key}_${session.user.id}`;
+        const storedData = localStorage.getItem(storageKey);
+        return storedData ? JSON.parse(storedData) : null;
+      } catch (error) {
+        console.error('Error loading from localStorage:', error);
+        return null;
+      }
+    }
+    return null;
+  }, [session]);
+
+  // Muat state dari localStorage saat komponen dimount
+  useEffect(() => {
+    if (session?.user?.id) {
+      // Muat cart dari localStorage
+      const savedCart = loadStateFromStorage('tempCart');
+      if (savedCart) {
+        setTempCart(savedCart);
+      }
+
+      // Muat selected customer dari localStorage
+      const savedCustomer = loadStateFromStorage('selectedCustomer');
+      if (savedCustomer) {
+        setSelectedCustomer(savedCustomer);
+      }
+
+      // Muat quick products dari localStorage
+      const savedProducts = loadStateFromStorage('quickProducts');
+      if (savedProducts) {
+        setQuickProducts(savedProducts);
+      }
+    }
+  }, [session, loadStateFromStorage]);
+
+  // Simpan state ke localStorage saat ada perubahan
+  useEffect(() => {
+    if (session?.user?.id && typeof window !== 'undefined') {
+      saveStateToStorage('tempCart', tempCart);
+    }
+  }, [tempCart, session, saveStateToStorage]);
+
+  useEffect(() => {
+    if (session?.user?.id && typeof window !== 'undefined') {
+      saveStateToStorage('selectedCustomer', selectedCustomer);
+    }
+  }, [selectedCustomer, session, saveStateToStorage]);
+
+  useEffect(() => {
+    if (session?.user?.id && typeof window !== 'undefined') {
+      saveStateToStorage('quickProducts', quickProducts);
+    }
+  }, [quickProducts, session, saveStateToStorage]);
+
   // Quick Products Management
   const addQuickProduct = useCallback((product) => {
     setQuickProducts(prev => {
@@ -54,23 +122,6 @@ export const PelayanStateProvider = ({ children }) => {
     setQuickProducts(prev => prev.filter(p => p.id !== productId));
   }, []);
 
-  // Muat quick products saat komponen dimount - hanya di client side
-  useEffect(() => {
-    if (session?.user?.id) {
-      const savedProducts = localStorage.getItem(`quickProducts_${session.user.id}`);
-      if (savedProducts) {
-        setQuickProducts(JSON.parse(savedProducts));
-      }
-    }
-  }, [session]);
-
-  // Simpan quick products saat ada perubahan - hanya di client side
-  useEffect(() => {
-    if (session?.user?.id && typeof window !== 'undefined') {
-      localStorage.setItem(`quickProducts_${session.user.id}`, JSON.stringify(quickProducts));
-    }
-  }, [quickProducts, session]);
-
   // Data Fetching for Products
   const fetchProducts = useCallback(async (searchQuery = '') => {
     setIsSearchingProducts(true);
@@ -80,6 +131,17 @@ export const PelayanStateProvider = ({ children }) => {
         setProducts([]);
         return;
       }
+
+      // Cek apakah produk sudah ada di cache untuk pencarian ini
+      const cacheKey = `products_${searchQuery}`;
+      const cachedProducts = loadStateFromStorage(cacheKey);
+
+      if (cachedProducts && Date.now() - cachedProducts.timestamp < 5 * 60 * 1000) { // 5 menit cache
+        setProducts(cachedProducts.data);
+        setIsSearchingProducts(false);
+        return;
+      }
+
       const url = `/api/produk?search=${encodeURIComponent(searchQuery)}`;
       const response = await fetch(url);
       if (!response.ok) {
@@ -89,6 +151,13 @@ export const PelayanStateProvider = ({ children }) => {
       const data = await response.json();
       if (data.error) throw new Error(data.error);
       const transformedProducts = transformProductsForDisplay(data.products);
+
+      // Simpan ke cache
+      saveStateToStorage(cacheKey, {
+        data: transformedProducts,
+        timestamp: Date.now()
+      });
+
       setProducts(transformedProducts);
     } catch (err) {
       setError(`Tidak dapat mengambil data produk: ${err.message}`);
@@ -97,7 +166,7 @@ export const PelayanStateProvider = ({ children }) => {
     } finally {
       setIsSearchingProducts(false);
     }
-  }, [showNotification]);
+  }, [showNotification, loadStateFromStorage, saveStateToStorage]);
 
   // Fetch products by category
   const fetchProductsByCategory = useCallback(async (categoryId) => {
@@ -150,6 +219,17 @@ export const PelayanStateProvider = ({ children }) => {
         setCustomers([]);
         return [];
       }
+
+      // Cek apakah pencarian untuk pelanggan umum
+      if (searchQuery.toLowerCase() === 'umum' || searchQuery.toLowerCase() === 'pelanggan umum') {
+        // Jika pencarian untuk pelanggan umum, kembalikan pelanggan default (umum)
+        if (defaultCustomer) {
+          foundMembers = [defaultCustomer];
+          setCustomers(foundMembers);
+          return foundMembers;
+        }
+      }
+
       const url = `/api/member?global=true&search=${encodeURIComponent(searchQuery)}`;
       const response = await fetch(url);
       if (!response.ok) {
@@ -168,33 +248,114 @@ export const PelayanStateProvider = ({ children }) => {
       setIsSearchingCustomers(false);
     }
     return foundMembers;
-  }, [showNotification]);
+  }, [showNotification, defaultCustomer]);
 
   // Fetch default customer (UMUM) on initial load
   const fetchDefaultCustomer = useCallback(async () => {
     setIsInitialLoading(true);
     try {
-      const response = await fetch('/api/member?global=true&search=UMUM');
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Gagal memuat pelanggan default.');
-      }
-      const data = await response.json();
-      if (data.error) throw new Error(data.error);
+      let response = await fetch('/api/member?global=true&search=UMUM');
+      let data;
 
-      if (data.members && data.members.length > 0) {
+      if (response.ok) {
+        data = await response.json();
+        if (data.error) throw new Error(data.error);
+      } else {
+        // Jika permintaan gagal, coba buat pelanggan UMUM secara otomatis
+        const errorData = await response.json();
+        console.log('Error fetching UMUM member:', errorData);
+      }
+
+      if (data && data.members && data.members.length > 0) {
         const umumCustomer = data.members[0];
         setDefaultCustomer(umumCustomer);
-        setSelectedCustomer(umumCustomer);
+        // Jika belum ada pelanggan terpilih, gunakan pelanggan umum
+        if (!selectedCustomer) {
+          setSelectedCustomer(umumCustomer);
+        }
       } else {
-        showNotification('Member "UMUM" tidak ditemukan. Pastikan sudah terdaftar.', 'warning');
+        // Jika pelanggan UMUM tidak ditemukan, coba buat secara otomatis
+        try {
+          const createResponse = await fetch('/api/member', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: 'Pelanggan Umum',
+              code: 'UMUM',
+              phone: '',
+              address: '',
+              membershipType: 'RETAIL',
+              discount: 0,
+              global: true
+            })
+          });
+
+          if (createResponse.ok) {
+            const createdData = await createResponse.json();
+            setDefaultCustomer(createdData.member);
+            if (!selectedCustomer) {
+              setSelectedCustomer(createdData.member);
+            }
+            showNotification('Pelanggan Umum berhasil dibuat.', 'success');
+          } else {
+            const errorData = await createResponse.json();
+            console.error('Error creating UMUM member:', errorData);
+            // Jika tidak bisa dibuat, gunakan data default sementara
+            const defaultCustomerData = {
+              id: 'default-umum',
+              name: 'Pelanggan Umum',
+              code: 'UMUM',
+              phone: '',
+              address: '',
+              membershipType: 'RETAIL',
+              discount: 0,
+              global: true
+            };
+            setDefaultCustomer(defaultCustomerData);
+            if (!selectedCustomer) {
+              setSelectedCustomer(defaultCustomerData);
+            }
+          }
+        } catch (createErr) {
+          console.error('Error in creating UMUM member:', createErr);
+          // Jika semua gagal, gunakan data default sementara
+          const defaultCustomerData = {
+            id: 'default-umum',
+            name: 'Pelanggan Umum',
+            code: 'UMUM',
+            phone: '',
+            address: '',
+            membershipType: 'RETAIL',
+            discount: 0,
+            global: true
+          };
+          setDefaultCustomer(defaultCustomerData);
+          if (!selectedCustomer) {
+            setSelectedCustomer(defaultCustomerData);
+          }
+        }
       }
     } catch (err) {
-      showNotification(`Tidak dapat memuat member default: ${err.message}`, 'error');
+      console.error('Error in fetchDefaultCustomer:', err);
+      // Jika terjadi error, gunakan data default sementara
+      const defaultCustomerData = {
+        id: 'default-umum',
+        name: 'Pelanggan Umum',
+        code: 'UMUM',
+        phone: '',
+        address: '',
+        membershipType: 'RETAIL',
+        discount: 0,
+        global: true
+      };
+      setDefaultCustomer(defaultCustomerData);
+      if (!selectedCustomer) {
+        setSelectedCustomer(defaultCustomerData);
+      }
     } finally {
       setIsInitialLoading(false);
     }
-  }, [showNotification]);
+  }, [showNotification, selectedCustomer]);
 
   // Cart Management
   const addToTempCart = useCallback((product, note = '') => {
@@ -237,7 +398,7 @@ export const PelayanStateProvider = ({ children }) => {
   // Fungsi untuk menambahkan catatan ke item di keranjang
   const addNoteToCartItem = useCallback((productId, note) => {
     setTempCart(prevCart => {
-      return prevCart.map(item => 
+      return prevCart.map(item =>
         item.productId === productId ? { ...item, note } : item
       );
     });
@@ -291,6 +452,7 @@ export const PelayanStateProvider = ({ children }) => {
       });
       if (response.ok) {
         showNotification('Daftar belanja berhasil disimpan ke daftar tangguhkan!', 'success');
+        // Kosongkan cart setelah berhasil dikirim
         setTempCart([]);
         // Jangan reset selectedCustomer disini karena mungkin masih digunakan di UI
         return true;
