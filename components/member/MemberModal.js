@@ -155,6 +155,45 @@ const MemberModal = ({
                       </select>
                     </div>
                   </div>
+
+                  {editingMember && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                      <div>
+                        <label className={`block text-sm font-medium ${
+                          darkMode ? 'text-gray-300' : 'text-gray-700'
+                        } mb-1`}>
+                          Tanggal Dibuat
+                        </label>
+                        <div className={`w-full px-3 py-2 rounded-md ${
+                          darkMode
+                            ? 'bg-gray-700 border-gray-600 text-gray-300'
+                            : 'bg-gray-100 border-theme-purple-300 text-gray-700'
+                        } border`}>
+                          {editingMember.createdAt ? (() => {
+                            const date = new Date(editingMember.createdAt);
+                            return isNaN(date.getTime()) ? '-' : date.toLocaleDateString('id-ID');
+                          })() : '-'}
+                        </div>
+                      </div>
+                      <div>
+                        <label className={`block text-sm font-medium ${
+                          darkMode ? 'text-gray-300' : 'text-gray-700'
+                        } mb-1`}>
+                          Tanggal Diubah
+                        </label>
+                        <div className={`w-full px-3 py-2 rounded-md ${
+                          darkMode
+                            ? 'bg-gray-700 border-gray-600 text-gray-300'
+                            : 'bg-gray-100 border-theme-purple-300 text-gray-700'
+                        } border`}>
+                          {editingMember.updatedAt ? (() => {
+                            const date = new Date(editingMember.updatedAt);
+                            return isNaN(date.getTime()) ? '-' : date.toLocaleDateString('id-ID');
+                          })() : '-'}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

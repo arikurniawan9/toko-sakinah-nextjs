@@ -7,8 +7,10 @@ import { useRouter } from 'next/navigation';
 import { useUserTheme } from '../../../../components/UserThemeContext';
 import TransactionDetailModal from '../../../../components/TransactionDetailModal';
 import { ROLES } from '@/lib/constants';
-import { ArrowLeft, User, ShoppingBag, Package, Wallet, Calendar, CreditCard, Printer } from 'lucide-react';
+import { ArrowLeft, User, ShoppingBag, Package, Wallet, Calendar, CreditCard, Printer, FileText } from 'lucide-react';
 import { generateMemberCardPDF } from '../../../../components/admin/MemberCardPDFGenerator';
+import { generateMemberSpendingReportPDF } from '../../../../components/admin/MemberSpendingReportPDFGenerator';
+import MemberSpendingReportPreview from '../../../../components/admin/MemberSpendingReportPreview';
 
 export default function MemberDetailPage({ params }) {
   const { data: session, status } = useSession();
@@ -21,6 +23,7 @@ export default function MemberDetailPage({ params }) {
   const [error, setError] = useState(null);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [showReportPreview, setShowReportPreview] = useState(false);
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -139,29 +142,37 @@ export default function MemberDetailPage({ params }) {
                     {member.name}
                   </h1>
                   <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Member {member.membershipType} • {member.phone}
+                    {member.code ? `Kode: ${member.code} • ` : ''}Member {member.membershipType} • {member.phone}
                   </p>
                 </div>
-                <button
-                  onClick={() => generateMemberCardPDF(member)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
-                    darkMode
-                      ? 'bg-theme-purple-700 hover:bg-theme-purple-600 text-white'
-                      : 'bg-theme-purple-600 hover:bg-theme-purple-700 text-white'
-                  } transition-colors duration-200 shadow`}
-                  title="Cetak Kartu Member"
-                >
-                  <Printer className="h-4 w-4" />
-                  <span>Cetak Kartu</span>
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => generateMemberCardPDF(member)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
+                      darkMode
+                        ? 'bg-theme-purple-700 hover:bg-theme-purple-600 text-white'
+                        : 'bg-theme-purple-600 hover:bg-theme-purple-700 text-white'
+                    } transition-colors duration-200 shadow`}
+                    title="Cetak Kartu Member"
+                  >
+                    <Printer className="h-4 w-4" />
+                    <span>Kartu</span>
+                  </button>
+                  <button
+                    onClick={() => setShowReportPreview(true)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
+                      darkMode
+                        ? 'bg-blue-700 hover:bg-blue-600 text-white'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    } transition-colors duration-200 shadow`}
+                    title="Lihat Preview Laporan Pembelanjaan"
+                  >
+                    <FileText className="h-4 w-4" />
+                    <span>Preview</span>
+                  </button>
+                </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-4">
-                <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
-                  darkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-50 text-green-700'
-                }`}>
-                  <Wallet className="h-4 w-4" />
-                  <span className="font-medium">{member.discount}% Diskon</span>
-                </div>
                 <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
                   darkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-700'
                 }`}>
@@ -379,6 +390,15 @@ export default function MemberDetailPage({ params }) {
         onClose={() => setShowTransactionModal(false)}
         transaction={selectedTransaction}
       />
+
+      {/* Member Spending Report Preview Modal */}
+      {showReportPreview && (
+        <MemberSpendingReportPreview
+          member={member}
+          transactions={transactions}
+          onClose={() => setShowReportPreview(false)}
+        />
+      )}
     </div>
   );
 }

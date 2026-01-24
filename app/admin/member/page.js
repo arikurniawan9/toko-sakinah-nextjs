@@ -133,8 +133,8 @@ export default function MemberManagement() {
         const address = `"${member.address ? member.address.split('"').join('""') : ''}"`;
         const membershipType = `"${member.membershipType}"`;
         const discount = `"${member.discount}"`;
-        const createdAt = `"${new Date(member.createdAt).toLocaleString()}"`;
-        const updatedAt = `"${new Date(member.updatedAt).toLocaleString()}"`;
+        const createdAt = `"${member.createdAt ? (isNaN(new Date(member.createdAt).getTime()) ? '' : new Date(member.createdAt).toLocaleString()) : ''}"`;
+        const updatedAt = `"${member.updatedAt ? (isNaN(new Date(member.updatedAt).getTime()) ? '' : new Date(member.updatedAt).toLocaleString()) : ''}"`;
         csvContent += `${code},${name},${phone},${address},${membershipType},${discount},${createdAt},${updatedAt}\n`;
       });
 
@@ -196,7 +196,11 @@ export default function MemberManagement() {
     {
       key: 'createdAt',
       title: 'Tanggal Dibuat',
-      render: (value) => new Date(value).toLocaleDateString('id-ID'),
+      render: (value) => {
+        if (!value) return '-';
+        const date = new Date(value);
+        return isNaN(date.getTime()) ? '-' : date.toLocaleDateString('id-ID');
+      },
       sortable: true
     }
   ];

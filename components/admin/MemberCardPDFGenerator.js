@@ -1,19 +1,20 @@
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
+import 'jspdf-barcode';
 
-// Fungsi untuk menghasilkan PDF kartu member
+// Fungsi untuk menghasilkan PDF kartu member yang lebih elegan
 export const generateMemberCardPDF = (member, options = {}) => {
   const {
-    cardWidth = 85.6,  // Lebar kartu dalam mm (sesuai ukuran kartu ATM)
-    cardHeight = 53.98, // Tinggi kartu dalam mm (sesuai ukuran kartu ATM)
-    margin = 10,         // Margin dalam mm
+    cardWidth = 53.98,  // Lebar kartu dalam mm (diubah untuk potrait)
+    cardHeight = 85.6, // Tinggi kartu dalam mm (diubah untuk potrait)
+    margin = 20,         // Margin dalam mm
     fontSize = 10,       // Ukuran font dalam pt
     darkMode = false,
   } = options;
 
   // Membuat dokumen PDF baru
   const doc = new jsPDF({
-    orientation: 'landscape', // Landscape agar bisa muat kartu dengan orientasi yang benar
+    orientation: 'portrait', // Portrait untuk tata letak kartu
     unit: 'mm',
     format: 'a4'
   });
@@ -23,71 +24,85 @@ export const generateMemberCardPDF = (member, options = {}) => {
   const pageHeight = doc.internal.pageSize.getHeight();
 
   // Gambar satu kartu member
-  let currentX = margin;
-  let currentY = (pageHeight - cardHeight) / 2; // Posisi vertikal agar kartu berada di tengah
+  let currentX = (pageWidth - cardWidth) / 2; // Posisi horizontal agar kartu berada di tengah
+  let currentY = margin; // Posisi vertikal dengan margin dari atas
 
-  // Pastikan ada minimal satu kartu
-  doc.setFontSize(fontSize);
-  doc.setTextColor(0); // Hitam
+  // Gradient background effect using solid color
+  doc.setFillColor(147, 51, 234); // Purple-500
+  doc.roundedRect(currentX, currentY, cardWidth, cardHeight, 5, 5, 'F'); // Rounded rectangle with purple background
 
-  // Gambar satu kartu member
-  // Rectangle sebagai border kartu
-  doc.setDrawColor(100); // Abu-abu muda untuk border
-  doc.setFillColor(255); // Putih untuk background
-  doc.roundedRect(currentX, currentY, cardWidth, cardHeight, 3, 3, 'FD'); // Rounded rectangle
+  // Inner white content area
+  doc.setFillColor(255, 255, 255); // Putih
+  doc.roundedRect(currentX + 3, currentY + 3, cardWidth - 6, cardHeight - 6, 3, 3, 'F'); // Inner white rounded rectangle
 
-  // Gambar header dengan warna tema
-  try {
-    // Gunakan warna tema untuk dekorasi
-    doc.setFillColor(147, 51, 234); // Purple-500
-    doc.rect(currentX, currentY, cardWidth, 8, 'F'); // Garis atas ungu
+  // Elegant header with logo placeholder
+  doc.setFillColor(147, 51, 234); // Purple-500
+  doc.rect(currentX + 3, currentY + 3, cardWidth - 6, 15, 'F'); // Header bar lebih tinggi
 
-    // Tambahkan teks "MEMBER CARD"
+  // Add "MEMBER CARD" text in elegant style
+  doc.setFontSize(fontSize + 3);
+  doc.setTextColor(255, 255, 255); // Putih
+  doc.setFont('helvetica', 'bold');
+  doc.text('KARTU MEMBER', currentX + cardWidth / 2, currentY + 12, { align: 'center' });
+
+  // Reset font
+  doc.setFont('helvetica', 'normal');
+
+  // Add member's name in elegant style
+  doc.setTextColor(0, 0, 0); // Hitam
+  doc.setFontSize(fontSize + 5);
+  doc.setFont('helvetica', 'bold');
+  doc.text(member.name, currentX + cardWidth / 2, currentY + 30, { align: 'center' });
+
+  // Reset font
+  doc.setFont('helvetica', 'normal');
+
+  // Add membership type
+  doc.setFontSize(fontSize + 1);
+  doc.setTextColor(100, 100, 100); // Abu-abu gelap
+  doc.text(`Tipe: ${member.membershipType || 'REGULER'}`, currentX + cardWidth / 2, currentY + 38, { align: 'center' });
+
+  // Add member code if exists
+  if (member.code) {
     doc.setFontSize(fontSize + 1);
-    doc.setTextColor(255); // Putih untuk teks di atas garis ungu
-    doc.text('KARTU MEMBER', currentX + 10, currentY + 5, { align: 'left' });
-  } catch (error) {
-    console.error('Error drawing header:', error);
+    doc.setTextColor(100, 100, 100); // Abu-abu gelap
+    doc.text(`Kode: ${member.code}`, currentX + cardWidth / 2, currentY + 44, { align: 'center' });
   }
 
-  // Tambahkan nama member
-  doc.setTextColor(0); // Hitam
-  doc.setFontSize(fontSize + 2);
-  doc.text(member.name, currentX + cardWidth / 2, currentY + 25, { align: 'center' });
+  // Reset font and color
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(0, 0, 0); // Hitam
 
-  // Tambahkan kode member
-  doc.setFontSize(fontSize);
-  doc.text(`Kode: ${member.code}`, currentX + cardWidth / 2, currentY + 32, { align: 'center' });
-
-  // Tambahkan tipe keanggotaan
-  doc.setFontSize(fontSize);
-  doc.text(`Tipe: ${member.membershipType || 'REGULER'}`, currentX + cardWidth / 2, currentY + 37, { align: 'center' });
-
-  // Tambahkan diskon
-  doc.text(`Diskon: ${member.discount || 0}%`, currentX + cardWidth / 2, currentY + 42, { align: 'center' });
-
-  // Tambahkan tanggal kadaluarsa jika ada
+  // Add expiry date if exists
   if (member.expiryDate) {
-    doc.setFontSize(fontSize - 1);
-    doc.text(`Berlaku s/d: ${new Date(member.expiryDate).toLocaleDateString('id-ID')}`, currentX + cardWidth / 2, currentY + 47, { align: 'center' });
+    doc.setFontSize(fontSize);
+    doc.setTextColor(100, 100, 100); // Abu-abu gelap
+    doc.text(`Berlaku s/d: ${new Date(member.expiryDate).toLocaleDateString('id-ID')}`, currentX + cardWidth / 2, currentY + 50, { align: 'center' });
   }
 
-  // Tambahkan placeholder untuk foto atau QR code
-  try {
-    // Gambar kotak untuk foto/QR
-    doc.setDrawColor(0);
-    doc.setLineWidth(0.25);
-    doc.rect(currentX + cardWidth - 22, currentY + 12, 16, 16); // Kotak di pojok kanan atas
-
-    // Placeholder teks
-    doc.setFontSize(fontSize - 2);
-    doc.setTextColor(0);
-    doc.text('FOTO', currentX + cardWidth - 14, currentY + 20, { align: 'center' });
-    doc.text('ATAU', currentX + cardWidth - 14, currentY + 22, { align: 'center' });
-    doc.text('QR', currentX + cardWidth - 14, currentY + 24, { align: 'center' });
-  } catch (error) {
-    console.error('Error drawing photo box:', error);
+  // Add barcode for member code using jspdf-barcode
+  if (member.code) {
+    try {
+      // Using jspdf-barcode plugin
+      doc.addBarcode(member.code, currentX + 5, currentY + 58, {
+        width: 0.5,
+        height: 15,
+        fontsize: 8,
+        textPosition: 'bottom'
+      });
+    } catch (error) {
+      console.error('Error generating barcode:', error);
+      // Fallback: show code as text if barcode fails
+      doc.setFontSize(fontSize);
+      doc.setTextColor(0, 0, 0); // Hitam
+      doc.text(`Kode: ${member.code}`, currentX + cardWidth / 2, currentY + 60, { align: 'center' });
+    }
   }
+
+  // Add company logo/text at bottom
+  doc.setFontSize(fontSize);
+  doc.setTextColor(100, 100, 100); // Abu-abu gelap
+  doc.text('TOKO SAKINAH', currentX + cardWidth / 2, currentY + cardHeight - 5, { align: 'center' });
 
   // Simpan file PDF
   doc.save(`kartu-member-${member.code || 'unknown'}.pdf`);
@@ -96,16 +111,16 @@ export const generateMemberCardPDF = (member, options = {}) => {
 // Fungsi untuk menghasilkan PDF dengan beberapa kartu member sekaligus
 export const generateMultipleMemberCardsPDF = (members, options = {}) => {
   const {
-    cardWidth = 85.6,  // Lebar kartu dalam mm
-    cardHeight = 53.98, // Tinggi kartu dalam mm
-    margin = 10,         // Margin dalam mm
+    cardWidth = 53.98,  // Lebar kartu dalam mm (diubah untuk potrait)
+    cardHeight = 85.6, // Tinggi kartu dalam mm (diubah untuk potrait)
+    margin = 20,         // Margin dalam mm
     fontSize = 10,       // Ukuran font dalam pt
     darkMode = false,
   } = options;
 
   // Membuat dokumen PDF baru
   const doc = new jsPDF({
-    orientation: 'landscape',
+    orientation: 'portrait',
     unit: 'mm',
     format: 'a4'
   });
@@ -114,8 +129,8 @@ export const generateMultipleMemberCardsPDF = (members, options = {}) => {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
 
-  // Hitung berapa banyak kartu per halaman
-  const cols = Math.floor((pageWidth - 2 * margin) / (cardWidth + margin));
+  // Hitung berapa banyak kartu per halaman (hanya 1 kolom karena potrait)
+  const cols = 1; // Hanya 1 kolom karena kartu sekarang lebih tinggi
   const rows = Math.floor((pageHeight - 2 * margin) / (cardHeight + margin));
 
   // Loop untuk setiap member
@@ -124,7 +139,7 @@ export const generateMultipleMemberCardsPDF = (members, options = {}) => {
 
     // Jika kita mencapai batas kartu per halaman, tambah halaman baru
     if (i > 0 && i % (cols * rows) === 0) {
-      doc.addPage('a4', 'landscape');
+      doc.addPage('a4', 'portrait');
     }
 
     // Hitung indeks kartu dalam halaman saat ini
@@ -133,70 +148,85 @@ export const generateMultipleMemberCardsPDF = (members, options = {}) => {
     const rowIndex = Math.floor(indexInPage / cols);
 
     // Posisi kartu
-    const currentX = margin + (colIndex * (cardWidth + margin));
-    const currentY = margin + (rowIndex * (cardHeight + margin));
+    const currentX = (pageWidth - cardWidth) / 2; // Posisi horizontal agar kartu berada di tengah
+    const currentY = margin + (rowIndex * (cardHeight + margin)); // Posisi vertikal dengan margin dari atas
 
-    // Gambar satu kartu member
-    doc.setFontSize(fontSize);
-    doc.setTextColor(0); // Hitam
+    // Gradient background effect using solid color
+    doc.setFillColor(147, 51, 234); // Purple-500
+    doc.roundedRect(currentX, currentY, cardWidth, cardHeight, 5, 5, 'F'); // Rounded rectangle with purple background
 
-    // Rectangle sebagai border kartu
-    doc.setDrawColor(100); // Abu-abu muda untuk border
-    doc.setFillColor(255); // Putih untuk background
-    doc.roundedRect(currentX, currentY, cardWidth, cardHeight, 3, 3, 'FD'); // Rounded rectangle
+    // Inner white content area
+    doc.setFillColor(255, 255, 255); // Putih
+    doc.roundedRect(currentX + 3, currentY + 3, cardWidth - 6, cardHeight - 6, 3, 3, 'F'); // Inner white rounded rectangle
 
-    // Gambar logo atau header
-    try {
-      // Gunakan warna tema untuk dekorasi
-      doc.setFillColor(147, 51, 234); // Purple-500
-      doc.rect(currentX, currentY, cardWidth, 8, 'F'); // Garis atas ungu
+    // Elegant header with logo placeholder
+    doc.setFillColor(147, 51, 234); // Purple-500
+    doc.rect(currentX + 3, currentY + 3, cardWidth - 6, 15, 'F'); // Header bar lebih tinggi
 
-      // Tambahkan teks "MEMBER CARD"
+    // Add "MEMBER CARD" text in elegant style
+    doc.setFontSize(fontSize + 3);
+    doc.setTextColor(255, 255, 255); // Putih
+    doc.setFont('helvetica', 'bold');
+    doc.text('KARTU MEMBER', currentX + cardWidth / 2, currentY + 12, { align: 'center' });
+
+    // Reset font
+    doc.setFont('helvetica', 'normal');
+
+    // Add member's name in elegant style
+    doc.setTextColor(0, 0, 0); // Hitam
+    doc.setFontSize(fontSize + 5);
+    doc.setFont('helvetica', 'bold');
+    doc.text(member.name, currentX + cardWidth / 2, currentY + 30, { align: 'center' });
+
+    // Reset font
+    doc.setFont('helvetica', 'normal');
+
+    // Add membership type
+    doc.setFontSize(fontSize + 1);
+    doc.setTextColor(100, 100, 100); // Abu-abu gelap
+    doc.text(`Tipe: ${member.membershipType || 'REGULER'}`, currentX + cardWidth / 2, currentY + 38, { align: 'center' });
+
+    // Add member code if exists
+    if (member.code) {
       doc.setFontSize(fontSize + 1);
-      doc.setTextColor(255); // Putih untuk teks di atas garis ungu
-      doc.text('KARTU MEMBER', currentX + 10, currentY + 5, { align: 'left' });
-    } catch (error) {
-      console.error('Error drawing header:', error);
+      doc.setTextColor(100, 100, 100); // Abu-abu gelap
+      doc.text(`Kode: ${member.code}`, currentX + cardWidth / 2, currentY + 44, { align: 'center' });
     }
 
-    // Tambahkan nama member
-    doc.setTextColor(0); // Hitam
-    doc.setFontSize(fontSize + 2);
-    doc.text(member.name, currentX + cardWidth / 2, currentY + 25, { align: 'center' });
+    // Reset font and color
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 0, 0); // Hitam
 
-    // Tambahkan kode member
-    doc.setFontSize(fontSize);
-    doc.text(`Kode: ${member.code}`, currentX + cardWidth / 2, currentY + 32, { align: 'center' });
-
-    // Tambahkan tipe keanggotaan
-    doc.setFontSize(fontSize);
-    doc.text(`Tipe: ${member.membershipType || 'REGULER'}`, currentX + cardWidth / 2, currentY + 37, { align: 'center' });
-
-    // Tambahkan diskon
-    doc.text(`Diskon: ${member.discount || 0}%`, currentX + cardWidth / 2, currentY + 42, { align: 'center' });
-
-    // Tambahkan tanggal kadaluarsa jika ada
+    // Add expiry date if exists
     if (member.expiryDate) {
-      doc.setFontSize(fontSize - 1);
-      doc.text(`Berlaku s/d: ${new Date(member.expiryDate).toLocaleDateString('id-ID')}`, currentX + cardWidth / 2, currentY + 47, { align: 'center' });
+      doc.setFontSize(fontSize);
+      doc.setTextColor(100, 100, 100); // Abu-abu gelap
+      doc.text(`Berlaku s/d: ${new Date(member.expiryDate).toLocaleDateString('id-ID')}`, currentX + cardWidth / 2, currentY + 50, { align: 'center' });
     }
 
-    // Tambahkan placeholder untuk foto atau QR code
-    try {
-      // Gambar kotak untuk foto/QR
-      doc.setDrawColor(0);
-      doc.setLineWidth(0.25);
-      doc.rect(currentX + cardWidth - 22, currentY + 12, 16, 16); // Kotak di pojok kanan atas
-
-      // Placeholder teks
-      doc.setFontSize(fontSize - 2);
-      doc.setTextColor(0);
-      doc.text('FOTO', currentX + cardWidth - 14, currentY + 20, { align: 'center' });
-      doc.text('ATAU', currentX + cardWidth - 14, currentY + 22, { align: 'center' });
-      doc.text('QR', currentX + cardWidth - 14, currentY + 24, { align: 'center' });
-    } catch (error) {
-      console.error('Error drawing photo box:', error);
+    // Add barcode for member code using jspdf-barcode
+    if (member.code) {
+      try {
+        // Using jspdf-barcode plugin
+        doc.addBarcode(member.code, currentX + 5, currentY + 58, {
+          width: 0.5,
+          height: 15,
+          fontsize: 8,
+          textPosition: 'bottom'
+        });
+      } catch (error) {
+        console.error('Error generating barcode:', error);
+        // Fallback: show code as text if barcode fails
+        doc.setFontSize(fontSize);
+        doc.setTextColor(0, 0, 0); // Hitam
+        doc.text(`Kode: ${member.code}`, currentX + cardWidth / 2, currentY + 60, { align: 'center' });
+      }
     }
+
+    // Add company logo/text at bottom
+    doc.setFontSize(fontSize);
+    doc.setTextColor(100, 100, 100); // Abu-abu gelap
+    doc.text('TOKO SAKINAH', currentX + cardWidth / 2, currentY + cardHeight - 5, { align: 'center' });
   }
 
   // Simpan file PDF
