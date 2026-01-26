@@ -42,13 +42,16 @@ export async function GET(request) {
       ];
     }
     
+    // Default roles if no specific role is requested
+    let rolesToFetch = [ROLES.ATTENDANT, ROLES.WAREHOUSE];
+
+    // If a specific role is provided in the query, override the default
     if (role) {
-      whereClause.role = role;
+      rolesToFetch = [role];
     }
 
-    // Hanya ambil pengguna dengan role ATTENDANT atau WAREHOUSE
     whereClause.role = {
-      in: ['ATTENDANT', 'WAREHOUSE']
+      in: rolesToFetch
     };
 
     const [users, total] = await Promise.all([

@@ -353,7 +353,8 @@ export async function DELETE(request) {
       updatedUser.id,
       `Pengguna "${updatedUser.name}" dinonaktifkan`,
       { ...userToDelete },
-      { ...updatedUser }
+      { ...updatedUser },
+      null // Tidak ada storeId karena ini adalah operasi manager
     );
 
     return new Response(JSON.stringify({ 

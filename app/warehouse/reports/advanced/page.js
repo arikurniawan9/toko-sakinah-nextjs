@@ -24,31 +24,7 @@ export default function WarehouseReportsPage() {
     endDate: new Date().toISOString().split('T')[0]
   });
 
-  // Mock data untuk laporan
-  const inventoryData = [
-    { name: 'Produk A', currentStock: 120, minStock: 50, maxStock: 200 },
-    { name: 'Produk B', currentStock: 30, minStock: 40, maxStock: 150 },
-    { name: 'Produk C', currentStock: 80, minStock: 30, maxStock: 100 },
-    { name: 'Produk D', currentStock: 10, minStock: 20, maxStock: 80 },
-    { name: 'Produk E', currentStock: 200, minStock: 100, maxStock: 300 },
-  ];
-
-  const distributionData = [
-    { date: '2023-06-01', distributed: 45, received: 30 },
-    { date: '2023-06-02', distributed: 30, received: 40 },
-    { date: '2023-06-03', distributed: 20, received: 25 },
-    { date: '2023-06-04', distributed: 60, received: 50 },
-    { date: '2023-06-05', distributed: 35, received: 45 },
-    { date: '2023-06-06', distributed: 50, received: 35 },
-    { date: '2023-06-07', distributed: 40, received: 55 },
-  ];
-
-  const supplierPerformanceData = [
-    { name: 'Supplier A', onTimeDeliveries: 95, qualityRating: 4.5, totalOrders: 120 },
-    { name: 'Supplier B', onTimeDeliveries: 87, qualityRating: 4.2, totalOrders: 95 },
-    { name: 'Supplier C', onTimeDeliveries: 92, qualityRating: 4.7, totalOrders: 80 },
-    { name: 'Supplier D', onTimeDeliveries: 78, qualityRating: 3.8, totalOrders: 110 },
-  ];
+  const [reportData, setReportData] = useState(null);
 
   // Fetch reports data
   useEffect(() => {
@@ -58,12 +34,25 @@ export default function WarehouseReportsPage() {
       return;
     }
 
-    // Simulasi fetch data
     const fetchData = async () => {
       setLoading(true);
+      setError('');
       try {
-        // Simulasi delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        const params = new URLSearchParams({
+          type: reportType,
+          startDate: dateRange.startDate,
+          endDate: dateRange.endDate,
+        });
+
+        const response = await fetch(`/api/warehouse/reports/advanced?${params.toString()}`);
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Gagal mengambil data laporan');
+        }
+
+        const data = await response.json();
+        setReportData(data);
       } catch (err) {
         setError('Gagal mengambil data laporan: ' + err.message);
       } finally {
@@ -89,8 +78,14 @@ export default function WarehouseReportsPage() {
   }
 
   const renderReport = () => {
+    if (!reportData) {
+      return null;
+    }
+
     switch(reportType) {
       case 'inventory':
+        const lowStockCount = reportData.filter(p => p.currentStock < 50).length;
+        const totalProducts = reportData.length;
         return (
           <div className="space-y-6">
             <div className={`rounded-xl shadow-lg p-6 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
@@ -99,7 +94,7 @@ export default function WarehouseReportsPage() {
               </h3>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={inventoryData}>
+                  <BarChart data={reportData}>
                     <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#4b5563' : '#d1d5db'} />
                     <XAxis dataKey="name" stroke={darkMode ? '#9ca3af' : '#6b7280'} />
                     <YAxis stroke={darkMode ? '#9ca3af' : '#6b7280'} />
@@ -124,7 +119,7 @@ export default function WarehouseReportsPage() {
                   </div>
                   <div className="ml-4">
                     <h3 className={`text-lg font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Produk Total</h3>
-                    <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">1,240</p>
+                    <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{totalProducts}</p>
                   </div>
                 </div>
               </div>
@@ -136,7 +131,7 @@ export default function WarehouseReportsPage() {
                   </div>
                   <div className="ml-4">
                     <h3 className={`text-lg font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Stok Rendah</h3>
-                    <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">12</p>
+                    <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{lowStockCount}</p>
                   </div>
                 </div>
               </div>
@@ -148,7 +143,7 @@ export default function WarehouseReportsPage() {
                   </div>
                   <div className="ml-4">
                     <h3 className={`text-lg font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Perlu Ditinjau</h3>
-                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">5</p>
+                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">{lowStockCount}</p>
                   </div>
                 </div>
               </div>
@@ -165,7 +160,7 @@ export default function WarehouseReportsPage() {
               </h3>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={distributionData}>
+                  <LineChart data={reportData}>
                     <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#4b5563' : '#d1d5db'} />
                     <XAxis dataKey="date" stroke={darkMode ? '#9ca3af' : '#6b7280'} />
                     <YAxis stroke={darkMode ? '#9ca3af' : '#6b7280'} />
@@ -192,7 +187,7 @@ export default function WarehouseReportsPage() {
               </h3>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={supplierPerformanceData}>
+                  <BarChart data={reportData}>
                     <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#4b5563' : '#d1d5db'} />
                     <XAxis dataKey="name" stroke={darkMode ? '#9ca3af' : '#6b7280'} />
                     <YAxis stroke={darkMode ? '#9ca3af' : '#6b7280'} />

@@ -34,7 +34,7 @@ export default function WarehouseUserManagement() {
     totalUsers,
     fetchUsers,
     setError: setTableError,
-  } = useWarehouseUserTable(); // Get all warehouse users
+  } = useWarehouseUserTable('WAREHOUSE'); // Get only warehouse users
 
   const {
     showModal,

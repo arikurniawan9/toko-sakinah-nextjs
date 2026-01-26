@@ -9,6 +9,7 @@ import { useUserTable } from '@/lib/hooks/useUserTable';
 import UserModal from '@/components/admin/UserModal';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import TransferUserModal from '@/components/TransferUserModal';
+import Toast from '@/components/Toast';
 import { AlertTriangle, CheckCircle, Edit, Trash2, MoveRight } from 'lucide-react';
 import DataTable from '@/components/DataTable';
 import Breadcrumb from '@/components/Breadcrumb';
@@ -61,6 +62,7 @@ export default function ManagerAllUsersManagement() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [selectedRows, setSelectedRows] = useState([]);
   const [successMessage, setSuccessMessage] = useState('');
+  const [toast, setToast] = useState({ show: false, message: '', type: '' });
   const [stores, setStores] = useState([]);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [userToTransfer, setUserToTransfer] = useState(null);
@@ -131,7 +133,7 @@ export default function ManagerAllUsersManagement() {
 
     // If no IDs remain after filtering, don't show the modal
     if (userIdsToDelete.length === 0) {
-      setTableError('Anda tidak dapat menghapus akun sendiri.');
+      setToast({ show: true, message: 'Anda tidak dapat menghapus akun sendiri.', type: 'error' });
       return;
     }
 
@@ -145,7 +147,7 @@ export default function ManagerAllUsersManagement() {
     setTableError('');
 
     try {
-      const response = await fetch(`/api/manager/users`, {
+      const response = await fetch(`/api/manager/users/bulk-delete`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids: itemsToDelete }),
@@ -153,11 +155,11 @@ export default function ManagerAllUsersManagement() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Gagal menghapus user');
 
-      setSuccessMessage(`Berhasil menghapus ${result.deletedCount} user.`);
+      setToast({ show: true, message: `Berhasil menonaktifkan ${result.deletedCount} user.`, type: 'success' });
       setSelectedRows([]);
       fetchUsers(); // Refresh data
     } catch (err) {
-      setTableError(err.message);
+      setToast({ show: true, message: err.message, type: 'error' });
     } finally {
       setIsDeleting(false);
       setShowDeleteModal(false);
@@ -272,6 +274,34 @@ export default function ManagerAllUsersManagement() {
     },
   ];
 
+  const handleDeleteSingle = async (userId) => {
+    if (!canManageUsers) return;
+
+    // Check if it's the current user
+    if (session?.user?.id === userId) {
+      setToast({ show: true, message: 'Anda tidak dapat menghapus akun sendiri.', type: 'error' });
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/manager/users/${userId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Gagal menghapus user');
+      }
+
+      setToast({ show: true, message: result.message || 'User berhasil dinonaktifkan.', type: 'success' });
+      fetchUsers(); // Refresh data
+    } catch (err) {
+      setToast({ show: true, message: err.message, type: 'error' });
+    }
+  };
+
   const openTransferModal = (user) => {
     setUserToTransfer(user);
     setShowTransferModal(true);
@@ -302,7 +332,7 @@ export default function ManagerAllUsersManagement() {
           </button>
         )}
         <button
-          onClick={() => canDelete ? handleDelete([row.id]) : undefined}
+          onClick={() => canDelete ? handleDeleteSingle(row.id) : undefined}
           className={`${canDelete ? 'p-1 text-red-500 hover:text-red-700 cursor-pointer' : 'p-1 text-gray-400 cursor-not-allowed'}`}
           title={canDelete ? "Hapus" : "Tidak dapat menghapus akun sendiri"}
           disabled={!canDelete}
@@ -331,7 +361,7 @@ export default function ManagerAllUsersManagement() {
       <h1 className={`text-3xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
         Manajemen Semua Pengguna
       </h1>
-      
+
       <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
         <DataTable
           data={users.map(user => ({...user, isCurrentUser: session?.user?.id === user.id}))}
@@ -348,6 +378,8 @@ export default function ManagerAllUsersManagement() {
           onSelectRow={handleSelectRow}
           onSelectAll={handleSelectAll}
           isAllSelected={users.length > 0 && users.filter(u => u.id !== session?.user?.id).every(u => selectedRows.includes(u.id))}
+          onDeleteMultiple={() => handleDelete(selectedRows)}
+          selectedRowsCount={selectedRows.length}
         />
       </div>
 
@@ -355,6 +387,14 @@ export default function ManagerAllUsersManagement() {
         <div className="fixed bottom-4 right-4 z-50 p-4 rounded-lg bg-red-500/10 text-red-400">
           <p>{tableError}</p>
         </div>
+      )}
+
+      {toast.show && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast({ show: false, message: '', type: '' })}
+        />
       )}
 
       {canManageUsers && (
@@ -378,7 +418,7 @@ export default function ManagerAllUsersManagement() {
             onClose={() => setShowDeleteModal(false)}
             onConfirm={handleConfirmDelete}
             title={`Konfirmasi Hapus ${itemsToDelete.length} User`}
-            message="Apakah Anda yakin ingin menghapus user yang dipilih? Tindakan ini akan menghapus pengguna secara permanen dan tidak dapat dibatalkan."
+            message="Apakah Anda yakin ingin menghapus user yang dipilih? Tindakan ini akan menonaktifkan pengguna dan tidak dapat dibatalkan."
             isLoading={isDeleting}
           />
           <TransferUserModal

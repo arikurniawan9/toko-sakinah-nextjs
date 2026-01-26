@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ROLES } from '@/lib/constants';
-import { ShoppingCart, Users, BarChart3, Settings, CreditCard } from 'lucide-react';
+import { ShoppingCart, Users, BarChart3, Settings, CreditCard, TrendingUp, DollarSign, Package, User } from 'lucide-react';
 import AppHeader from '@/components/AppHeader';
 import { useNotification } from '@/components/notifications/NotificationProvider';
 
@@ -13,13 +13,39 @@ export default function Home() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
-  }, []);
+
+    // Ambil data dashboard jika sudah login
+    if (status === 'authenticated' && session) {
+      fetchDashboardData();
+    }
+  }, [status, session]);
+
+  const fetchDashboardData = async () => {
+    if (!session || !session.user) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch('/api/dashboard');
+      if (response.ok) {
+        const data = await response.json();
+        setDashboardData(data);
+      } else {
+        console.error('Gagal mengambil data dashboard:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error mengambil data dashboard:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Jika sedang loading, tampilkan loading
-  if (status === 'loading' || !isClient) {
+  if (status === 'loading' || !isClient || (status === 'authenticated' && loading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
         <div className="text-center">
@@ -32,16 +58,14 @@ export default function Home() {
 
   const { showNotification } = useNotification();
 
-  // Contoh data untuk grafik penjualan
-  const salesData = [
-    { name: 'Sen', sales: 4000 },
-    { name: 'Sel', sales: 3000 },
-    { name: 'Rab', sales: 2000 },
-    { name: 'Kam', sales: 2780 },
-    { name: 'Jum', sales: 1890 },
-    { name: 'Sab', sales: 2390 },
-    { name: 'Min', sales: 3490 },
-  ];
+  // Fungsi untuk format angka menjadi format Rupiah
+  const formatRupiah = (number) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0
+    }).format(number);
+  };
 
   return (
     <div className="min-h-screen">
@@ -56,33 +80,139 @@ export default function Home() {
                 </h1>
                 <p className="text-gray-600 dark:text-gray-300">
                   Anda masuk sebagai <span className="font-semibold">{session.user.role}</span>
+                  {session.user.storeAccess ? (
+                    <span> di toko <span className="font-semibold">{session.user.storeAccess.name}</span></span>
+                  ) : session.user.isGlobalRole ? (
+                    <span> (Global Role - Silakan pilih toko untuk melanjutkan)</span>
+                  ) : (
+                    <span> (Belum terdaftar di toko manapun)</span>
+                  )}
                 </p>
               </div>
 
-              {/* Dashboard Summary for Authenticated Users */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow">
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Total Toko</h3>
-                  <p className="text-3xl font-bold text-blue-600">3</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Aktif</p>
+              {/* Tampilkan pesan jika user tidak memiliki akses ke toko */}
+              {!session.user.storeId && !session.user.isGlobalRole && (
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-yellow-700">
+                        <span className="font-medium">Perhatian!</span> Anda belum terdaftar di toko manapun. Silakan hubungi administrator untuk mendapatkan akses ke toko.
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow">
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Penjualan Hari Ini</h3>
-                  <p className="text-3xl font-bold text-green-600">Rp 4.200.000</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">8 transaksi</p>
-                </div>
-                <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow">
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Produk Tersedia</h3>
-                  <p className="text-3xl font-bold text-purple-600">127</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">dari 150</p>
-                </div>
-                <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow">
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Member</h3>
-                  <p className="text-3xl font-bold text-indigo-600">89</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">aktif</p>
-                </div>
-              </div>
+              )}
 
+              {/* Dashboard Summary for Authenticated Users */}
+              {session.user.storeId && dashboardData ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                  <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow flex items-center">
+                    <div className="mr-4 p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
+                      <Package className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">Produk Tersedia</h3>
+                      <p className="text-2xl font-bold text-blue-600">{dashboardData.totalProducts}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">di toko ini</p>
+                    </div>
+                  </div>
+                  <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow flex items-center">
+                    <div className="mr-4 p-3 bg-green-100 dark:bg-green-900 rounded-full">
+                      <TrendingUp className="h-6 w-6 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">Penjualan Hari Ini</h3>
+                      <p className="text-2xl font-bold text-green-600">{formatRupiah(dashboardData.totalSalesInRange)}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{dashboardData.totalTransactionsInRange} transaksi</p>
+                    </div>
+                  </div>
+                  <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow flex items-center">
+                    <div className="mr-4 p-3 bg-purple-100 dark:bg-purple-900 rounded-full">
+                      <User className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">Member</h3>
+                      <p className="text-2xl font-bold text-purple-600">{dashboardData.totalMembers}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">aktif</p>
+                    </div>
+                  </div>
+                  <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow flex items-center">
+                    <div className="mr-4 p-3 bg-indigo-100 dark:bg-indigo-900 rounded-full">
+                      <DollarSign className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">Keuntungan Hari Ini</h3>
+                      <p className="text-2xl font-bold text-indigo-600">{formatRupiah(dashboardData.totalProfitInRange)}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">bersih</p>
+                    </div>
+                  </div>
+                </div>
+              ) : session.user.storeId && !dashboardData ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-600 dark:text-gray-300">Memuat data toko...</p>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-600 dark:text-gray-300">Silakan pilih toko untuk melihat data Anda.</p>
+                </div>
+              )}
+
+              {/* Best Selling Products Section */}
+              {session.user.storeId && dashboardData?.bestSellingProducts && dashboardData.bestSellingProducts.length > 0 && (
+                <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow mb-8">
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Produk Terlaris Minggu Ini</h3>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
+                      <thead className="bg-gray-50 dark:bg-gray-600">
+                        <tr>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nama Produk</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Kode Produk</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Terjual</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white dark:bg-gray-700 divide-y divide-gray-200 dark:divide-gray-600">
+                        {dashboardData.bestSellingProducts.slice(0, 5).map((product, index) => (
+                          <tr key={index}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{product.name}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{product.productCode}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{product.quantitySold}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Sales Chart Section */}
+              {session.user.storeId && dashboardData?.salesData && dashboardData.salesData.length > 0 && (
+                <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow">
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Grafik Penjualan 7 Hari Terakhir</h3>
+                  <div className="space-y-4">
+                    {dashboardData.salesData.map((dayData, index) => (
+                      <div key={index} className="flex items-center">
+                        <div className="w-20 text-sm text-gray-600 dark:text-gray-300">{dayData.date}</div>
+                        <div className="flex-1 ml-4">
+                          <div className="flex items-center">
+                            <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2.5">
+                              <div
+                                className="bg-blue-600 h-2.5 rounded-full"
+                                style={{ width: `${Math.min(100, (dayData.totalSales / Math.max(...dashboardData.salesData.map(d => d.totalSales))) * 100)}%` }}
+                              ></div>
+                            </div>
+                            <div className="ml-4 text-sm text-gray-600 dark:text-gray-300">{formatRupiah(dayData.totalSales)}</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

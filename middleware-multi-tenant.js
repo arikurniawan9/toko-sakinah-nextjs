@@ -145,12 +145,7 @@ function authMiddleware(req) {
 
 // Middleware wrapper yang menangani proteksi berdasarkan path
 export default function multiTenantMiddleware(req) {
-  // Jika path adalah halaman utama, jangan gunakan proteksi otentikasi
-  if (req.nextUrl.pathname === '/') {
-    return NextResponse.next();
-  }
-
-  // Untuk halaman lainnya, gunakan proteksi otentikasi
+  // Untuk halaman utama, gunakan proteksi otentikasi
   return withAuth(authMiddleware, {
     pages: {
       signIn: '/login',

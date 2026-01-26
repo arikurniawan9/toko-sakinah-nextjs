@@ -69,7 +69,8 @@ export async function DELETE(request) {
         user.id,
         `Pengguna "${user.name}" dinonaktifkan`,
         { ...user },
-        { ...user, status: 'INAKTIF' }
+        { ...user, status: 'INAKTIF' },
+        null // Tidak ada storeId karena ini adalah operasi manager
       );
     }
 

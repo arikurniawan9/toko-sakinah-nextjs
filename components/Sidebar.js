@@ -166,7 +166,6 @@ const Sidebar = ({ children }) => {
     { title: "Produk", href: "/warehouse/products", icon: Package, type: 'item', roles: ['WAREHOUSE'] },
     { title: "Kategori", href: "/warehouse/kategori", icon: Tag, type: 'item', roles: ['WAREHOUSE'] },
     { title: "Supplier", href: "/warehouse/supplier", icon: Truck, type: 'item', roles: ['WAREHOUSE'] },
-    { title: "Supplier Lengkap", href: "/warehouse/suppliers", icon: Truck, type: 'item', roles: ['WAREHOUSE'] },
     { title: "Pengguna", href: "/warehouse/users", icon: UserRound, type: 'item', roles: ['WAREHOUSE'] },
     { title: "Operasional", type: 'heading', roles: ['WAREHOUSE'] },
     { title: "Distribusi", href: "/warehouse/distribution", icon: TrendingUp, type: 'item', roles: ['WAREHOUSE'] },

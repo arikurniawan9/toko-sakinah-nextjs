@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
 import { ROLES } from '@/lib/constants';
 import bcrypt from 'bcryptjs';
+import { logActivity } from '@/lib/auditTrail';
 
 // GET a specific user by ID
 export async function GET(request, { params }) {
@@ -108,6 +109,80 @@ export async function PUT(request, { params }) {
     }
     if (error.code === 'P2002' && error.meta?.target?.includes('username')) {
         return NextResponse.json({ error: 'Username already exists' }, { status: 400 });
+    }
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}
+
+// DELETE a specific user by ID (deactivate user)
+export async function DELETE(request, { params }) {
+  const session = await getServerSession(authOptions);
+
+  if (!session || !session.user || !session.user.id || session.user.role !== ROLES.MANAGER) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { userId } = params;
+
+  if (userId === session.user.id) {
+    return NextResponse.json({ error: "You cannot delete your own account." }, { status: 403 });
+  }
+
+  try {
+    // Ambil data user sebelum dihapus
+    const userToDelete = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        role: true
+      }
+    });
+
+    if (!userToDelete) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Jangan hapus user manager
+    if (userToDelete.role === ROLES.MANAGER) {
+      return NextResponse.json({ error: 'Tidak dapat menghapus pengguna dengan role MANAGER' }, { status: 400 });
+    }
+
+    // Update status menjadi INAKTIF alih-alih menghapus
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { status: 'INAKTIF' },
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        role: true,
+        status: true
+      }
+    });
+
+    // Catat aktivitas
+    await logActivity(
+      session.user.id,
+      'DELETE',
+      'USER',
+      updatedUser.id,
+      `Pengguna "${updatedUser.name}" dinonaktifkan`,
+      { ...userToDelete },
+      { ...updatedUser },
+      null // Tidak ada storeId karena ini adalah operasi manager
+    );
+
+    return NextResponse.json({
+      message: 'Pengguna berhasil dinonaktifkan',
+      user: updatedUser
+    });
+
+  } catch (error) {
+    console.error(`Error deleting user ${userId}:`, error);
+    if (error.code === 'P2025') {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }

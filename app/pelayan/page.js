@@ -285,33 +285,45 @@ function AttendantDashboard() {
   const handleBarcodeScan = useCallback(async (decodedText) => {
     setShowBarcodeScanner(false);
 
-    const productResponse = await fetch(`/api/produk?search=${encodeURIComponent(decodedText)}`);
-    if (productResponse.ok) {
-      const productData = await productResponse.json();
-      if (productData.products && productData.products.length > 0) {
-        addToTempCart(productData.products[0]);
-        showNotification(`Produk ${productData.products[0].name} ditambahkan.`, 'success');
-        return;
-      }
-    }
+    // Prioritize product search with the new store-specific endpoint
+    try {
+        const productResponse = await fetch(`/api/products/by-code/${encodeURIComponent(decodedText)}`);
+        
+        if (productResponse.ok) {
+            const productData = await productResponse.json();
+            // Ensure productData is a valid product object
+            if (productData && productData.id) {
+                // The price for attendant page should be retailPrice
+                const productWithRetailPrice = { ...productData, sellingPrice: productData.retailPrice };
+                addToTempCart(productWithRetailPrice);
+                showNotification(`Produk ${productData.name} ditambahkan.`, 'success');
+                return;
+            }
+        }
+        
+        // If product not found by code, proceed with other checks (customer, etc.)
+        // This part remains the same as the user might be scanning a member card
+        if (decodedText.toLowerCase() === 'umum' || decodedText.toLowerCase() === 'pelanggan umum') {
+          if (defaultCustomer) {
+            setSelectedCustomer(defaultCustomer);
+            showNotification(`Pelanggan Umum dipilih.`, 'success');
+            return;
+          }
+        }
 
-    // Cek apakah kode yang di-scan adalah untuk pelanggan umum
-    if (decodedText.toLowerCase() === 'umum' || decodedText.toLowerCase() === 'pelanggan umum') {
-      if (defaultCustomer) {
-        setSelectedCustomer(defaultCustomer);
-        showNotification(`Pelanggan Umum dipilih.`, 'success');
-        return;
-      }
-    }
+        const customerData = await searchCustomers(decodedText);
+        if (customerData && customerData.length > 0) {
+            setSelectedCustomer(customerData[0]);
+            showNotification(`Pelanggan ${customerData[0].name} dipilih.`, 'success');
+            return;
+        }
 
-    const customerData = await searchCustomers(decodedText);
-    if (customerData && customerData.length > 0) {
-        setSelectedCustomer(customerData[0]);
-        showNotification(`Pelanggan ${customerData[0].name} dipilih.`, 'success');
-        return;
-    }
+        showNotification('Kode barcode tidak cocok dengan produk atau pelanggan di toko ini.', 'warning');
 
-    showNotification('Kode barcode tidak cocok dengan produk atau pelanggan manapun.', 'warning');
+    } catch (error) {
+        console.error("Error during barcode scan handling:", error);
+        showNotification('Terjadi kesalahan saat memproses barcode.', 'error');
+    }
   }, [addToTempCart, setSelectedCustomer, showNotification, searchCustomers, defaultCustomer]);
 
   const handleClearCart = () => {
