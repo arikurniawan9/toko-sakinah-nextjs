@@ -9,6 +9,7 @@ const BarcodeScannerOptimized = ({ onScan, onClose }) => {
   const videoRef = useRef(null);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [requestingPermission, setRequestingPermission] = useState(false);
   const [cameraOptions, setCameraOptions] = useState([]);
   const [selectedCamera, setSelectedCamera] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
@@ -20,21 +21,21 @@ const BarcodeScannerOptimized = ({ onScan, onClose }) => {
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
       const videoDevices = devices.filter(device => device.kind === 'videoinput');
-      
+
       // Format camera options
       const formattedOptions = videoDevices.map((device, index) => ({
         id: device.deviceId,
         label: device.label || `Kamera ${index + 1}`,
-        facingMode: device.label.toLowerCase().includes('back') ? 'environment' : 
+        facingMode: device.label.toLowerCase().includes('back') ? 'environment' :
                    device.label.toLowerCase().includes('front') ? 'user' : 'environment'
       }));
 
       setCameraOptions(formattedOptions);
-      
+
       // Set default camera (prefer back camera)
       const backCamera = formattedOptions.find(cam => cam.facingMode === 'environment');
       const frontCamera = formattedOptions.find(cam => cam.facingMode === 'user');
-      
+
       if (backCamera) {
         setSelectedCamera(backCamera.id);
         setCurrentFacingMode('environment');
@@ -46,10 +47,14 @@ const BarcodeScannerOptimized = ({ onScan, onClose }) => {
       }
     } catch (err) {
       console.error('Error getting camera options:', err);
-      // Fallback to default configuration
-      setCameraOptions([{ id: 'default', label: 'Kamera Default', facingMode: 'environment' }]);
-      setSelectedCamera('default');
-      setCurrentFacingMode('environment');
+      if (err.name === 'NotAllowedError' || err.message.includes('denied')) {
+        setError('Izin kamera ditolak. Harap izinkan akses kamera di pengaturan browser Anda.');
+      } else {
+        // Fallback to default configuration
+        setCameraOptions([{ id: 'default', label: 'Kamera Default', facingMode: 'environment' }]);
+        setSelectedCamera('default');
+        setCurrentFacingMode('environment');
+      }
     }
   }, []);
 
@@ -57,8 +62,7 @@ const BarcodeScannerOptimized = ({ onScan, onClose }) => {
   const initializeScanner = useCallback(async () => {
     if (!scannerRef.current || !selectedCamera) return;
 
-    setIsLoading(true);
-    setError('');
+    // Note: We don't set isLoading here because it's handled by the calling useEffect
 
     try {
       if (html5QrCodeRef.current) {
@@ -68,7 +72,7 @@ const BarcodeScannerOptimized = ({ onScan, onClose }) => {
         }
       }
 
-      html5QrCodeRef.current = new Html5Qrcode(scannerRef.current.id, { 
+      html5QrCodeRef.current = new Html5Qrcode(scannerRef.current.id, {
         formatsToSupport: [
           Html5QrcodeScanner.SUPPORTED_FORMATS.QR_CODE,
           Html5QrcodeScanner.SUPPORTED_FORMATS.CODE_128,
@@ -113,11 +117,21 @@ const BarcodeScannerOptimized = ({ onScan, onClose }) => {
       );
 
       setIsScanning(true);
-      setIsLoading(false);
+      // Don't set isLoading(false) here as it's handled by the calling useEffect
     } catch (err) {
       console.error('Error initializing scanner:', err);
-      setError(`Tidak dapat memulai kamera. Pastikan Anda telah memberikan izin. Error: ${err.message || err.name}`);
-      setIsLoading(false);
+      if (err.name === 'NotAllowedError' || err.message.includes('denied')) {
+        setError('Izin kamera ditolak. Harap izinkan akses kamera di pengaturan browser Anda.');
+      } else if (err.name === 'NotFoundError' || err.name === 'OverconstrainedError') {
+        setError('Kamera tidak ditemukan atau tidak dapat diakses. Coba ganti kamera lain jika tersedia.');
+      } else if (err.name === 'NotSupportedError') {
+        setError('Fitur kamera tidak didukung di browser ini. Coba gunakan browser modern seperti Chrome atau Firefox.');
+      } else if (err.name === 'NotAllowedError') {
+        setError('Akses kamera ditolak oleh browser atau sistem operasi.');
+      } else {
+        setError(`Tidak dapat memulai kamera. Error: ${err.message || err.name}`);
+      }
+      // Don't set isLoading(false) here as it's handled by the calling useEffect
     }
   }, [selectedCamera, currentFacingMode, onScan]);
 
@@ -157,11 +171,44 @@ const BarcodeScannerOptimized = ({ onScan, onClose }) => {
 
   // Initialize on mount and when selectedCamera changes
   useEffect(() => {
-    getAvailableCameras();
+    const initialize = async () => {
+      setIsLoading(true);
+      setRequestingPermission(true);
+
+      try {
+        // Request camera permission first
+        if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia !== 'undefined') {
+          const permissionStream = await navigator.mediaDevices.getUserMedia({
+            video: true
+          });
+
+          // Stop the temporary stream immediately
+          permissionStream.getTracks().forEach(track => track.stop());
+
+          // Permission granted, now get available cameras
+          await getAvailableCameras();
+        } else {
+          throw new Error('navigator.mediaDevices API tidak didukung di browser ini');
+        }
+      } catch (err) {
+        console.error('Error requesting camera permission:', err);
+        if (err.name === 'NotAllowedError' || err.message.includes('denied')) {
+          setError('Izin kamera ditolak. Harap izinkan akses kamera di pengaturan browser Anda.');
+        } else {
+          setError(`Tidak dapat mengakses kamera. Error: ${err.message || err.name}`);
+        }
+      } finally {
+        setRequestingPermission(false);
+        setIsLoading(false);
+      }
+    };
+
+    initialize();
   }, [getAvailableCameras]);
 
   useEffect(() => {
-    if (selectedCamera) {
+    if (selectedCamera && !requestingPermission && !error) {
+      setIsLoading(true);
       initializeScanner();
     }
 
@@ -172,7 +219,7 @@ const BarcodeScannerOptimized = ({ onScan, onClose }) => {
         });
       }
     };
-  }, [selectedCamera, initializeScanner]);
+  }, [selectedCamera, initializeScanner, requestingPermission, error]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-90 flex flex-col items-center justify-center z-[1000] p-2">
@@ -199,19 +246,31 @@ const BarcodeScannerOptimized = ({ onScan, onClose }) => {
         </div>
 
         <div className="flex-1 relative p-2" style={{ minHeight: '300px' }}>
-          <div 
-            id="scanner-container" 
-            ref={scannerRef} 
+          <div
+            id="scanner-container"
+            ref={scannerRef}
             className="w-full h-full rounded-lg overflow-hidden bg-black flex items-center justify-center"
           >
-            {isLoading && (
+            {requestingPermission && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-80 z-10">
+                <div className="animate-pulse mb-4">
+                  <CameraIcon className="h-12 w-12 mx-auto text-gray-400" />
+                </div>
+                <p className="text-white text-sm text-center px-4">
+                  Mohon izinkan akses kamera untuk melanjutkan pemindaian
+                </p>
+                <div className="mt-4 w-8 h-8 border-2 border-t-purple-500 border-r-purple-500 border-b-purple-500 border-l-transparent rounded-full animate-spin"></div>
+              </div>
+            )}
+
+            {isLoading && !requestingPermission && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-80 z-10">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500 mb-4"></div>
                 <p className="text-white text-sm">Menyiapkan kamera...</p>
               </div>
             )}
-            
-            {!isLoading && error && (
+
+            {!isLoading && !requestingPermission && error && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-80 z-10">
                 <CameraOff className="h-12 w-12 mx-auto text-red-500 mb-4" />
                 <p className="text-red-500 font-medium text-center px-4">Gagal Mengakses Kamera</p>
@@ -224,9 +283,9 @@ const BarcodeScannerOptimized = ({ onScan, onClose }) => {
                 </button>
               </div>
             )}
-            
+
             {/* QR Box overlay */}
-            {!isLoading && !error && (
+            {!isLoading && !requestingPermission && !error && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="relative">
                   <div className="border-2 border-transparent">
