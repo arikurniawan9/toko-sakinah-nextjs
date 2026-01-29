@@ -197,11 +197,11 @@ export default function CategoryManagementPage() {
       const timer = setTimeout(() => setTableError(''), 5000);
       return () => clearTimeout(timer);
     }
-  }, [success, tableError]);
+  }, [success, tableError, setSuccess, setTableError]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [itemsPerPage]);
+  }, [itemsPerPage, setCurrentPage]);
 
   const columns = [
     {

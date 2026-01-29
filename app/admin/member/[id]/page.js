@@ -1,7 +1,7 @@
 // app/admin/member/[id]/page.js
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useUserTheme } from '../../../../components/UserThemeContext';
@@ -25,17 +25,7 @@ export default function MemberDetailPage({ params }) {
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [showReportPreview, setShowReportPreview] = useState(false);
 
-  useEffect(() => {
-    if (status === 'authenticated') {
-      if (session.user.role !== ROLES.ADMIN) {
-        router.push('/unauthorized');
-        return;
-      }
-      fetchMemberDetail();
-    }
-  }, [status, session, params.id]);
-
-  const fetchMemberDetail = async () => {
+  const fetchMemberDetail = useCallback(async () => {
     try {
       setLoading(true);
       const res = await fetch(`/api/member/${params.id}`);
@@ -57,7 +47,17 @@ export default function MemberDetailPage({ params }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [params.id]);
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      if (session.user.role !== ROLES.ADMIN) {
+        router.push('/unauthorized');
+        return;
+      }
+      fetchMemberDetail();
+    }
+  }, [status, session, fetchMemberDetail]);
 
   const handleTransactionClick = (transaction) => {
     setSelectedTransaction(transaction);

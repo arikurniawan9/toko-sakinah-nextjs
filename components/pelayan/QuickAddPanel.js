@@ -2,6 +2,7 @@
 'use client';
 
 import { Star, StarOff } from 'lucide-react';
+import Image from 'next/image';
 
 const QuickAddPanel = ({ 
   addToCart, 
@@ -93,10 +94,12 @@ const QuickAddPanel = ({
               darkMode ? 'bg-gray-700' : 'bg-gray-100'
             }`}>
               {product.image ? (
-                <img 
-                  src={product.image} 
-                  alt={product.name} 
-                  className="h-10 w-10 object-contain rounded" 
+                <Image
+                  src={product.image}
+                  alt={product.name}
+                  className="h-10 w-10 object-contain rounded"
+                  width={40}
+                  height={40}
                 />
               ) : (
                 <span className={`text-xs font-medium ${

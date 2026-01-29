@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Hash } from 'lucide-react';
 import JsBarcode from 'jsbarcode';
+import Image from 'next/image';
 
 export default function ProductBarcodePreview({ 
   isOpen, 
@@ -224,10 +225,12 @@ export default function ProductBarcodePreview({
                         </div>
                       )}
                       <div className="flex justify-center">
-                        <img 
-                          src={canvas.toDataURL()} 
-                          alt={`Barcode ${product.productCode}`} 
+                        <Image
+                          src={canvas.toDataURL()}
+                          alt={`Barcode ${product.productCode}`}
                           className="max-w-full max-h-16 object-contain"
+                          width={100}
+                          height={40}
                         />
                       </div>
                     </div>

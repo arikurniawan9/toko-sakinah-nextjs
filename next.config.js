@@ -1,9 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
+  // swcMinify: true, // Removed as it's unrecognized in Next.js 16
+
   experimental: {
-    serverComponentsExternalPackages: ['prisma', '@prisma/client'],
     // Optimize package imports
     optimizePackageImports: ['lucide-react', 'recharts'],
   },
@@ -47,6 +47,7 @@ const nextConfig = {
       },
     ];
   },
+  // Explicitly use webpack instead of Turbopack for compatibility
   webpack: (config, { isServer, dev }) => {
     // Optimasi bundle size
     if (!isServer) {

@@ -34,10 +34,11 @@ const EnhancedBarcodeScanner = ({ onScan, onClose, onError }) => {
 
   // Get available cameras
   const getAvailableCameras = useCallback(async () => {
-    if (!navigator.onLine) {
-      setError('Mode offline: Tidak dapat mengakses kamera karena tidak ada koneksi internet.');
-      return;
-    }
+    // Memeriksa koneksi internet tidak relevan untuk fungsionalitas kamera lokal.
+    // if (!navigator.onLine) {
+    //   setError('Mode offline: Tidak dapat mengakses kamera karena tidak ada koneksi internet.');
+    //   return;
+    // }
 
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();

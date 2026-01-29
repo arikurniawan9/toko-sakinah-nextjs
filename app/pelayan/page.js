@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { Search, ShoppingCart, Users, Send, Camera, Sun, Moon, LogOut, AlertCircle, Trash2, X, History, Bell, Package, TrendingUp, ShoppingCartIcon, User, Star, Edit3, BarChart3, Scan, CameraOff, Camera as CameraIcon, Check } from 'lucide-react';
+import Image from 'next/image';
 import BarcodeScanner from '../../components/BarcodeScannerOptimized';
 import EnhancedBarcodeScanner from '../../components/pelayan/EnhancedBarcodeScanner';
 import { useNotification } from '../../components/notifications/NotificationProvider';
@@ -391,7 +392,13 @@ function AttendantDashboard() {
                       >
                         <div className="w-16 h-16 flex items-center justify-center mb-2">
                           {product.image ? (
-                            <img src={product.image} alt={product.name} className="h-14 w-14 object-contain rounded-lg" />
+                            <Image
+                              src={product.image}
+                              alt={product.name}
+                              className="h-14 w-14 object-contain rounded-lg"
+                              width={56}
+                              height={56}
+                            />
                           ) : (
                             <div className="h-14 w-14 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-600 dark:to-gray-700 rounded-lg flex items-center justify-center">
                               <Package className="h-6 w-6 text-gray-400 dark:text-gray-500" />

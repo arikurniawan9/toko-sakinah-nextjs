@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUserTheme } from '../../../../components/UserThemeContext';
 import { useSession } from 'next-auth/react';
@@ -32,23 +32,18 @@ export default function PendingDistributions() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [pagination, setPagination] = useState({});
 
-  // Fetch pending batches
-  useEffect(() => {
-    fetchPendingBatches();
-  }, [currentPage, itemsPerPage, searchTerm]);
-
-  const fetchPendingBatches = async () => { // Renamed from fetchPendingDistributions
+  const fetchPendingBatches = useCallback(async () => { // Renamed from fetchPendingDistributions
     try {
       setLoading(true);
       const params = new URLSearchParams({
         page: currentPage,
         limit: itemsPerPage,
       });
-      
+
       if (searchTerm) {
         params.append('search', searchTerm);
       }
-      
+
       const response = await fetch(`/api/admin/distributions/pending?${params.toString()}`);
       const data = await response.json();
 
@@ -63,7 +58,11 @@ export default function PendingDistributions() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, itemsPerPage, searchTerm]); // Dependencies for the callback
+
+  useEffect(() => {
+    fetchPendingBatches();
+  }, [fetchPendingBatches]);
 
   const handleAccept = (batch) => { // Accept entire batch
     setSelectedBatch(batch);

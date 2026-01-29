@@ -1,7 +1,7 @@
 // app/admin/laporan/labarugi/page.js
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useUserTheme } from '../../../../components/UserThemeContext';
@@ -25,11 +25,11 @@ export default function ProfitLossReport() {
   // State untuk print preview
   const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
 
-  const fetchReportData = async () => {
+  const fetchReportData = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      
+
       const response = await fetch(`/api/laporan/labarugi?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`);
 
       if (!response.ok) {
@@ -44,11 +44,11 @@ export default function ProfitLossReport() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateRange]);
 
   useEffect(() => {
     fetchReportData();
-  }, [dateRange]);
+  }, [fetchReportData]);
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('id-ID', {
