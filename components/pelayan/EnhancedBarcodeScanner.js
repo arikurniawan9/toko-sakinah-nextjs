@@ -173,9 +173,6 @@ const EnhancedBarcodeScanner = ({ onScan, onClose, onError }) => {
         } else if (err.name === 'NotSupportedError') {
           setError('Fitur kamera tidak didukung di browser ini. Coba gunakan browser modern seperti Chrome atau Firefox.');
           onError && onError('Fitur kamera tidak didukung');
-        } else if (err.name === 'NotAllowedError') {
-          setError('Akses kamera ditolak oleh browser atau sistem operasi.');
-          onError && onError('Akses kamera ditolak');
         } else {
           setError(`Tidak dapat memulai kamera. Error: ${err.message || err.name}`);
           onError && onError(`Tidak dapat memulai kamera: ${err.message || err.name}`);
@@ -223,6 +220,9 @@ const EnhancedBarcodeScanner = ({ onScan, onClose, onError }) => {
     setError('');
     setShowPermissionModal(false);
     retryAttempts.current = 0;
+    // Reset semua state untuk inisialisasi ulang
+    setIsLoading(true);
+    setRequestingPermission(true);
     getAvailableCameras();
   }, [getAvailableCameras]);
 
@@ -251,8 +251,10 @@ const EnhancedBarcodeScanner = ({ onScan, onClose, onError }) => {
         if (err.name === 'NotAllowedError' || err.message.includes('denied')) {
           setError('Izin kamera ditolak. Harap izinkan akses kamera di pengaturan browser Anda.');
           onError && onError('Izin kamera ditolak');
-          // Tampilkan modal izin kamera
-          setShowPermissionModal(true);
+          // Tampilkan modal izin kamera hanya jika belum ditampilkan sebelumnya
+          if (!showPermissionModal) {
+            setShowPermissionModal(true);
+          }
         } else {
           setError(`Tidak dapat mengakses kamera. Error: ${err.message || err.name}`);
           onError && onError(`Tidak dapat mengakses kamera: ${err.message || err.name}`);
@@ -264,7 +266,7 @@ const EnhancedBarcodeScanner = ({ onScan, onClose, onError }) => {
     };
 
     initialize();
-  }, [getAvailableCameras, onError]);
+  }, [getAvailableCameras, onError, showPermissionModal]);
 
   useEffect(() => {
     if (selectedCamera && !requestingPermission && !error) {
