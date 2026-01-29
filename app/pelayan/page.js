@@ -196,7 +196,8 @@ function AttendantDashboard() {
 
 
   const handleBarcodeScan = useCallback(async (decodedText) => {
-    setShowBarcodeScanner(false);
+    // Tidak menutup scanner setelah scan berhasil, biarkan tetap terbuka untuk scan berikutnya
+    // setShowBarcodeScanner(false);
 
     // Prioritize product search with the new store-specific endpoint
     try {
@@ -238,6 +239,10 @@ function AttendantDashboard() {
         showNotification('Terjadi kesalahan saat memproses barcode.', 'error');
     }
   }, [addToTempCart, setSelectedCustomer, showNotification, searchCustomers, defaultCustomer]);
+
+  const handleScannerClose = () => {
+    setShowBarcodeScanner(false);
+  };
 
   const handleError = useCallback((errorMsg) => {
     showNotification(errorMsg, 'error');
