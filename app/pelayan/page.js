@@ -320,10 +320,6 @@ function AttendantDashboard() {
   }, []);
 
 
-  const handleScannerClose = () => {
-    setShowBarcodeScanner(false);
-  };
-
   // Fungsi untuk menambahkan produk cepat ke keranjang
   const handleQuickAddToCart = (product) => {
     addToTempCart(product);
