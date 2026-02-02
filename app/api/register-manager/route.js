@@ -60,6 +60,7 @@ export async function POST(request) {
     const defaultStore = await prisma.store.create({
       data: {
         name: 'Toko Pusat',
+        code: 'GM001', // Kode toko default
         description: 'Toko utama perusahaan',
         status: 'ACTIVE',
       },
